@@ -51,6 +51,7 @@ from .services import (
     build_monthly_budget,
     delete_transaction,
     delete_transfer,
+    fund_due_savings_goals,
     fund_goal_for_month,
     goal_funding_reminders,
     post_due_recurring,
@@ -97,6 +98,9 @@ def dashboard(request):
     posted_count = post_due_recurring(request.user, today)
     if posted_count:
         messages.info(request, f"Posted {posted_count} scheduled transaction(s).")
+    funded_goal_count = fund_due_savings_goals(request.user, today)
+    if funded_goal_count:
+        messages.info(request, f"Funded {funded_goal_count} saving goal(s).")
 
     accounts = list(BankAccount.objects.filter(user=request.user))
     preference, _ = BudgetPreference.objects.get_or_create(user=request.user)
@@ -161,7 +165,9 @@ def dashboard(request):
         MonthlyExpense.objects.filter(user=request.user).select_related("category", "bank_account")
     )
     savings_goals = list(
-        SavingsGoal.objects.filter(user=request.user).select_related("bank_account")
+        SavingsGoal.objects.filter(
+            user=request.user, is_archived=False
+        ).select_related("bank_account")
     )
     goal_reminders = goal_funding_reminders(request.user, today)
     budget = build_monthly_budget(request.user, today)
@@ -560,28 +566,44 @@ def create_savings_goal(request):
 @require_POST
 @login_required
 def update_savings_goal(request, item_id):
-    return _update_plan(request, SavingsGoalForm, SavingsGoal, item_id)
+    item = get_object_or_404(
+        SavingsGoal, pk=item_id, user=request.user, is_archived=False
+    )
+    form = SavingsGoalForm(request.POST, instance=item, user=request.user)
+    if form.is_valid():
+        form.save()
+        messages.success(
+            request, "Saving goal updated. Future funding uses the new values."
+        )
+    else:
+        _show_form_errors(request, form)
+    return _dashboard_redirect("plans")
 
 
 @require_POST
 @login_required
 def delete_savings_goal(request, item_id):
-    goal = get_object_or_404(SavingsGoal, pk=item_id, user=request.user)
-    try:
-        goal.delete()
-        messages.success(request, "Savings goal removed.")
-    except ProtectedError:
+    goal = get_object_or_404(
+        SavingsGoal, pk=item_id, user=request.user, is_archived=False
+    )
+    if goal.current_balance != 0:
         messages.error(
             request,
-            "This goal has transfer history. Move its balance out and keep the goal for your records.",
+            "Move the remaining balance to a bank account before deleting this goal account.",
         )
+    else:
+        goal.is_archived = True
+        goal.save(update_fields=["is_archived"])
+        messages.success(request, "Saving goal account removed. Its transfer history was kept.")
     return _dashboard_redirect("plans")
 
 
 @require_POST
 @login_required
 def fund_savings_goal(request, item_id):
-    goal = get_object_or_404(SavingsGoal, pk=item_id, user=request.user)
+    goal = get_object_or_404(
+        SavingsGoal, pk=item_id, user=request.user, is_archived=False
+    )
     try:
         item = fund_goal_for_month(goal, request.user, timezone.localdate())
         if item:
@@ -590,6 +612,8 @@ def fund_savings_goal(request, item_id):
             messages.info(request, "This goal is already funded for the month.")
     except (InsufficientFunds, ValidationError) as error:
         messages.error(request, " ".join(error.messages))
+    except IntegrityError:
+        messages.info(request, "This goal is already funded for the month.")
     return _dashboard_redirect("overview")
 
 
@@ -615,7 +639,7 @@ def update_dashboard_animations(request):
     )
     if form.is_valid():
         form.save()
-        messages.success(request, "Dashboard GIFs updated.")
+        messages.success(request, "Appearance updated.")
     else:
         _show_form_errors(request, form)
     return _dashboard_redirect("overview")

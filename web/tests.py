@@ -32,7 +32,12 @@ from .models import (
     Transfer,
     UserSubscription,
 )
-from .services import build_monthly_budget, goal_funding_reminders, post_due_recurring
+from .services import (
+    build_monthly_budget,
+    fund_due_savings_goals,
+    goal_funding_reminders,
+    post_due_recurring,
+)
 from .subscriptions import initialize_user_subscription, report_manual_payment
 
 
@@ -292,6 +297,23 @@ class FinanceTestCase(TestCase):
                 response, reverse("dashboard_animation", args=["danger"])
             )
             self.assertTrue(preference.danger_gif)
+
+    def test_dashboard_theme_is_saved_for_only_the_signed_in_user(self):
+        response = self.client.post(
+            reverse("update_dashboard_animations"), {"theme": "forest"}
+        )
+
+        self.assertRedirects(response, f"{reverse('dashboard')}?tab=overview")
+        preference = BudgetPreference.objects.get(user=self.user)
+        self.assertEqual(preference.theme, BudgetPreference.THEME_FOREST)
+        self.assertContains(
+            self.client.get(reverse("dashboard")), 'data-theme="forest"'
+        )
+
+        self.client.force_login(self.other_user)
+        self.assertContains(
+            self.client.get(reverse("dashboard")), 'data-theme="ocean"'
+        )
 
     def test_csv_export_contains_only_the_signed_in_users_data(self):
         Expense.objects.create(
@@ -683,7 +705,8 @@ class FinanceTestCase(TestCase):
         )
         goal = SavingsGoal.objects.get(user=self.user, name="Holiday")
         self.client.post(reverse("delete_savings_goal", args=[goal.id]))
-        self.assertFalse(SavingsGoal.objects.filter(pk=goal.id).exists())
+        goal.refresh_from_db()
+        self.assertTrue(goal.is_archived)
 
     def test_category_crud(self):
         self.client.post(reverse("create_category", args=["expense"]), {"name": "Travel"})
@@ -807,6 +830,104 @@ class FinanceTestCase(TestCase):
             1,
         )
         self.assertEqual(goal_funding_reminders(self.user, date(2026, 8, 14)), [])
+
+    def test_mark_saved_handles_nearly_complete_goal_without_server_error(self):
+        self.account.balance = Decimal("770.00")
+        self.account.save()
+        goal = SavingsGoal.objects.create(
+            user=self.user,
+            name="Bicycle",
+            monthly_amount=Decimal("100.00"),
+            start_date=date(2026, 8, 1),
+            target_amount=Decimal("1000.00"),
+            target_date=date(2026, 8, 19),
+            current_balance=Decimal("900.00"),
+            bank_account=self.account,
+        )
+
+        with patch("web.views.timezone.localdate", return_value=date(2026, 8, 14)):
+            response = self.client.post(reverse("fund_savings_goal", args=[goal.id]))
+
+        self.assertEqual(response.status_code, 302)
+        goal.refresh_from_db()
+        self.account.refresh_from_db()
+        self.assertEqual(goal.current_balance, Decimal("1000.00"))
+        self.assertEqual(self.account.balance, Decimal("670.00"))
+        self.assertEqual(Transfer.objects.filter(destination_goal=goal).count(), 1)
+
+    def test_goal_is_funded_automatically_on_its_monthly_effective_day(self):
+        goal = SavingsGoal.objects.create(
+            user=self.user,
+            name="Travel",
+            monthly_amount=Decimal("100.00"),
+            start_date=date(2026, 8, 19),
+            current_balance=Decimal("0.00"),
+            bank_account=self.account,
+        )
+
+        self.assertEqual(fund_due_savings_goals(self.user, date(2026, 8, 18)), 0)
+        self.assertEqual(fund_due_savings_goals(self.user, date(2026, 8, 19)), 1)
+        self.assertEqual(fund_due_savings_goals(self.user, date(2026, 8, 20)), 0)
+        goal.refresh_from_db()
+        self.account.refresh_from_db()
+        self.assertEqual(goal.current_balance, Decimal("100.00"))
+        self.assertEqual(self.account.balance, Decimal("900.00"))
+
+    def test_goal_account_is_listed_and_archived_only_after_it_is_empty(self):
+        goal = SavingsGoal.objects.create(
+            user=self.user,
+            name="Reserve",
+            monthly_amount=Decimal("100.00"),
+            start_date=date(2027, 1, 1),
+            current_balance=Decimal("100.00"),
+            bank_account=self.account,
+        )
+
+        response = self.client.get(f"{reverse('dashboard')}?tab=accounts")
+        self.assertContains(response, "Savings goal account")
+        self.client.post(reverse("delete_savings_goal", args=[goal.id]))
+        goal.refresh_from_db()
+        self.assertFalse(goal.is_archived)
+
+        goal.current_balance = Decimal("0.00")
+        goal.save(update_fields=["current_balance"])
+        self.client.post(reverse("delete_savings_goal", args=[goal.id]))
+        goal.refresh_from_db()
+        self.assertTrue(goal.is_archived)
+        response = self.client.get(f"{reverse('dashboard')}?tab=accounts")
+        self.assertNotContains(response, "Reserve")
+
+    def test_monthly_totals_include_received_and_paid_activity(self):
+        self.account.balance = Decimal("20.00")
+        self.account.save()
+        RecurringIncome.objects.create(
+            user=self.user,
+            name="Salary",
+            amount=Decimal("1300.00"),
+            start_date=date(2026, 8, 14),
+            end_date=date(2026, 8, 28),
+            category=self.income_category,
+            bank_account=self.account,
+        )
+        MonthlyExpense.objects.create(
+            user=self.user,
+            name="Rent",
+            amount=Decimal("550.00"),
+            start_date=date(2026, 8, 14),
+            category=self.expense_category,
+            bank_account=self.account,
+        )
+        post_due_recurring(self.user, date(2026, 8, 14))
+
+        budget = build_monthly_budget(self.user, date(2026, 8, 14))
+
+        self.assertEqual(budget["current_balance"], Decimal("770.00"))
+        self.assertEqual(budget["actual_income"], Decimal("1300.00"))
+        self.assertEqual(budget["expected_income"], Decimal("0.00"))
+        self.assertEqual(budget["income_month_total"], Decimal("1300.00"))
+        self.assertEqual(budget["actual_expenses"], Decimal("550.00"))
+        self.assertEqual(budget["expected_expenses"], Decimal("0.00"))
+        self.assertEqual(budget["expense_month_total"], Decimal("550.00"))
 
     def test_goal_funding_does_not_post_without_enough_bank_balance(self):
         self.account.balance = Decimal("50.00")

@@ -7,7 +7,7 @@ const panels = [...document.querySelectorAll("[data-tab-panel]")];
 const tabButtons = [...document.querySelectorAll("[data-tab-target]")];
 const titles = {
     overview: "Overview",
-    accounts: "Bank accounts",
+    accounts: "Accounts",
     transactions: "Transactions",
     plans: "Monthly plans",
     categories: "Categories",

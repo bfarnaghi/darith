@@ -69,8 +69,9 @@ class BudgetPreferenceForm(StyledFormMixin, forms.ModelForm):
 class DashboardAnimationForm(StyledFormMixin, forms.ModelForm):
     class Meta:
         model = BudgetPreference
-        fields = ["healthy_gif", "warning_gif", "danger_gif"]
+        fields = ["theme", "healthy_gif", "warning_gif", "danger_gif"]
         labels = {
+            "theme": "Color theme",
             "healthy_gif": "On track GIF",
             "warning_gif": "Warning GIF",
             "danger_gif": "Out of budget GIF",
@@ -80,6 +81,17 @@ class DashboardAnimationForm(StyledFormMixin, forms.ModelForm):
             "warning_gif": forms.FileInput(attrs={"accept": "image/gif"}),
             "danger_gif": forms.FileInput(attrs={"accept": "image/gif"}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["theme"].required = False
+
+    def clean_theme(self):
+        return (
+            self.cleaned_data.get("theme")
+            or self.instance.theme
+            or BudgetPreference.THEME_OCEAN
+        )
 
 
 class TransactionForm(UserScopedFormMixin, StyledFormMixin, forms.ModelForm):
@@ -175,7 +187,7 @@ class SavingsGoalForm(UserScopedFormMixin, StyledFormMixin, forms.ModelForm):
             "target_amount": "Target amount (for a dated goal)",
             "target_date": "Target date",
             "current_balance": "Already saved",
-            "start_date": "Start saving",
+            "start_date": "First monthly saving date",
             "bank_account": "Default funding account",
         }
         widgets = {
@@ -267,7 +279,7 @@ class TransferForm(UserScopedFormMixin, StyledFormMixin, forms.ModelForm):
         )
         choices.extend(
             (f"goal:{item.pk}", f"Goal - {item.name}")
-            for item in SavingsGoal.objects.filter(user=self.user)
+            for item in SavingsGoal.objects.filter(user=self.user, is_archived=False)
         )
         self.fields["source"].choices = choices
         self.fields["destination"].choices = choices

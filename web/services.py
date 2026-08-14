@@ -5,7 +5,7 @@ from datetime import date
 from decimal import Decimal, ROUND_UP
 
 from django.core.exceptions import ValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Sum
 
 from .models import (
@@ -175,9 +175,9 @@ def goal_monthly_contribution(goal, as_of):
 
 def goal_funding_reminders(user, today):
     period = today.replace(day=1)
-    goals = SavingsGoal.objects.filter(user=user, start_date__lte=today).select_related(
-        "bank_account"
-    )
+    goals = SavingsGoal.objects.filter(
+        user=user, start_date__lte=today, is_archived=False
+    ).select_related("bank_account")
     funded_goal_ids = set(
         Transfer.objects.filter(
             user=user, destination_goal__isnull=False, goal_period=period
@@ -206,7 +206,7 @@ def fund_goal_for_month(goal, user, today):
     goal = (
         SavingsGoal.objects.select_for_update()
         .select_related("bank_account")
-        .get(pk=goal.pk, user=user)
+        .get(pk=goal.pk, user=user, is_archived=False)
     )
     period = today.replace(day=1)
     if Transfer.objects.filter(destination_goal=goal, goal_period=period).exists():
@@ -230,6 +230,28 @@ def fund_goal_for_month(goal, user, today):
     item.save()
     _apply_transfer(item)
     return item
+
+
+def fund_due_savings_goals(user, through_date):
+    """Fund this month's active goals once their monthly saving date is due."""
+    month_start = through_date.replace(day=1)
+    goals = SavingsGoal.objects.filter(
+        user=user,
+        start_date__lte=through_date,
+        is_archived=False,
+    ).select_related("bank_account")
+    funded = 0
+
+    for goal in goals:
+        if not occurrence_dates(goal, month_start, through_date):
+            continue
+        try:
+            item = fund_goal_for_month(goal, user, through_date)
+        except (InsufficientFunds, ValidationError, IntegrityError):
+            continue
+        if item:
+            funded += 1
+    return funded
 
 
 def post_due_recurring(user, through_date):
@@ -316,7 +338,9 @@ def build_monthly_budget(user, today):
     reminders = goal_funding_reminders(user, today)
     savings_target = sum((item["amount"] for item in reminders), ZERO)
     current_balance = _sum(accounts, "balance")
-    savings_balance = _sum(SavingsGoal.objects.filter(user=user), "current_balance")
+    savings_balance = _sum(
+        SavingsGoal.objects.filter(user=user, is_archived=False), "current_balance"
+    )
     projected_balance = current_balance + expected_income - expected_expenses
     days_remaining = (month_end - today).days + 1
     daily_expense = (
@@ -369,6 +393,8 @@ def build_monthly_budget(user, today):
         ),
         "amount",
     )
+    income_month_total = actual_income + expected_income
+    expense_month_total = actual_expenses + expected_expenses
 
     return {
         "month_start": month_start,
@@ -390,5 +416,7 @@ def build_monthly_budget(user, today):
         "warning": warning,
         "actual_income": actual_income,
         "actual_expenses": actual_expenses,
+        "income_month_total": income_month_total,
+        "expense_month_total": expense_month_total,
         "upcoming": sorted(upcoming, key=lambda item: item["date"]),
     }

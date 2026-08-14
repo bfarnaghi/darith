@@ -7,7 +7,7 @@
 {% block styles %}<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">{% endblock %}
 
 {% block body %}
-<div class="app-shell" data-active-tab="{{ active_tab }}">
+<div class="app-shell" data-active-tab="{{ active_tab }}" data-theme="{{ budget_preference.theme }}">
     <aside class="sidebar">
         <a class="brand" href="{% url 'dashboard' %}" aria-label="Darith dashboard">
             <img class="brand-logo" src="{% static 'images/logo.png' %}" alt="">
@@ -48,7 +48,7 @@
                 <div class="mobile-menu">
                     <strong>{{ request.user.username }}</strong>
                     <button type="button" data-tab-target="categories">Categories</button>
-                    <button type="button" data-dialog-open="dashboard-animation-edit">Dashboard GIFs</button>
+                    <button type="button" data-dialog-open="dashboard-animation-edit">Appearance</button>
                     <a href="{% url 'export_data_csv' %}">Export CSV</a>
                     {% if subscriptions_enabled %}<a href="{% url 'subscription_overview' %}">Billing</a>{% endif %}
                     <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit">Log out</button></form>
@@ -64,16 +64,19 @@
 
         <section class="panel" data-tab-panel="overview">
             <div class="budget-hero">
-                <button class="budget-settings" type="button" data-dialog-open="dashboard-animation-edit" aria-label="Dashboard GIFs" title="Dashboard GIFs">⚙</button>
+                <button class="budget-settings" type="button" data-dialog-open="dashboard-animation-edit" aria-label="Appearance" title="Appearance">⚙</button>
                 <div class="budget-main">
                     <p>Free to spend this month</p>
                     <strong>{% if budget.free_to_spend < 0 %}−€{{ budget.free_to_spend_abs|floatformat:2|intcomma }}{% else %}€{{ budget.free_to_spend|floatformat:2|intcomma }}{% endif %}</strong>
                     <span>{% if budget.daily_allowance < 0 %}−€{{ budget.daily_allowance_abs|floatformat:2|intcomma }}{% else %}€{{ budget.daily_allowance|floatformat:2|intcomma }}{% endif %} extra per day for {{ budget.days_remaining }} day{{ budget.days_remaining|pluralize }}</span>
                 </div>
                 {% if active_budget_animation %}<div class="budget-animation" aria-hidden="true"><img src="{% url 'dashboard_animation' budget.status %}" alt=""></div>{% endif %}
-                <div class="budget-meter" aria-label="Monthly budget status">
+                <div class="budget-meter" aria-label="Current balance and monthly outlook">
                     <span class="status-dot status-{{ budget.status }}"></span>
-                    <div><small>Month-end outlook</small><strong>€{{ budget.projected_balance|floatformat:2|intcomma }}</strong></div>
+                    <div class="budget-summary">
+                        <span><small>Current bank balance</small><strong>€{{ budget.current_balance|floatformat:2|intcomma }}</strong></span>
+                        <span><small>Month-end outlook</small><strong>€{{ budget.projected_balance|floatformat:2|intcomma }}</strong></span>
+                    </div>
                 </div>
             </div>
 
@@ -99,9 +102,9 @@
             {% endif %}
 
             <div class="metric-grid">
-                <article class="metric"><span>Spendable balance</span><strong>€{{ budget.current_balance|floatformat:2|intcomma }}</strong><small>Across {{ accounts|length }} bank account{{ accounts|length|pluralize }}</small></article>
-                <article class="metric"><span>Expected income</span><strong class="positive">+€{{ budget.expected_income|floatformat:2|intcomma }}</strong><small>Still due this month</small></article>
-                <article class="metric"><span>Expected bills</span><strong class="negative">−€{{ budget.expected_expenses|floatformat:2|intcomma }}</strong><small>Scheduled this month</small></article>
+                <article class="metric"><span>Current bank balance</span><strong>€{{ budget.current_balance|floatformat:2|intcomma }}</strong><small>Across {{ accounts|length }} bank account{{ accounts|length|pluralize }}</small></article>
+                <article class="metric"><span>Income this month</span><strong class="positive">+€{{ budget.income_month_total|floatformat:2|intcomma }}</strong><small>€{{ budget.actual_income|floatformat:2|intcomma }} received · €{{ budget.expected_income|floatformat:2|intcomma }} still due</small></article>
+                <article class="metric"><span>Expenses this month</span><strong class="negative">−€{{ budget.expense_month_total|floatformat:2|intcomma }}</strong><small>€{{ budget.actual_expenses|floatformat:2|intcomma }} paid · €{{ budget.expected_expenses|floatformat:2|intcomma }} still due</small></article>
                 <article class="metric metric-action"><span>Expected daily costs</span><strong>€{{ budget.expected_daily_expense|floatformat:2|intcomma }} / day</strong><small>€{{ budget.remaining_daily_expenses|floatformat:2|intcomma }} for remaining days</small><button class="text-button" type="button" data-dialog-open="daily-spending-edit">Edit</button></article>
                 <article class="metric"><span>Saving due</span><strong>€{{ budget.savings_target|floatformat:2|intcomma }}</strong><small>Not yet funded this month</small></article>
                 <article class="metric"><span>Saved in goals</span><strong>€{{ budget.savings_balance|floatformat:2|intcomma }}</strong><small>Separate from spendable money</small></article>
@@ -132,6 +135,12 @@
                     <p>{{ account.name }}</p><strong>€{{ account.balance|floatformat:2|intcomma }}</strong><small>Current balance</small>
                 </article>
                 {% empty %}<button class="empty-account" type="button" data-dialog-open="account-create"><span>+</span><strong>Add your first bank account</strong></button>{% endfor %}
+                {% for goal, form in savings_goal_edit_forms %}
+                <article class="account-card goal-account-card">
+                    <div class="account-card-top"><span class="account-icon">◎</span><button class="icon-button" type="button" data-dialog-open="saving-edit-{{ goal.id }}" aria-label="Edit {{ goal.name }}" title="Edit goal account">•••</button></div>
+                    <p>{{ goal.name }}</p><strong>€{{ goal.current_balance|floatformat:2|intcomma }}</strong><small>Savings goal account</small>
+                </article>
+                {% endfor %}
             </div>
         </section>
 
@@ -169,7 +178,7 @@
                     <article class="saving-card">
                         <button class="saving-card-main" type="button" data-dialog-open="saving-edit-{{ item.id }}">
                             <span class="saving-icon">◎</span>
-                            <span><strong>{{ item.name }}</strong><small>{% if item.bank_account %}From {{ item.bank_account.name }} · {% endif %}{% if item.target_date %}by {{ item.target_date|date:"j M Y" }}{% else %}ongoing monthly goal{% endif %}</small></span>
+                            <span><strong>{{ item.name }}</strong><small>Monthly on day {{ item.day_of_month }}{% if item.bank_account %} · from {{ item.bank_account.name }}{% endif %}{% if item.target_date %} · by {{ item.target_date|date:"j M Y" }}{% endif %}</small></span>
                             <b>€{{ item.current_balance|floatformat:2|intcomma }}</b>
                         </button>
                         {% if item.target_amount %}<div class="saving-progress"><span style="width: {{ item.progress_percent }}%"></span></div>{% endif %}
@@ -202,15 +211,20 @@
         <button type="button" data-tab-target="transactions"><span>↕</span>Activity</button>
         <button type="button" data-tab-target="plans"><span>↻</span>Plans</button>
     </nav>
-</div>
 
 {% include "partials/form_dialog.html" with dialog_id="account-create" title="Add bank account" form=account_form action_url="create_bank_account" submit_label="Add account" %}
 {% include "partials/form_dialog.html" with dialog_id="transfer-create" title="Move money" form=transfer_form action_url="create_transfer" submit_label="Transfer money" %}
 {% include "partials/form_dialog.html" with dialog_id="daily-spending-edit" title="Expected daily spending" form=budget_preference_form action_url="update_budget_preference" submit_label="Save daily amount" %}
 <dialog class="form-dialog animation-dialog" id="dashboard-animation-edit">
-    <div class="dialog-head"><h2>Dashboard GIFs</h2><button class="icon-button" type="button" data-dialog-close aria-label="Close">×</button></div>
+    <div class="dialog-head"><h2>Appearance</h2><button class="icon-button" type="button" data-dialog-close aria-label="Close">×</button></div>
     <form method="post" action="{% url 'update_dashboard_animations' %}" enctype="multipart/form-data" class="animation-form">
         {% csrf_token %}
+        <fieldset class="theme-picker">
+            <legend>Color theme</legend>
+            <label><input type="radio" name="theme" value="ocean" {% if budget_preference.theme == 'ocean' %}checked{% endif %}><span class="theme-swatch theme-ocean"></span><strong>Ocean</strong></label>
+            <label><input type="radio" name="theme" value="forest" {% if budget_preference.theme == 'forest' %}checked{% endif %}><span class="theme-swatch theme-forest"></span><strong>Forest</strong></label>
+            <label><input type="radio" name="theme" value="graphite" {% if budget_preference.theme == 'graphite' %}checked{% endif %}><span class="theme-swatch theme-graphite"></span><strong>Graphite</strong></label>
+        </fieldset>
         <p class="animation-intro">Choose one private GIF for each budget state. Each file can be up to 2 MB, 1200 x 1200 pixels, and 300 frames.</p>
         <section class="animation-option">
             <div class="animation-copy"><span class="status-dot"></span><strong>On track</strong><small>Shown when bills, daily costs, and goals are covered.</small></div>
@@ -230,7 +244,7 @@
             <label for="{{ dashboard_animation_form.danger_gif.id_for_label }}">Choose GIF</label>{{ dashboard_animation_form.danger_gif }}
             {% if budget_preference.danger_gif %}<button class="remove-gif-button" type="submit" formaction="{% url 'remove_dashboard_gif' 'danger' %}" formnovalidate>Remove GIF</button>{% endif %}
         </section>
-        <div class="dialog-actions"><button class="button button-secondary" type="button" data-dialog-close>Cancel</button><button class="button button-primary" type="submit">Save GIFs</button></div>
+        <div class="dialog-actions"><button class="button button-secondary" type="button" data-dialog-close>Cancel</button><button class="button button-primary" type="submit">Save appearance</button></div>
     </form>
 </dialog>
 {% include "partials/form_dialog.html" with dialog_id="expense-create" title="Add expense" form=expense_form action_url="create_expense" submit_label="Add expense" %}
@@ -251,6 +265,7 @@
 {% url 'create_category' 'income' as income_category_url %}{% include "partials/form_dialog.html" with dialog_id="income-category-create" title="Add income category" form=category_form direct_action=income_category_url submit_label="Add category" %}
 {% for item in expense_categories %}{% url 'update_category' 'expense' item.id as edit_url %}<dialog class="form-dialog" id="expense-category-edit-{{ item.id }}"><div class="dialog-head"><h2>Edit category</h2><button class="icon-button" type="button" data-dialog-close aria-label="Close">×</button></div><form method="post" action="{{ edit_url }}" class="dialog-form">{% csrf_token %}<p><label for="expense-category-{{ item.id }}">Name</label><input class="form-control" id="expense-category-{{ item.id }}" name="name" value="{{ item.name }}" required maxlength="50"></p><div class="dialog-actions"><button class="button button-primary" type="submit">Save changes</button></div></form></dialog>{% endfor %}
 {% for item in income_categories %}{% url 'update_category' 'income' item.id as edit_url %}<dialog class="form-dialog" id="income-category-edit-{{ item.id }}"><div class="dialog-head"><h2>Edit category</h2><button class="icon-button" type="button" data-dialog-close aria-label="Close">×</button></div><form method="post" action="{{ edit_url }}" class="dialog-form">{% csrf_token %}<p><label for="income-category-{{ item.id }}">Name</label><input class="form-control" id="income-category-{{ item.id }}" name="name" value="{{ item.name }}" required maxlength="50"></p><div class="dialog-actions"><button class="button button-primary" type="submit">Save changes</button></div></form></dialog>{% endfor %}
+</div>
 {% endblock %}
 
 {% block scripts %}<script src="{% static 'js/dashboard.js' %}"></script>{% endblock %}

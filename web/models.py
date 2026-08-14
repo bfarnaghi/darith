@@ -86,6 +86,15 @@ class BankAccount(models.Model):
 
 
 class BudgetPreference(models.Model):
+    THEME_OCEAN = "ocean"
+    THEME_FOREST = "forest"
+    THEME_GRAPHITE = "graphite"
+    THEME_CHOICES = [
+        (THEME_OCEAN, "Ocean"),
+        (THEME_FOREST, "Forest"),
+        (THEME_GRAPHITE, "Graphite"),
+    ]
+
     user = models.OneToOneField(
         User, on_delete=models.CASCADE, related_name="budget_preference"
     )
@@ -94,6 +103,11 @@ class BudgetPreference(models.Model):
         decimal_places=2,
         default=0,
         validators=[MinValueValidator(Decimal("0.00"))],
+    )
+    theme = models.CharField(
+        max_length=16,
+        choices=THEME_CHOICES,
+        default=THEME_OCEAN,
     )
     healthy_gif = models.FileField(
         upload_to=dashboard_animation_upload_to,
@@ -269,6 +283,7 @@ class SavingsGoal(models.Model):
     )
     target_date = models.DateField(blank=True, null=True)
     current_balance = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    is_archived = models.BooleanField(default=False, editable=False)
     bank_account = models.ForeignKey(
         BankAccount,
         on_delete=models.SET_NULL,
@@ -280,6 +295,10 @@ class SavingsGoal(models.Model):
 
     class Meta:
         ordering = ["start_date", "name"]
+
+    @property
+    def day_of_month(self):
+        return self.start_date.day
 
     @property
     def progress_percent(self):
