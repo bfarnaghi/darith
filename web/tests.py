@@ -12,11 +12,13 @@ from decimal import Decimal
 from pathlib import Path
 from unittest.mock import patch
 
+from django.contrib import admin
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
+from PIL import Image
 
 from .models import (
     BankAccount,
@@ -30,6 +32,7 @@ from .models import (
     SavingsGoal,
     SubscriptionPlan,
     Transfer,
+    Token,
     UserSubscription,
 )
 from .services import (
@@ -45,6 +48,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 VALID_GIF = base64.b64decode(
     "R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
 )
+
+
+def valid_profile_png():
+    output = io.BytesIO()
+    Image.new("RGB", (24, 24), "#1456d9").save(output, format="PNG")
+    return output.getvalue()
 
 
 class ProductionSettingsTests(SimpleTestCase):
@@ -132,6 +141,46 @@ class ProductionSettingsTests(SimpleTestCase):
         self.assertIn("DJANGO_DB_SSLMODE must be", result.stderr)
 
 
+class AdminPrivacyTests(TestCase):
+    private_finance_models = (
+        BankAccount,
+        BudgetPreference,
+        Expense,
+        ExpenseCategory,
+        Income,
+        IncomeCategory,
+        MonthlyExpense,
+        RecurringIncome,
+        SavingsGoal,
+        Transfer,
+        Token,
+    )
+
+    def test_private_finance_models_are_not_registered_in_admin(self):
+        for model in self.private_finance_models:
+            self.assertNotIn(model, admin.site._registry)
+
+        self.assertIn(User, admin.site._registry)
+        self.assertIn(SubscriptionPlan, admin.site._registry)
+        self.assertIn(UserSubscription, admin.site._registry)
+
+    def test_admin_index_only_shows_identity_and_subscription_management(self):
+        administrator = User.objects.create_superuser(
+            "administrator", "admin@example.com", "good-password-123"
+        )
+        self.client.force_login(administrator)
+
+        response = self.client.get(reverse("admin:index"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Users")
+        self.assertContains(response, "Subscription plans")
+        self.assertContains(response, "User subscriptions")
+        self.assertNotContains(response, "Bank accounts")
+        self.assertNotContains(response, "Expenses")
+        self.assertNotContains(response, "Income categories")
+
+
 class FinanceTestCase(TestCase):
     def setUp(self):
         self.user = User.objects.create_user("ben", "ben@example.com", "good-password-123")
@@ -198,6 +247,63 @@ class FinanceTestCase(TestCase):
                 reverse("dashboard_animation", args=["healthy"])
             )
             self.assertEqual(response.status_code, 404)
+
+    def test_profile_picture_is_validated_private_and_removable(self):
+        profile_bytes = valid_profile_png()
+        with tempfile.TemporaryDirectory() as media_root, self.settings(
+            MEDIA_ROOT=media_root
+        ):
+            response = self.client.post(
+                reverse("update_dashboard_animations"),
+                {
+                    "profile_picture": SimpleUploadedFile(
+                        "portrait.png", profile_bytes, content_type="image/png"
+                    )
+                },
+            )
+
+            self.assertRedirects(response, f"{reverse('dashboard')}?tab=overview")
+            preference = BudgetPreference.objects.get(user=self.user)
+            self.assertIn(f"profile-pictures/{self.user.id}/", preference.profile_picture.name)
+            self.assertNotIn("portrait.png", preference.profile_picture.name)
+            profile_path = preference.profile_picture.path
+
+            response = self.client.get(reverse("profile_picture"))
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response["Content-Type"], "image/png")
+            self.assertEqual(response["Cache-Control"], "private, no-store")
+            self.assertEqual(b"".join(response.streaming_content), profile_bytes)
+            self.assertContains(self.client.get(reverse("dashboard")), reverse("profile_picture"))
+
+            self.client.force_login(self.other_user)
+            self.assertEqual(self.client.get(reverse("profile_picture")).status_code, 404)
+            self.client.force_login(self.user)
+
+            with self.captureOnCommitCallbacks(execute=True):
+                response = self.client.post(reverse("remove_profile_picture"))
+
+            self.assertRedirects(response, f"{reverse('dashboard')}?tab=overview")
+            preference.refresh_from_db()
+            self.assertFalse(preference.profile_picture)
+            self.assertFalse(os.path.exists(profile_path))
+
+    def test_profile_picture_rejects_files_larger_than_two_megabytes(self):
+        with tempfile.TemporaryDirectory() as media_root, self.settings(
+            MEDIA_ROOT=media_root
+        ):
+            self.client.post(
+                reverse("update_dashboard_animations"),
+                {
+                    "profile_picture": SimpleUploadedFile(
+                        "oversized.png",
+                        b"0" * ((2 * 1024 * 1024) + 1),
+                        content_type="image/png",
+                    )
+                },
+            )
+
+            preference = BudgetPreference.objects.get(user=self.user)
+            self.assertFalse(preference.profile_picture)
 
     def test_dashboard_gif_can_be_replaced_and_removed_with_a_button(self):
         with tempfile.TemporaryDirectory() as media_root, self.settings(
@@ -317,6 +423,17 @@ class FinanceTestCase(TestCase):
         self.assertContains(response, 'data-theme="ocean"')
         self.assertContains(response, "€0.00")
 
+    def test_iranian_toman_can_be_selected_as_the_display_currency(self):
+        response = self.client.post(
+            reverse("update_dashboard_animations"),
+            {"currency": "IRT"},
+        )
+
+        self.assertRedirects(response, f"{reverse('dashboard')}?tab=overview")
+        preference = BudgetPreference.objects.get(user=self.user)
+        self.assertEqual(preference.currency, BudgetPreference.CURRENCY_IRT)
+        self.assertContains(self.client.get(reverse("dashboard")), "Toman 1,000.00")
+
     def test_csv_export_contains_only_the_signed_in_users_data(self):
         Expense.objects.create(
             user=self.user,
@@ -426,6 +543,53 @@ class FinanceTestCase(TestCase):
         self.account.refresh_from_db()
         self.assertEqual(self.account.balance, Decimal("1000.00"))
         self.assertFalse(Expense.objects.filter(pk=expense.id).exists())
+
+    def test_manual_deletion_mode_leaves_expense_balance_unchanged(self):
+        BudgetPreference.objects.create(
+            user=self.user,
+            transaction_deletion_mode=BudgetPreference.DELETE_BALANCE_MANUAL,
+        )
+        self.client.post(
+            reverse("create_expense"),
+            {
+                "text": "Manual correction",
+                "amount": "100.00",
+                "date": "2026-08-14",
+                "category": self.expense_category.id,
+                "bank_account": self.account.id,
+            },
+        )
+        expense = Expense.objects.get(text="Manual correction")
+
+        response = self.client.post(reverse("delete_expense", args=[expense.id]), follow=True)
+
+        self.account.refresh_from_db()
+        self.assertEqual(self.account.balance, Decimal("900.00"))
+        self.assertFalse(Expense.objects.filter(pk=expense.id).exists())
+        self.assertContains(response, "bank balance was left unchanged")
+
+    def test_manual_deletion_mode_leaves_income_balance_unchanged(self):
+        BudgetPreference.objects.create(
+            user=self.user,
+            transaction_deletion_mode=BudgetPreference.DELETE_BALANCE_MANUAL,
+        )
+        self.client.post(
+            reverse("create_income"),
+            {
+                "text": "Manual income",
+                "amount": "100.00",
+                "date": "2026-08-14",
+                "category": self.income_category.id,
+                "bank_account": self.account.id,
+            },
+        )
+        income = Income.objects.get(text="Manual income")
+
+        self.client.post(reverse("delete_income", args=[income.id]))
+
+        self.account.refresh_from_db()
+        self.assertEqual(self.account.balance, Decimal("1100.00"))
+        self.assertFalse(Income.objects.filter(pk=income.id).exists())
 
     def test_income_can_move_between_accounts_when_edited(self):
         savings = BankAccount.objects.create(
@@ -861,6 +1025,34 @@ class FinanceTestCase(TestCase):
         second.refresh_from_db()
         self.assertEqual(self.account.balance, Decimal("1000.00"))
         self.assertEqual(second.balance, Decimal("100.00"))
+
+    def test_manual_deletion_mode_leaves_transfer_balances_unchanged(self):
+        BudgetPreference.objects.create(
+            user=self.user,
+            transaction_deletion_mode=BudgetPreference.DELETE_BALANCE_MANUAL,
+        )
+        second = BankAccount.objects.create(
+            user=self.user, name="Manual destination", balance=Decimal("100.00")
+        )
+        self.client.post(
+            reverse("create_transfer"),
+            {
+                "name": "Manual transfer",
+                "amount": "250.00",
+                "date": "2026-08-14",
+                "source": f"bank:{self.account.id}",
+                "destination": f"bank:{second.id}",
+            },
+        )
+        transfer = Transfer.objects.get(name="Manual transfer")
+
+        self.client.post(reverse("delete_transfer", args=[transfer.id]))
+
+        self.account.refresh_from_db()
+        second.refresh_from_db()
+        self.assertEqual(self.account.balance, Decimal("750.00"))
+        self.assertEqual(second.balance, Decimal("350.00"))
+        self.assertFalse(Transfer.objects.filter(pk=transfer.id).exists())
 
     def test_dated_goal_calculates_and_funds_monthly_amount_once(self):
         response = self.client.post(

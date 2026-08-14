@@ -1,6 +1,7 @@
 # Author: Behnam <b.farnaghi@gmail.com>
 # AI-assisted implementation; manually reviewed and verified by the developer.
 from decimal import Decimal
+from pathlib import Path
 from uuid import uuid4
 
 from django.contrib.auth.models import User
@@ -16,15 +17,21 @@ from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from django.utils import timezone
 
-from .validators import validate_dashboard_gif
+from .validators import validate_dashboard_gif, validate_profile_image
 
 
 MONEY_VALIDATORS = [MinValueValidator(Decimal("0.01"))]
 DASHBOARD_ANIMATION_FIELDS = ("healthy_gif", "warning_gif", "danger_gif")
+PRIVATE_MEDIA_FIELDS = (*DASHBOARD_ANIMATION_FIELDS, "profile_picture")
 
 
 def dashboard_animation_upload_to(instance, filename):
     return f"dashboard-animations/{instance.user_id}/{uuid4().hex}.gif"
+
+
+def profile_picture_upload_to(instance, filename):
+    extension = Path(filename).suffix.lower()
+    return f"profile-pictures/{instance.user_id}/{uuid4().hex}{extension}"
 
 
 class OwnedCategory(models.Model):
@@ -102,6 +109,7 @@ class BudgetPreference(models.Model):
     CURRENCY_CHF = "CHF"
     CURRENCY_CAD = "CAD"
     CURRENCY_AUD = "AUD"
+    CURRENCY_IRT = "IRT"
     CURRENCY_CHOICES = [
         (CURRENCY_EUR, "Euro (EUR)"),
         (CURRENCY_USD, "US dollar (USD)"),
@@ -109,6 +117,7 @@ class BudgetPreference(models.Model):
         (CURRENCY_CHF, "Swiss franc (CHF)"),
         (CURRENCY_CAD, "Canadian dollar (CAD)"),
         (CURRENCY_AUD, "Australian dollar (AUD)"),
+        (CURRENCY_IRT, "Iranian Toman (IRT)"),
     ]
     CURRENCY_SYMBOLS = {
         CURRENCY_EUR: "\u20ac",
@@ -117,7 +126,14 @@ class BudgetPreference(models.Model):
         CURRENCY_CHF: "CHF ",
         CURRENCY_CAD: "CA$",
         CURRENCY_AUD: "A$",
+        CURRENCY_IRT: "Toman ",
     }
+    DELETE_BALANCE_AUTOMATIC = "automatic"
+    DELETE_BALANCE_MANUAL = "manual"
+    DELETE_BALANCE_CHOICES = [
+        (DELETE_BALANCE_AUTOMATIC, "Update balances automatically"),
+        (DELETE_BALANCE_MANUAL, "Leave balances unchanged"),
+    ]
 
     user = models.OneToOneField(
         User, on_delete=models.CASCADE, related_name="budget_preference"
@@ -137,6 +153,19 @@ class BudgetPreference(models.Model):
         max_length=3,
         choices=CURRENCY_CHOICES,
         default=CURRENCY_EUR,
+    )
+    transaction_deletion_mode = models.CharField(
+        max_length=16,
+        choices=DELETE_BALANCE_CHOICES,
+        default=DELETE_BALANCE_AUTOMATIC,
+    )
+    profile_picture = models.FileField(
+        upload_to=profile_picture_upload_to,
+        validators=[
+            FileExtensionValidator(["jpg", "jpeg", "png", "webp"]),
+            validate_profile_image,
+        ],
+        blank=True,
     )
     healthy_gif = models.FileField(
         upload_to=dashboard_animation_upload_to,
@@ -159,7 +188,7 @@ class BudgetPreference(models.Model):
         if self.pk:
             previous = type(self).objects.filter(pk=self.pk).first()
             if previous:
-                for field_name in DASHBOARD_ANIMATION_FIELDS:
+                for field_name in PRIVATE_MEDIA_FIELDS:
                     old_file = getattr(previous, field_name)
                     new_file = getattr(self, field_name)
                     if old_file.name and old_file.name != new_file.name:
@@ -179,11 +208,11 @@ class BudgetPreference(models.Model):
 
 @receiver(post_delete, sender=BudgetPreference)
 def delete_budget_animation_files(sender, instance, **kwargs):
-    for field_name in DASHBOARD_ANIMATION_FIELDS:
-        animation = getattr(instance, field_name)
-        if animation.name:
+    for field_name in PRIVATE_MEDIA_FIELDS:
+        private_file = getattr(instance, field_name)
+        if private_file.name:
             transaction.on_commit(
-                lambda storage=animation.storage, name=animation.name: storage.delete(name)
+                lambda storage=private_file.storage, name=private_file.name: storage.delete(name)
             )
 
 

@@ -19,7 +19,9 @@ Darith is a responsive Django app for managing personal money on mobile and desk
 - Calculates monthly goal contributions and shows a reminder until you mark them saved.
 - Reserves expected daily costs, upcoming bills, and goal funding before calculating free spending.
 - Warns when spendable accounts cannot cover the remaining daily costs.
-- Lets each user choose a display currency and dashboard color theme.
+- Lets each user choose a dashboard theme and display currency, including Iranian Toman.
+- Supports a private, size-limited profile picture for each user.
+- Lets each user choose whether deleting a transaction reverses its balance change.
 - Shows an optional private GIF chosen by the user for on-track, warning, and out-of-budget states.
 - Exports the signed-in user's financial data as a CSV file.
 - Optionally supports free trials and administrator-verified manual subscriptions.
@@ -47,9 +49,10 @@ Open `http://127.0.0.1:8000`, create a user account, and sign in.
 7. When a monthly savings reminder appears, press **Mark saved**. Darith transfers the calculated amount from the selected bank into that goal once for the month.
 8. Check **Free to spend** for money available now after uncovered bills, expected daily costs, and unfunded savings goals. Future surplus appears in the month-end outlook instead of becoming spendable early.
 9. Use **Export CSV** above the transaction list to download your accounts, goals, plans, transactions, and transfers.
-10. Use the gear button in **Free to spend** to choose your display currency and color theme, or upload and remove a GIF for each budget state. Currency changes labels only and does not convert stored amounts. GIFs are limited to 2 MB, 1200 x 1200 pixels, and 300 frames.
+10. Use the gear button in **Free to spend** to choose a theme, display currency, profile picture, and deletion behavior. Iranian Toman is available as `IRT`. Currency changes labels only and does not convert stored amounts.
+11. In the same settings, you can upload and remove a GIF for each budget state. Profile pictures and GIFs are limited to 2 MB and 1200 x 1200 pixels; GIFs are also limited to 300 frames.
 
-Editing or deleting a transaction or transfer reverses its previous balance change. A bank or goal with transfer history is kept to protect the ledger.
+Editing a transaction always updates its account balance. Deleting a transaction or transfer reverses its previous balance change by default; choose **Leave balances unchanged** in Settings when you prefer to correct balances manually. A bank or goal with transfer history is kept to protect the ledger.
 
 Due recurring items are processed whenever the dashboard opens. A server can also run them daily without a login:
 
@@ -59,9 +62,11 @@ python manage.py process_scheduled_transactions
 
 ## Public deployment
 
-Production mode requires PostgreSQL with TLS and refuses insecure defaults. Darith also uses Argon2 password hashing, secure cookies, HTTPS redirects, browser security headers, private authenticated GIF delivery, and encrypted database/media backup scripts.
+Production mode requires PostgreSQL with TLS and refuses insecure defaults. Darith also uses Argon2 password hashing, secure cookies, HTTPS redirects, browser security headers, private authenticated profile-picture/GIF delivery, and encrypted database/media backup scripts.
 
 Database encryption at rest must be enabled with your PostgreSQL host or encrypted server volume. This protects stolen disks and backups, but it is not per-user end-to-end encryption. See [DEPLOYMENT.md](DEPLOYMENT.md) for the complete setup.
+
+Django Admin exposes user identity, password management, subscription plans, and subscription access only. Bank accounts, balances, categories, income, expenses, transfers, goals, and user settings are not registered there. The server and database operator can still access stored rows directly, so this is administrative access control rather than end-to-end encryption.
 
 ## Optional subscriptions
 

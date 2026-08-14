@@ -1,5 +1,7 @@
 # Author: Behnam <b.farnaghi@gmail.com>
 # AI-assisted implementation; manually reviewed and verified by the developer.
+import mimetypes
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
@@ -80,6 +82,14 @@ def _dashboard_redirect(tab="overview"):
 def _show_form_errors(request, form):
     errors = [str(error) for field_errors in form.errors.values() for error in field_errors]
     messages.error(request, " ".join(errors) or "Please check the form and try again.")
+
+
+def _adjust_balances_when_deleting(user):
+    preference, _ = BudgetPreference.objects.get_or_create(user=user)
+    return (
+        preference.transaction_deletion_mode
+        == BudgetPreference.DELETE_BALANCE_AUTOMATIC
+    )
 
 
 def _seed_categories(user):
@@ -397,8 +407,14 @@ def update_expense(request, expense_id):
 def delete_expense(request, expense_id):
     item = get_object_or_404(Expense, pk=expense_id, user=request.user)
     is_recurring_occurrence = bool(item.monthly_expense_id)
-    delete_transaction(item)
-    if is_recurring_occurrence:
+    adjust_balance = _adjust_balances_when_deleting(request.user)
+    delete_transaction(item, adjust_balance=adjust_balance)
+    if not adjust_balance:
+        messages.success(
+            request,
+            "Expense removed. The bank balance was left unchanged by your setting.",
+        )
+    elif is_recurring_occurrence:
         messages.success(
             request,
             "This monthly expense was removed and its balance restored. "
@@ -426,8 +442,14 @@ def update_income(request, income_id):
 def delete_income(request, income_id):
     item = get_object_or_404(Income, pk=income_id, user=request.user)
     is_recurring_occurrence = bool(item.recurring_income_id)
-    delete_transaction(item)
-    if is_recurring_occurrence:
+    adjust_balance = _adjust_balances_when_deleting(request.user)
+    delete_transaction(item, adjust_balance=adjust_balance)
+    if not adjust_balance:
+        messages.success(
+            request,
+            "Income removed. The bank balance was left unchanged by your setting.",
+        )
+    elif is_recurring_occurrence:
         messages.success(
             request,
             "This monthly income was removed and its balance updated. "
@@ -473,8 +495,15 @@ def update_transfer(request, item_id):
 @login_required
 def remove_transfer(request, item_id):
     item = get_object_or_404(Transfer, pk=item_id, user=request.user)
-    delete_transfer(item)
-    messages.success(request, "Transfer removed and balances restored.")
+    adjust_balance = _adjust_balances_when_deleting(request.user)
+    delete_transfer(item, adjust_balance=adjust_balance)
+    if adjust_balance:
+        messages.success(request, "Transfer removed and balances restored.")
+    else:
+        messages.success(
+            request,
+            "Transfer removed. Account balances were left unchanged by your setting.",
+        )
     return _dashboard_redirect("transactions")
 
 
@@ -645,7 +674,7 @@ def update_dashboard_animations(request):
     )
     if form.is_valid():
         form.save()
-        messages.success(request, "Appearance updated.")
+        messages.success(request, "Settings updated.")
     else:
         _show_form_errors(request, form)
     return _dashboard_redirect("overview")
@@ -674,6 +703,19 @@ def remove_dashboard_gif(request, status):
     return _dashboard_redirect("overview")
 
 
+@require_POST
+@login_required
+def remove_profile_picture(request):
+    preference, _ = BudgetPreference.objects.get_or_create(user=request.user)
+    if preference.profile_picture.name:
+        preference.profile_picture = None
+        preference.save(update_fields=["profile_picture"])
+        messages.success(request, "Your profile picture was removed.")
+    else:
+        messages.info(request, "There is no profile picture to remove.")
+    return _dashboard_redirect("overview")
+
+
 @login_required
 def dashboard_animation(request, status):
     if status not in {"healthy", "warning", "danger"}:
@@ -690,6 +732,25 @@ def dashboard_animation(request, status):
     response = FileResponse(animation, content_type="image/gif")
     response["Cache-Control"] = "private, no-store"
     response["Content-Disposition"] = f'inline; filename="darith-{status}.gif"'
+    response["Cross-Origin-Resource-Policy"] = "same-origin"
+    return response
+
+
+@login_required
+def profile_picture(request):
+    preference = get_object_or_404(BudgetPreference, user=request.user)
+    picture = preference.profile_picture
+    if not picture.name:
+        raise Http404("No profile picture is configured.")
+    try:
+        picture.open("rb")
+    except (FileNotFoundError, OSError) as error:
+        raise Http404("The profile picture is unavailable.") from error
+
+    content_type = mimetypes.guess_type(picture.name)[0] or "application/octet-stream"
+    response = FileResponse(picture, content_type=content_type)
+    response["Cache-Control"] = "private, no-store"
+    response["Content-Disposition"] = 'inline; filename="darith-profile-picture"'
     response["Cross-Origin-Resource-Policy"] = "same-origin"
     return response
 

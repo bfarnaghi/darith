@@ -69,15 +69,28 @@ class BudgetPreferenceForm(StyledFormMixin, forms.ModelForm):
 class DashboardAnimationForm(StyledFormMixin, forms.ModelForm):
     class Meta:
         model = BudgetPreference
-        fields = ["theme", "currency", "healthy_gif", "warning_gif", "danger_gif"]
+        fields = [
+            "theme",
+            "currency",
+            "transaction_deletion_mode",
+            "profile_picture",
+            "healthy_gif",
+            "warning_gif",
+            "danger_gif",
+        ]
         labels = {
             "theme": "Color theme",
             "currency": "Display currency",
+            "transaction_deletion_mode": "When deleting a transaction",
+            "profile_picture": "Profile picture",
             "healthy_gif": "On track GIF",
             "warning_gif": "Warning GIF",
             "danger_gif": "Out of budget GIF",
         }
         widgets = {
+            "profile_picture": forms.FileInput(
+                attrs={"accept": "image/jpeg,image/png,image/webp"}
+            ),
             "healthy_gif": forms.FileInput(attrs={"accept": "image/gif"}),
             "warning_gif": forms.FileInput(attrs={"accept": "image/gif"}),
             "danger_gif": forms.FileInput(attrs={"accept": "image/gif"}),
@@ -87,6 +100,7 @@ class DashboardAnimationForm(StyledFormMixin, forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["theme"].required = False
         self.fields["currency"].required = False
+        self.fields["transaction_deletion_mode"].required = False
 
     def clean_theme(self):
         return (
@@ -100,6 +114,13 @@ class DashboardAnimationForm(StyledFormMixin, forms.ModelForm):
             self.cleaned_data.get("currency")
             or self.instance.currency
             or BudgetPreference.CURRENCY_EUR
+        )
+
+    def clean_transaction_deletion_mode(self):
+        return (
+            self.cleaned_data.get("transaction_deletion_mode")
+            or self.instance.transaction_deletion_mode
+            or BudgetPreference.DELETE_BALANCE_AUTOMATIC
         )
 
 

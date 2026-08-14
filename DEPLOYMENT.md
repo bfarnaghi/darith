@@ -7,7 +7,9 @@ This guide keeps local development simple and gives a secure baseline for a publ
 - Production refuses the development secret, wildcard hosts, SQLite, and unencrypted PostgreSQL network connections.
 - Browser logins use HTTPS-only cookies, HSTS, CSRF protection, and Argon2 password hashing.
 - PostgreSQL traffic uses TLS. Database disks and automatic snapshots must also be encrypted by your database provider.
-- The included backup script encrypts database and private GIF backups with `age` before they reach disk.
+- Profile pictures and dashboard GIFs are delivered only through authenticated, owner-only views.
+- Django Admin exposes identity and subscription management, not users' financial models.
+- The included backup script encrypts database and private-media backups with `age` before they reach disk.
 
 This is server-side protection, not per-user end-to-end encryption. Darith separates users in application queries, but a database administrator can still read financial rows. True per-user encryption would require a separate key-management design and would prevent several database calculations.
 
@@ -280,7 +282,7 @@ Prepare the server backup directory:
 sudo install -d -o darith -g darith -m 0700 /var/backups/darith
 ~~~
 
-The backup script also encrypts `/var/lib/darith/media`, which contains private dashboard GIFs. Create `/etc/systemd/system/darith-backup.service`:
+The backup script also encrypts `/var/lib/darith/media`, which contains private profile pictures and dashboard GIFs. Create `/etc/systemd/system/darith-backup.service`:
 
 ~~~ini
 [Unit]
@@ -352,7 +354,7 @@ age --decrypt --identity /secure/path/darith-backup.key BACKUP-media.tar.age \
 sudo systemctl start darith
 ~~~
 
-Inspect the restored directory before replacing production media. Never expose `DJANGO_MEDIA_ROOT` with an Nginx `alias`; Darith serves each GIF through an authenticated owner-only view.
+Inspect the restored directory before replacing production media. Never expose `DJANGO_MEDIA_ROOT` with an Nginx `alias`; Darith serves profile pictures and GIFs through authenticated owner-only views.
 
 ## Updating Darith
 

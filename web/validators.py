@@ -9,6 +9,9 @@ from PIL import Image, UnidentifiedImageError
 DASHBOARD_GIF_MAX_BYTES = 2 * 1024 * 1024
 DASHBOARD_GIF_MAX_DIMENSION = 1200
 DASHBOARD_GIF_MAX_FRAMES = 300
+PROFILE_IMAGE_MAX_BYTES = 2 * 1024 * 1024
+PROFILE_IMAGE_MAX_DIMENSION = 1200
+PROFILE_IMAGE_FORMATS = {"JPEG", "PNG", "WEBP"}
 
 
 def validate_dashboard_gif(upload):
@@ -35,5 +38,35 @@ def validate_dashboard_gif(upload):
         raise ValidationError("The GIF dimensions are too large.") from None
     except (OSError, UnidentifiedImageError, ValueError):
         raise ValidationError("Upload a valid, readable GIF image.") from None
+    finally:
+        upload.seek(original_position)
+
+
+def validate_profile_image(upload):
+    if upload.size > PROFILE_IMAGE_MAX_BYTES:
+        raise ValidationError("Profile pictures must be 2 MB or smaller.")
+
+    original_position = upload.tell()
+    try:
+        upload.seek(0)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Image.DecompressionBombWarning)
+            image = Image.open(upload)
+            if image.format not in PROFILE_IMAGE_FORMATS:
+                raise ValidationError("Upload a JPEG, PNG, or WebP profile picture.")
+            if getattr(image, "n_frames", 1) > 1:
+                raise ValidationError("Profile pictures must be still images.")
+            width, height = image.size
+            if max(width, height) > PROFILE_IMAGE_MAX_DIMENSION:
+                raise ValidationError(
+                    "Profile picture dimensions cannot exceed 1200 x 1200 pixels."
+                )
+            image.verify()
+    except ValidationError:
+        raise
+    except (Image.DecompressionBombError, Image.DecompressionBombWarning):
+        raise ValidationError("The profile picture dimensions are too large.") from None
+    except (OSError, UnidentifiedImageError, ValueError):
+        raise ValidationError("Upload a valid, readable profile picture.") from None
     finally:
         upload.seek(original_position)

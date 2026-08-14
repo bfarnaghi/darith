@@ -93,9 +93,9 @@ def save_transaction(form, user, instance=None):
 
 
 @transaction.atomic
-def delete_transaction(item):
+def delete_transaction(item, adjust_balance=True):
     item = type(item).objects.select_for_update().get(pk=item.pk)
-    if item.bank_account_id:
+    if adjust_balance and item.bank_account_id:
         reverse_delta = item.amount if isinstance(item, Expense) else -item.amount
         adjust_account_balance(item.bank_account_id, reverse_delta)
 
@@ -149,9 +149,10 @@ def save_transfer(form, user, instance=None):
 
 
 @transaction.atomic
-def delete_transfer(item):
+def delete_transfer(item, adjust_balance=True):
     locked = Transfer.objects.select_for_update().get(pk=item.pk)
-    _apply_transfer(locked, reverse=True, check_funds=False)
+    if adjust_balance:
+        _apply_transfer(locked, reverse=True, check_funds=False)
     locked.delete()
 
 

@@ -151,6 +151,7 @@ button { color: inherit; }
 .user-chip strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; }
 .user-chip small { color: #90a5bf; font-size: 11px; }
 .avatar { display: grid; width: 34px; height: 34px; flex: 0 0 auto; place-items: center; border-radius: 50%; color: #07306b; background: #dceaff; font-weight: 800; }
+.avatar img { display: block; width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
 .sidebar-actions { display: flex; align-items: center; gap: 2px; }
 .sidebar-actions form { display: contents; }
 
@@ -384,6 +385,14 @@ button { color: inherit; }
 .dialog-actions { display: flex; grid-column: 1 / -1; align-items: center; justify-content: flex-end; gap: 9px; margin-top: 5px; padding-top: 16px; border-top: 1px solid var(--line); }
 .animation-dialog { width: min(680px, calc(100vw - 30px)); }
 .animation-form { display: grid; gap: 0; padding: 0 20px 20px; }
+.profile-setting { display: grid; grid-template-columns: 84px minmax(0, 1fr); align-items: center; gap: 18px; padding: 18px 0; border-bottom: 1px solid var(--line); }
+.profile-preview { display: grid; width: 84px; height: 84px; overflow: hidden; place-items: center; border: 1px solid var(--line); border-radius: 50%; color: var(--primary); background: var(--primary-light); font-size: 26px; font-weight: 800; }
+.profile-preview img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.profile-control { display: grid; min-width: 0; gap: 7px; }
+.profile-control label, .appearance-setting label { color: #46556d; font-size: 12px; font-weight: 700; }
+.profile-control small, .deletion-setting small { color: var(--muted); font-size: 11px; line-height: 1.4; }
+.profile-control .form-control { min-width: 0; padding: 7px; font-size: 11px; }
+.profile-control .remove-gif-button { grid-column: auto; width: max-content; }
 .theme-picker { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; margin: 17px 0 0; padding: 0; border: 0; }
 .theme-picker legend { margin-bottom: 9px; color: #46556d; font-size: 12px; font-weight: 700; }
 .theme-picker label { position: relative; display: grid; min-width: 0; grid-template-columns: 32px minmax(0, 1fr); align-items: center; gap: 9px; min-height: 52px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; }
@@ -396,7 +405,7 @@ button { color: inherit; }
 .theme-graphite { background: linear-gradient(135deg, #242b31 0 50%, #31657a 50%); }
 .theme-purple { background: linear-gradient(135deg, #28183f 0 50%, #6d3cc4 50%); }
 .appearance-setting { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(180px, 1.3fr); align-items: center; gap: 16px; padding: 17px 0; border-bottom: 1px solid var(--line); }
-.appearance-setting label { color: #46556d; font-size: 12px; font-weight: 700; }
+.deletion-setting > div { display: grid; gap: 4px; }
 .animation-intro { margin: 0; padding: 17px 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .animation-option { display: grid; grid-template-columns: minmax(180px, 1fr) 96px minmax(170px, 1fr); align-items: center; gap: 12px 16px; padding: 16px 0; border-top: 1px solid var(--line); }
 .animation-copy { display: grid; grid-template-columns: 14px 1fr; align-items: center; gap: 3px 8px; }
@@ -469,6 +478,8 @@ button { color: inherit; }
     .animation-option { grid-template-columns: 1fr; }
     .theme-picker { grid-template-columns: 1fr; }
     .appearance-setting { grid-template-columns: 1fr; gap: 7px; }
+    .profile-setting { grid-template-columns: 64px minmax(0, 1fr); gap: 12px; }
+    .profile-preview { width: 64px; height: 64px; font-size: 21px; }
     .animation-preview { width: 100%; height: 120px; }
     .remove-gif-button { grid-column: 1; width: 100%; justify-self: stretch; }
 }

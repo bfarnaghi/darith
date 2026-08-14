@@ -6,36 +6,8 @@ from django.contrib import admin
 from django.utils import timezone
 
 from .models import (
-    BankAccount,
-    BudgetPreference,
-    Expense,
-    ExpenseCategory,
-    Income,
-    IncomeCategory,
-    MonthlyExpense,
-    RecurringIncome,
-    SavingsGoal,
     SubscriptionPlan,
-    Transfer,
-    Token,
     UserSubscription,
-)
-
-
-admin.site.register(
-    [
-        BankAccount,
-        BudgetPreference,
-        Expense,
-        ExpenseCategory,
-        Income,
-        IncomeCategory,
-        MonthlyExpense,
-        RecurringIncome,
-        SavingsGoal,
-        Transfer,
-        Token,
-    ]
 )
 
 

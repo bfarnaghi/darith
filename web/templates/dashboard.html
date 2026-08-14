@@ -22,7 +22,7 @@
         </nav>
         <div class="sidebar-footer">
             <div class="user-chip">
-                <span class="avatar">{{ request.user.username|first|upper }}</span>
+                <span class="avatar">{% if budget_preference.profile_picture %}<img src="{% url 'profile_picture' %}" alt="{{ request.user.username }} profile picture">{% else %}{{ request.user.username|first|upper }}{% endif %}</span>
                 <span><strong>{{ request.user.username }}</strong><small>Personal workspace</small></span>
             </div>
             <div class="sidebar-actions">
@@ -44,11 +44,11 @@
                 <button class="button button-primary" type="button" data-dialog-open="expense-create">+ Expense</button>
             </div>
             <details class="mobile-overflow">
-                <summary class="avatar" aria-label="Open account menu">{{ request.user.username|first|upper }}</summary>
+                <summary class="avatar" aria-label="Open account menu">{% if budget_preference.profile_picture %}<img src="{% url 'profile_picture' %}" alt="">{% else %}{{ request.user.username|first|upper }}{% endif %}</summary>
                 <div class="mobile-menu">
                     <strong>{{ request.user.username }}</strong>
                     <button type="button" data-tab-target="categories">Categories</button>
-                    <button type="button" data-dialog-open="dashboard-animation-edit">Appearance</button>
+                    <button type="button" data-dialog-open="dashboard-animation-edit">Settings</button>
                     <a href="{% url 'export_data_csv' %}">Export CSV</a>
                     {% if subscriptions_enabled %}<a href="{% url 'subscription_overview' %}">Billing</a>{% endif %}
                     <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit">Log out</button></form>
@@ -64,7 +64,7 @@
 
         <section class="panel" data-tab-panel="overview">
             <div class="budget-hero">
-                <button class="budget-settings" type="button" data-dialog-open="dashboard-animation-edit" aria-label="Appearance" title="Appearance">⚙</button>
+                <button class="budget-settings" type="button" data-dialog-open="dashboard-animation-edit" aria-label="Settings" title="Settings">⚙</button>
                 <div class="budget-main">
                     <p>Free to spend this month</p>
                     <strong>{% if budget.free_to_spend < 0 %}−{{ currency_symbol }}{{ budget.free_to_spend_abs|floatformat:2|intcomma }}{% else %}{{ currency_symbol }}{{ budget.free_to_spend|floatformat:2|intcomma }}{% endif %}</strong>
@@ -216,9 +216,18 @@
 {% include "partials/form_dialog.html" with dialog_id="transfer-create" title="Move money" form=transfer_form action_url="create_transfer" submit_label="Transfer money" %}
 {% include "partials/form_dialog.html" with dialog_id="daily-spending-edit" title="Expected daily spending" form=budget_preference_form action_url="update_budget_preference" submit_label="Save daily amount" %}
 <dialog class="form-dialog animation-dialog" id="dashboard-animation-edit">
-    <div class="dialog-head"><h2>Appearance</h2><button class="icon-button" type="button" data-dialog-close aria-label="Close">×</button></div>
+    <div class="dialog-head"><h2>Settings</h2><button class="icon-button" type="button" data-dialog-close aria-label="Close">×</button></div>
     <form method="post" action="{% url 'update_dashboard_animations' %}" enctype="multipart/form-data" class="animation-form">
         {% csrf_token %}
+        <section class="profile-setting">
+            <div class="profile-preview">{% if budget_preference.profile_picture %}<img src="{% url 'profile_picture' %}" alt="Current profile picture">{% else %}<span>{{ request.user.username|first|upper }}</span>{% endif %}</div>
+            <div class="profile-control">
+                <label for="{{ dashboard_animation_form.profile_picture.id_for_label }}">Profile picture</label>
+                <small>JPEG, PNG, or WebP. Up to 2 MB and 1200 x 1200 pixels.</small>
+                {{ dashboard_animation_form.profile_picture }}
+                {% if budget_preference.profile_picture %}<button class="remove-gif-button" type="submit" formaction="{% url 'remove_profile_picture' %}" formnovalidate>Remove picture</button>{% endif %}
+            </div>
+        </section>
         <fieldset class="theme-picker">
             <legend>Color theme</legend>
             <label><input type="radio" name="theme" value="ocean" {% if budget_preference.theme == 'ocean' %}checked{% endif %}><span class="theme-swatch theme-ocean"></span><strong>Ocean</strong></label>
@@ -227,6 +236,10 @@
             <label><input type="radio" name="theme" value="purple" {% if budget_preference.theme == 'purple' %}checked{% endif %}><span class="theme-swatch theme-purple"></span><strong>Purple</strong></label>
         </fieldset>
         <div class="appearance-setting"><label for="{{ dashboard_animation_form.currency.id_for_label }}">Display currency</label>{{ dashboard_animation_form.currency }}</div>
+        <div class="appearance-setting deletion-setting">
+            <div><label for="{{ dashboard_animation_form.transaction_deletion_mode.id_for_label }}">When deleting a transaction</label><small>Choose whether Darith reverses its balance change or leaves balances for you to edit.</small></div>
+            {{ dashboard_animation_form.transaction_deletion_mode }}
+        </div>
         <p class="animation-intro">Choose one private GIF for each budget state. Each file can be up to 2 MB, 1200 x 1200 pixels, and 300 frames.</p>
         <section class="animation-option">
             <div class="animation-copy"><span class="status-dot"></span><strong>On track</strong><small>Shown when bills, daily costs, and goals are covered.</small></div>
@@ -246,7 +259,7 @@
             <label for="{{ dashboard_animation_form.danger_gif.id_for_label }}">Choose GIF</label>{{ dashboard_animation_form.danger_gif }}
             {% if budget_preference.danger_gif %}<button class="remove-gif-button" type="submit" formaction="{% url 'remove_dashboard_gif' 'danger' %}" formnovalidate>Remove GIF</button>{% endif %}
         </section>
-        <div class="dialog-actions"><button class="button button-secondary" type="button" data-dialog-close>Cancel</button><button class="button button-primary" type="submit">Save appearance</button></div>
+        <div class="dialog-actions"><button class="button button-secondary" type="button" data-dialog-close>Cancel</button><button class="button button-primary" type="submit">Save settings</button></div>
     </form>
 </dialog>
 {% include "partials/form_dialog.html" with dialog_id="expense-create" title="Add expense" form=expense_form action_url="create_expense" submit_label="Add expense" %}
