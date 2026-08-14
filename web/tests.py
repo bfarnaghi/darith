@@ -81,6 +81,33 @@ class ProductionSettingsTests(SimpleTestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("System check identified no issues", result.stdout)
 
+    def test_production_uses_fingerprinted_static_files(self):
+        environment = {
+            name: value
+            for name, value in os.environ.items()
+            if not name.startswith("DJANGO_")
+        }
+        environment.update(self.production_environment)
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-B",
+                "-c",
+                (
+                    "from darith.settings import STORAGES; "
+                    "print(STORAGES['staticfiles']['BACKEND'])"
+                ),
+            ],
+            cwd=BASE_DIR,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("ManifestStaticFilesStorage", result.stdout)
+
     def test_production_rejects_development_secret(self):
         result = self.run_deployment_check(DJANGO_SECRET_KEY="development-only-change-me")
 

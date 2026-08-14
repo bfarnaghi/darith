@@ -360,9 +360,13 @@ sudo -u darith git -C /var/www/darith/app pull --ff-only
 sudo -u darith /var/www/darith/app/.venv/bin/python -m pip install -r /var/www/darith/app/requirements.txt
 sudo -u darith bash -c 'set -a; source /etc/darith.env; set +a; cd /var/www/darith/app; .venv/bin/python manage.py check --deploy'
 sudo -u darith bash -c 'set -a; source /etc/darith.env; set +a; cd /var/www/darith/app; .venv/bin/python manage.py migrate'
-sudo -u darith bash -c 'set -a; source /etc/darith.env; set +a; cd /var/www/darith/app; .venv/bin/python manage.py collectstatic --noinput'
+sudo -u darith bash -c 'set -a; source /etc/darith.env; set +a; cd /var/www/darith/app; .venv/bin/python manage.py collectstatic --clear --noinput'
 sudo systemctl restart darith
 ~~~
+
+Darith fingerprints production CSS, JavaScript, and image filenames. Always run
+`collectstatic` before restarting the application so browsers and CDNs receive a
+new asset URL whenever its contents change.
 
 Check logs after each update:
 
