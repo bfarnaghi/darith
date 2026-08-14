@@ -1,0 +1,18 @@
+{# Author: Behnam <b.farnaghi@gmail.com> #}
+{# AI-assisted implementation; manually reviewed and verified by the developer. #}
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#15231c">
+    <title>{% block title %}Darith{% endblock %}</title>
+    <link rel="icon" href="{% static 'favicon.svg' %}" type="image/svg+xml">
+    {% block styles %}{% endblock %}
+</head>
+<body>
+    {% block body %}{% endblock %}
+    {% block scripts %}{% endblock %}
+</body>
+</html>

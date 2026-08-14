@@ -1,0 +1,14 @@
+{# Author: Behnam <b.farnaghi@gmail.com> #}
+{# AI-assisted implementation; manually reviewed and verified by the developer. #}
+{% load humanize %}
+<div class="transaction-list{% if compact %} compact{% endif %}">
+    {% for item in items %}
+    <button class="transaction-row" type="button" data-dialog-open="{{ item.kind }}-edit-{{ item.id }}">
+        <span class="transaction-mark {{ item.kind }}">{% if item.kind == 'income' %}+{% else %}−{% endif %}</span>
+        <span class="transaction-copy"><strong>{{ item.text }}</strong><small>{{ item.category.name|default:"Uncategorized" }} · {{ item.bank_account.name|default:"Deleted account" }}</small></span>
+        <span class="transaction-date">{{ item.date|date:"j M Y" }}</span>
+        <b class="transaction-amount {% if item.kind == 'income' %}positive{% else %}negative{% endif %}">{% if item.kind == 'income' %}+{% else %}−{% endif %}€{{ item.amount|floatformat:2|intcomma }}</b>
+        <span class="row-chevron">›</span>
+    </button>
+    {% empty %}<div class="empty-state"><strong>No transactions yet</strong><span>Add an income or expense to begin.</span></div>{% endfor %}
+</div>

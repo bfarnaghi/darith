@@ -1,572 +1,488 @@
-from django.shortcuts import render, redirect
-from django.http import JsonResponse
-from django.contrib.auth.forms import UserCreationForm
-from json import JSONEncoder
-from django.views.decorators.csrf import csrf_exempt
-from web.models import User, Token, Expense, Income, IncomeCategory, ExpenseCategory, BankAccount, MonthlyExpense
-from datetime import datetime
-from django.shortcuts import get_object_or_404
-from django.core import serializers
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, logout
+# Author: Behnam <b.farnaghi@gmail.com>
+# AI-assisted implementation; manually reviewed and verified by the developer.
 from django.contrib import messages
-from .models import BankAccount
-from .forms import BankAccountForm
-from django.contrib.auth.tokens import default_token_generator
-from django.utils.encoding import force_bytes
-from django.utils.http import urlsafe_base64_encode
-from django.template.loader import render_to_string
-from django.core.mail import send_mail
-from django.contrib.auth.tokens import default_token_generator
-from django.utils.http import urlsafe_base64_decode
-from django.contrib.auth.models import User
-from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import SetPasswordForm
+from django.contrib.auth.models import User
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
+from django.db import IntegrityError
+from django.http import Http404
+from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
+from django.urls import reverse
+from django.utils import timezone
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from django.views.decorators.http import require_POST
 
-@csrf_exempt
-def submit_expense(request):
-    if request.method == 'POST':
-        try:
-            this_token = request.POST['token']
-            this_user = User.objects.filter(token__token=this_token).get()
-        except (KeyError, Token.DoesNotExist, User.DoesNotExist):
-            return JsonResponse({
-                'status': 'error',
-                'message': 'Invalid or expired token.',
-            }, status=400)
+from .forms import (
+    BankAccountForm,
+    CategoryForm,
+    ExpenseForm,
+    IncomeForm,
+    MonthlyExpenseForm,
+    RecurringIncomeForm,
+    RegistrationForm,
+    SavingsGoalForm,
+)
+from .models import (
+    BankAccount,
+    Expense,
+    ExpenseCategory,
+    Income,
+    IncomeCategory,
+    MonthlyExpense,
+    RecurringIncome,
+    SavingsGoal,
+)
+from .services import build_monthly_budget, delete_transaction, post_due_recurring, save_transaction
 
-        if 'amount' not in request.POST or 'text' not in request.POST:
-            return JsonResponse({
-                'status': 'error',
-                'message': 'Missing required fields.',
-            }, status=400)
 
-        try:
-            amount = float(request.POST['amount'])
-        except ValueError:
-            return JsonResponse({
-                'status': 'error',
-                'message': 'Invalid amount format.',
-            }, status=400)
+DEFAULT_EXPENSE_CATEGORIES = ["Bills", "Food", "Health", "Housing", "Leisure", "Transport"]
+DEFAULT_INCOME_CATEGORIES = ["Freelance", "Other", "Salary"]
 
-        date = request.POST.get('date', datetime.now())
-        try:
-            expense = Expense.objects.create(
-                user=this_user,
-                amount=amount,
-                text=request.POST['text'],
-                date=date
+
+def home(request):
+    return redirect("dashboard" if request.user.is_authenticated else "login")
+
+
+def _dashboard_redirect(tab="overview"):
+    return redirect(f"{reverse('dashboard')}?tab={tab}")
+
+
+def _show_form_errors(request, form):
+    errors = [str(error) for field_errors in form.errors.values() for error in field_errors]
+    messages.error(request, " ".join(errors) or "Please check the form and try again.")
+
+
+def _seed_categories(user):
+    if not ExpenseCategory.objects.filter(user=user).exists():
+        for name in DEFAULT_EXPENSE_CATEGORIES:
+            ExpenseCategory.objects.get_or_create(user=user, name=name)
+    if not IncomeCategory.objects.filter(user=user).exists():
+        for name in DEFAULT_INCOME_CATEGORIES:
+            IncomeCategory.objects.get_or_create(user=user, name=name)
+
+
+@login_required
+def dashboard(request):
+    today = timezone.localdate()
+    _seed_categories(request.user)
+    posted_count = post_due_recurring(request.user, today)
+    if posted_count:
+        messages.info(request, f"Posted {posted_count} scheduled transaction(s).")
+
+    accounts = list(BankAccount.objects.filter(user=request.user))
+    expenses = list(
+        Expense.objects.filter(user=request.user).select_related("category", "bank_account")
+    )
+    incomes = list(
+        Income.objects.filter(user=request.user).select_related("category", "bank_account")
+    )
+    transactions = [
+        {
+            "id": item.id,
+            "kind": "expense",
+            "text": item.text,
+            "amount": item.amount,
+            "date": item.date,
+            "category": item.category,
+            "bank_account": item.bank_account,
+            "object": item,
+        }
+        for item in expenses
+    ] + [
+        {
+            "id": item.id,
+            "kind": "income",
+            "text": item.text,
+            "amount": item.amount,
+            "date": item.date,
+            "category": item.category,
+            "bank_account": item.bank_account,
+            "object": item,
+        }
+        for item in incomes
+    ]
+    transactions.sort(key=lambda item: (item["date"], item["id"]), reverse=True)
+
+    recurring_incomes = list(
+        RecurringIncome.objects.filter(user=request.user).select_related("category", "bank_account")
+    )
+    recurring_expenses = list(
+        MonthlyExpense.objects.filter(user=request.user).select_related("category", "bank_account")
+    )
+    savings_goals = list(SavingsGoal.objects.filter(user=request.user))
+
+    context = {
+        "active_tab": request.GET.get("tab", "overview"),
+        "today": today,
+        "accounts": accounts,
+        "transactions": transactions,
+        "recent_transactions": transactions[:6],
+        "recurring_incomes": recurring_incomes,
+        "recurring_expenses": recurring_expenses,
+        "savings_goals": savings_goals,
+        "expense_categories": ExpenseCategory.objects.filter(user=request.user),
+        "income_categories": IncomeCategory.objects.filter(user=request.user),
+        "budget": build_monthly_budget(request.user, today),
+        "account_form": BankAccountForm(),
+        "expense_form": ExpenseForm(user=request.user, initial={"date": today}),
+        "income_form": IncomeForm(user=request.user, initial={"date": today}),
+        "recurring_income_form": RecurringIncomeForm(
+            user=request.user, initial={"start_date": today}
+        ),
+        "monthly_expense_form": MonthlyExpenseForm(
+            user=request.user, initial={"start_date": today}
+        ),
+        "savings_goal_form": SavingsGoalForm(initial={"start_date": today}),
+        "category_form": CategoryForm(),
+        "account_edit_forms": [
+            (item, BankAccountForm(instance=item, auto_id=f"account_{item.id}_%s"))
+            for item in accounts
+        ],
+        "expense_edit_forms": [
+            (item, ExpenseForm(instance=item, user=request.user, auto_id=f"expense_{item.id}_%s"))
+            for item in expenses
+        ],
+        "income_edit_forms": [
+            (item, IncomeForm(instance=item, user=request.user, auto_id=f"income_{item.id}_%s"))
+            for item in incomes
+        ],
+        "recurring_income_edit_forms": [
+            (
+                item,
+                RecurringIncomeForm(
+                    instance=item, user=request.user, auto_id=f"recurring_income_{item.id}_%s"
+                ),
             )
-        except Exception as e:
-            return JsonResponse({
-                'status': 'error',
-                'message': str(e),
-            }, status=500)
-
-        return JsonResponse({
-            'status': 'ok',
-            'expense_id': expense.id,
-        }, encoder=JSONEncoder)
-
-    else:
-        return JsonResponse({
-            'status': 'error',
-            'message': 'Only POST requests are allowed.',
-        }, status=405)
-
-@csrf_exempt
-def submit_income(request):
-    if request.method == 'POST':
-        try:
-            this_token = request.POST['token']
-            this_user = User.objects.filter(token__token=this_token).get()
-        except (KeyError, Token.DoesNotExist, User.DoesNotExist):
-            return JsonResponse({
-                'status': 'error',
-                'message': 'Invalid or expired token.',
-            }, status=400)
-
-        if 'amount' not in request.POST or 'text' not in request.POST:
-            return JsonResponse({
-                'status': 'error',
-                'message': 'Missing required fields.',
-            }, status=400)
-
-        try:
-            amount = float(request.POST['amount'])
-        except ValueError:
-            return JsonResponse({
-                'status': 'error',
-                'message': 'Invalid amount format.',
-            }, status=400)
-
-        date = request.POST.get('date', datetime.now())
-        try:
-            income = Income.objects.create(
-                user=this_user,
-                amount=amount,
-                text=request.POST['text'],
-                date=date
+            for item in recurring_incomes
+        ],
+        "monthly_expense_edit_forms": [
+            (
+                item,
+                MonthlyExpenseForm(
+                    instance=item, user=request.user, auto_id=f"monthly_expense_{item.id}_%s"
+                ),
             )
-        except Exception as e:
-            return JsonResponse({
-                'status': 'error',
-                'message': str(e),
-            }, status=500)
+            for item in recurring_expenses
+        ],
+        "savings_goal_edit_forms": [
+            (item, SavingsGoalForm(instance=item, auto_id=f"saving_{item.id}_%s"))
+            for item in savings_goals
+        ],
+    }
+    return render(request, "dashboard.html", context)
 
-        return JsonResponse({
-            'status': 'ok',
-            'expense_id': income.id,
-        }, encoder=JSONEncoder)
 
+@require_POST
+@login_required
+def create_bank_account(request):
+    form = BankAccountForm(request.POST)
+    if form.is_valid():
+        account = form.save(commit=False)
+        account.user = request.user
+        try:
+            account.save()
+            messages.success(request, "Bank account added.")
+        except IntegrityError:
+            messages.error(request, "You already have an account with that name.")
     else:
-        return JsonResponse({
-            'status': 'error',
-            'message': 'Only POST requests are allowed.',
-        }, status=405)
-    
-    # List expenses
-def list_expenses(request):
-    if request.method == 'GET':
-        try:
-            this_token = request.GET['token']
-            this_user = User.objects.filter(token__token=this_token).get()
-            expenses = Expense.objects.filter(user=this_user)
-            data = serializers.serialize('json', expenses)
-            return JsonResponse(data, safe=False)
-        except (KeyError, Token.DoesNotExist, User.DoesNotExist):
-            return JsonResponse({
-                'status': 'error',
-                'message': 'Invalid or expired token.',
-            }, status=400)
+        _show_form_errors(request, form)
+    return _dashboard_redirect("accounts")
 
-# List incomes
-def list_incomes(request):
-    if request.method == 'GET':
-        try:
-            this_token = request.GET['token']
-            this_user = User.objects.filter(token__token=this_token).get()
-            incomes = Income.objects.filter(user=this_user)
-            data = serializers.serialize('json', incomes)
-            return JsonResponse(data, safe=False)
-        except (KeyError, Token.DoesNotExist, User.DoesNotExist):
-            return JsonResponse({
-                'status': 'error',
-                'message': 'Invalid or expired token.',
-            }, status=400)
 
-# Update expense
-@csrf_exempt
-def update_expense(request, expense_id):
-    if request.method == 'POST':
-        try:
-            this_token = request.POST['token']
-            this_user = User.objects.filter(token__token=this_token).get()
-            expense = get_object_or_404(Expense, pk=expense_id, user=this_user)
-            expense.amount = request.POST['amount']
-            expense.text = request.POST['text']
-            expense.date = request.POST['date']
-            expense.save()
-            return JsonResponse({'status': 'ok'}, encoder=JSONEncoder)
-        except (KeyError, Token.DoesNotExist, User.DoesNotExist, Expense.DoesNotExist):
-            return JsonResponse({
-                'status': 'error',
-                'message': 'Invalid or expired token or expense ID.',
-            }, status=400)
-
-# Update income
-@csrf_exempt
-def update_income(request, income_id):
-    if request.method == 'POST':
-        try:
-            this_token = request.POST['token']
-            this_user = User.objects.filter(token__token=this_token).get()
-            income = get_object_or_404(Income, pk=income_id, user=this_user)
-            income.amount = request.POST['amount']
-            income.text = request.POST['text']
-            income.date = request.POST['date']
-            income.save()
-            return JsonResponse({'status': 'ok'}, encoder=JSONEncoder)
-        except (KeyError, Token.DoesNotExist, User.DoesNotExist, Income.DoesNotExist):
-            return JsonResponse({
-                'status': 'error',
-                'message': 'Invalid or expired token or income ID.',
-            }, status=400)
-
-# Delete expense
-@csrf_exempt
-def delete_expense(request, expense_id):
-    if request.method == 'POST':
-        try:
-            this_token = request.POST['token']
-            this_user = User.objects.filter(token__token=this_token).get()
-            expense = get_object_or_404(Expense, pk=expense_id, user=this_user)
-            expense.delete()
-            return JsonResponse({'status': 'ok'}, encoder=JSONEncoder)
-        except (KeyError, Token.DoesNotExist, User.DoesNotExist, Expense.DoesNotExist):
-            return JsonResponse({
-                'status': 'error',
-                'message': 'Invalid or expired token or expense ID.',
-            }, status=400)
-
-# Delete income
-@csrf_exempt
-def delete_income(request, income_id):
-    if request.method == 'POST':
-        try:
-            this_token = request.POST['token']
-            this_user = User.objects.filter(token__token=this_token).get()
-            income = get_object_or_404(Income, pk=income_id, user=this_user)
-            income.delete()
-            return JsonResponse({'status': 'ok'}, encoder=JSONEncoder)
-        except (KeyError, Token.DoesNotExist, User.DoesNotExist, Income.DoesNotExist):
-            return JsonResponse({
-                'status': 'error',
-                'message': 'Invalid or expired token or income ID.',
-            }, status=400)
-
-# List income categories
-def list_income_categories(request):
-    if request.method == 'GET':
-        try:
-            income_categories = IncomeCategory.objects.all()
-            data = serializers.serialize('json', income_categories)
-            return JsonResponse(data, safe=False)
-        except Exception as e:
-            return JsonResponse({
-                'status': 'error',
-                'message': str(e),
-            }, status=500)
-
-# List expense categories
-def list_expense_categories(request):
-    if request.method == 'GET':
-        try:
-            expense_categories = ExpenseCategory.objects.all()
-            data = serializers.serialize('json', expense_categories)
-            return JsonResponse(data, safe=False)
-        except Exception as e:
-            return JsonResponse({
-                'status': 'error',
-                'message': str(e),
-            }, status=500)
-
-# List tokens
-def list_tokens(request):
-    if request.method == 'GET':
-        try:
-            tokens = Token.objects.all()
-            data = serializers.serialize('json', tokens)
-            return JsonResponse(data, safe=False)
-        except Exception as e:
-            return JsonResponse({
-                'status': 'error',
-                'message': str(e),
-            }, status=500)
-
-# List bank accounts
-def list_bank_accounts(request):
-    try:
-        bank_accounts = BankAccount.objects.all()
-        return render(request, 'dashboard.html', {'bank_accounts': bank_accounts})
-    except Exception as e:
-        return render(request, 'dashboard.html', {'error_message': str(e)})
-
-# List monthly expenses
-def list_monthly_expenses(request):
-    if request.method == 'GET':
-        try:
-            monthly_expenses = MonthlyExpense.objects.all()
-            data = serializers.serialize('json', monthly_expenses)
-            return JsonResponse(data, safe=False)
-        except Exception as e:
-            return JsonResponse({
-                'status': 'error',
-                'message': str(e),
-            }, status=500)
-
-# Submit income category
-@csrf_exempt
-def submit_income_category(request):
-    if request.method == 'POST':
-        try:
-            name = request.POST['name']
-            income_category = IncomeCategory.objects.create(name=name)
-            return JsonResponse({
-                'status': 'ok',
-                'income_category_id': income_category.id,
-            }, encoder=JSONEncoder)
-        except Exception as e:
-            return JsonResponse({
-                'status': 'error',
-                'message': str(e),
-            }, status=500)
-    else:
-        return JsonResponse({
-            'status': 'error',
-            'message': 'Only POST requests are allowed.',
-        }, status=405)
-
-# Submit expense category
-@csrf_exempt
-def submit_expense_category(request):
-    if request.method == 'POST':
-        try:
-            name = request.POST['name']
-            expense_category = ExpenseCategory.objects.create(name=name)
-            return JsonResponse({
-                'status': 'ok',
-                'expense_category_id': expense_category.id,
-            }, encoder=JSONEncoder)
-        except Exception as e:
-            return JsonResponse({
-                'status': 'error',
-                'message': str(e),
-            }, status=500)
-    else:
-        return JsonResponse({
-            'status': 'error',
-            'message': 'Only POST requests are allowed.',
-        }, status=405)
-
-# Update token
-@csrf_exempt
-def update_token(request, token_id):
-    if request.method == 'POST':
-        try:
-            token = Token.objects.get(pk=token_id)
-            token.token = request.POST['token']
-            token.save()
-            return JsonResponse({'status': 'ok'}, encoder=JSONEncoder)
-        except Exception as e:
-            return JsonResponse({
-                'status': 'error',
-                'message': str(e),
-            }, status=500)
-
-# Update bank account
-@csrf_exempt
+@require_POST
+@login_required
 def update_bank_account(request, account_id):
-    if request.method == 'POST':
+    account = get_object_or_404(BankAccount, pk=account_id, user=request.user)
+    form = BankAccountForm(request.POST, instance=account)
+    if form.is_valid():
         try:
-            bank_account = BankAccount.objects.get(pk=account_id)
-            bank_account.name = request.POST['name']
-            bank_account.balance = request.POST['balance']
-            bank_account.save()
-            return JsonResponse({'status': 'ok'}, encoder=JSONEncoder)
-        except Exception as e:
-            return JsonResponse({
-                'status': 'error',
-                'message': str(e),
-            }, status=500)
+            form.save()
+            messages.success(request, "Bank account updated.")
+        except IntegrityError:
+            messages.error(request, "You already have an account with that name.")
+    else:
+        _show_form_errors(request, form)
+    return _dashboard_redirect("accounts")
 
-# Update monthly expense
-@csrf_exempt
-def update_monthly_expense(request, expense_id):
-    if request.method == 'POST':
-        try:
-            monthly_expense = MonthlyExpense.objects.get(pk=expense_id)
-            monthly_expense.name = request.POST['name']
-            monthly_expense.amount = request.POST['amount']
-            monthly_expense.start_date = request.POST['start_date']
-            monthly_expense.end_date = request.POST['end_date']
-            monthly_expense.save()
-            return JsonResponse({'status': 'ok'}, encoder=JSONEncoder)
-        except Exception as e:
-            return JsonResponse({
-                'status': 'error',
-                'message': str(e),
-            }, status=500)
 
-# Delete income category
-@csrf_exempt
-def delete_income_category(request, category_id):
-    if request.method == 'POST':
-        try:
-            income_category = IncomeCategory.objects.get(pk=category_id)
-            income_category.delete()
-            return JsonResponse({'status': 'ok'}, encoder=JSONEncoder)
-        except Exception as e:
-            return JsonResponse({
-                'status': 'error',
-                'message': str(e),
-            }, status=500)
-
-# Delete expense category
-@csrf_exempt
-def delete_expense_category(request, category_id):
-    if request.method == 'POST':
-        try:
-            expense_category = ExpenseCategory.objects.get(pk=category_id)
-            expense_category.delete()
-            return JsonResponse({'status': 'ok'}, encoder=JSONEncoder)
-        except Exception as e:
-            return JsonResponse({
-                'status': 'error',
-                'message': str(e),
-            }, status=500)
-
-# Delete token
-@csrf_exempt
-def delete_token(request, token_id):
-    if request.method == 'POST':
-        try:
-            token = Token.objects.get(pk=token_id)
-            token.delete()
-            return JsonResponse({'status': 'ok'}, encoder=JSONEncoder)
-        except Exception as e:
-            return JsonResponse({
-                'status': 'error',
-                'message': str(e),
-            }, status=500)
-
-# Delete bank account
-@csrf_exempt
+@require_POST
+@login_required
 def delete_bank_account(request, account_id):
-    if request.method == 'POST':
-        try:
-            bank_account = BankAccount.objects.get(pk=account_id)
-            bank_account.delete()
-            return JsonResponse({'status': 'ok'}, encoder=JSONEncoder)
-        except Exception as e:
-            return JsonResponse({
-                'status': 'error',
-                'message': str(e),
-            }, status=500)
+    account = get_object_or_404(BankAccount, pk=account_id, user=request.user)
+    account.delete()
+    messages.success(request, "Bank account removed. Its transaction history was kept.")
+    return _dashboard_redirect("accounts")
 
-# Delete monthly expense
-@csrf_exempt
-def delete_monthly_expense(request, expense_id):
-    if request.method == 'POST':
+
+def _create_transaction(request, form_class, tab):
+    form = form_class(request.POST, user=request.user)
+    if form.is_valid():
+        save_transaction(form, request.user)
+        messages.success(request, f"{form._meta.model.__name__} added and balance updated.")
+    else:
+        _show_form_errors(request, form)
+    return _dashboard_redirect(tab)
+
+
+def _update_transaction(request, form_class, model, item_id):
+    item = get_object_or_404(model, pk=item_id, user=request.user)
+    form = form_class(request.POST, instance=item, user=request.user)
+    if form.is_valid():
+        save_transaction(form, request.user, item)
+        messages.success(request, f"{model.__name__} updated.")
+    else:
+        _show_form_errors(request, form)
+    return _dashboard_redirect("transactions")
+
+
+@require_POST
+@login_required
+def create_expense(request):
+    return _create_transaction(request, ExpenseForm, "transactions")
+
+
+@require_POST
+@login_required
+def update_expense(request, expense_id):
+    return _update_transaction(request, ExpenseForm, Expense, expense_id)
+
+
+@require_POST
+@login_required
+def delete_expense(request, expense_id):
+    item = get_object_or_404(Expense, pk=expense_id, user=request.user)
+    delete_transaction(item)
+    messages.success(request, "Expense removed and balance restored.")
+    return _dashboard_redirect("transactions")
+
+
+@require_POST
+@login_required
+def create_income(request):
+    return _create_transaction(request, IncomeForm, "transactions")
+
+
+@require_POST
+@login_required
+def update_income(request, income_id):
+    return _update_transaction(request, IncomeForm, Income, income_id)
+
+
+@require_POST
+@login_required
+def delete_income(request, income_id):
+    item = get_object_or_404(Income, pk=income_id, user=request.user)
+    delete_transaction(item)
+    messages.success(request, "Income removed and balance updated.")
+    return _dashboard_redirect("transactions")
+
+
+def _create_plan(request, form_class, tab="plans"):
+    kwargs = {"user": request.user} if form_class in (
+        RecurringIncomeForm,
+        MonthlyExpenseForm,
+    ) else {}
+    form = form_class(request.POST, **kwargs)
+    if form.is_valid():
+        item = form.save(commit=False)
+        item.user = request.user
+        item.save()
+        messages.success(request, "Monthly plan added.")
+    else:
+        _show_form_errors(request, form)
+    return _dashboard_redirect(tab)
+
+
+def _update_plan(request, form_class, model, item_id):
+    item = get_object_or_404(model, pk=item_id, user=request.user)
+    kwargs = {"instance": item}
+    if form_class in (RecurringIncomeForm, MonthlyExpenseForm):
+        kwargs["user"] = request.user
+    form = form_class(request.POST, **kwargs)
+    if form.is_valid():
+        form.save()
+        messages.success(request, "Monthly plan updated. Future postings use the new values.")
+    else:
+        _show_form_errors(request, form)
+    return _dashboard_redirect("plans")
+
+
+@require_POST
+@login_required
+def create_recurring_income(request):
+    return _create_plan(request, RecurringIncomeForm)
+
+
+@require_POST
+@login_required
+def update_recurring_income(request, item_id):
+    return _update_plan(request, RecurringIncomeForm, RecurringIncome, item_id)
+
+
+@require_POST
+@login_required
+def delete_recurring_income(request, item_id):
+    get_object_or_404(RecurringIncome, pk=item_id, user=request.user).delete()
+    messages.success(request, "Recurring income removed.")
+    return _dashboard_redirect("plans")
+
+
+@require_POST
+@login_required
+def create_monthly_expense(request):
+    return _create_plan(request, MonthlyExpenseForm)
+
+
+@require_POST
+@login_required
+def update_monthly_expense(request, item_id):
+    return _update_plan(request, MonthlyExpenseForm, MonthlyExpense, item_id)
+
+
+@require_POST
+@login_required
+def delete_monthly_expense(request, item_id):
+    get_object_or_404(MonthlyExpense, pk=item_id, user=request.user).delete()
+    messages.success(request, "Monthly expense removed.")
+    return _dashboard_redirect("plans")
+
+
+@require_POST
+@login_required
+def create_savings_goal(request):
+    return _create_plan(request, SavingsGoalForm)
+
+
+@require_POST
+@login_required
+def update_savings_goal(request, item_id):
+    return _update_plan(request, SavingsGoalForm, SavingsGoal, item_id)
+
+
+@require_POST
+@login_required
+def delete_savings_goal(request, item_id):
+    get_object_or_404(SavingsGoal, pk=item_id, user=request.user).delete()
+    messages.success(request, "Savings goal removed.")
+    return _dashboard_redirect("plans")
+
+
+def _category_model(kind):
+    if kind == "income":
+        return IncomeCategory
+    if kind == "expense":
+        return ExpenseCategory
+    raise Http404("Unknown category type")
+
+
+@require_POST
+@login_required
+def create_category(request, kind):
+    model = _category_model(kind)
+    form = CategoryForm(request.POST)
+    if form.is_valid():
+        _, created = model.objects.get_or_create(user=request.user, name=form.cleaned_data["name"])
+        messages.success(request, "Category added." if created else "That category already exists.")
+    else:
+        _show_form_errors(request, form)
+    return _dashboard_redirect("categories")
+
+
+@require_POST
+@login_required
+def update_category(request, kind, item_id):
+    model = _category_model(kind)
+    category = get_object_or_404(model, pk=item_id, user=request.user)
+    form = CategoryForm(request.POST)
+    if form.is_valid():
+        category.name = form.cleaned_data["name"]
         try:
-            monthly_expense = MonthlyExpense.objects.get(pk=expense_id)
-            monthly_expense.delete()
-            return JsonResponse({'status': 'ok'}, encoder=JSONEncoder)
-        except Exception as e:
-            return JsonResponse({
-                'status': 'error',
-                'message': str(e),
-            }, status=500)
+            category.save()
+            messages.success(request, "Category updated.")
+        except IntegrityError:
+            messages.error(request, "That category already exists.")
+    else:
+        _show_form_errors(request, form)
+    return _dashboard_redirect("categories")
+
+
+@require_POST
+@login_required
+def delete_category(request, kind, item_id):
+    model = _category_model(kind)
+    get_object_or_404(model, pk=item_id, user=request.user).delete()
+    messages.success(request, "Category removed. Existing transactions were kept.")
+    return _dashboard_redirect("categories")
+
 
 def user_login(request):
-    if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        user = authenticate(request, username=username, password=password)
+    if request.user.is_authenticated:
+        return redirect("dashboard")
+    if request.method == "POST":
+        user = authenticate(
+            request, username=request.POST.get("username"), password=request.POST.get("password")
+        )
         if user is not None:
             login(request, user)
-            return redirect('dashboard')  # Redirect to dashboard after successful login
-        else:
-            storage = messages.get_messages(request)
-            storage.used = True
-            messages.error(request, 'Invalid username or password.')
-    return render(request, 'login.html')
+            return redirect("dashboard")
+        messages.error(request, "Invalid username or password.")
+    return render(request, "login.html")
+
+
+def create_account(request):
+    if request.user.is_authenticated:
+        return redirect("dashboard")
+    form = RegistrationForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        user = form.save()
+        login(request, user)
+        messages.success(request, "Your account is ready.")
+        return redirect("dashboard")
+    return render(request, "create_account.html", {"form": form})
+
+
+@require_POST
+def user_logout(request):
+    logout(request)
+    return redirect("login")
+
 
 def forgot_password(request):
-    if request.method == 'POST':
-        email = request.POST.get('email')
-        try:
-            user = User.objects.get(email=email)
-            # Generate a password reset token
+    if request.method == "POST":
+        email = request.POST.get("email", "")
+        user = User.objects.filter(email__iexact=email).first()
+        if user:
             token = default_token_generator.make_token(user)
             uid = urlsafe_base64_encode(force_bytes(user.pk))
-            # Send password reset email
-            reset_link = request.build_absolute_uri(f'/reset_password/{uid}/{token}/')
-            print(reset_link)
-            subject = 'Password Reset Request'
-            message = render_to_string('reset_password_email.html', {'reset_link': reset_link})
-            send_mail(subject, message, 'from@example.com', [user.email])
-            messages.success(request, 'Password reset link has been sent to your email.')
-            return redirect('login')  # Redirect to login page
-        except User.DoesNotExist:
-            messages.error(request, 'This email is not associated with any account.')
-    return render(request, 'forgot_password.html')
+            reset_link = request.build_absolute_uri(reverse("reset_password", args=[uid, token]))
+            message = render_to_string("reset_password_email.html", {"reset_link": reset_link})
+            send_mail(
+                "Password reset request",
+                f"Open this link to reset your password: {reset_link}",
+                None,
+                [user.email],
+                html_message=message,
+            )
+        messages.success(request, "If that email exists, a password reset link has been sent.")
+        return redirect("login")
+    return render(request, "forgot_password.html")
+
 
 def reset_password(request, uidb64, token):
     try:
-        # Decode the user ID from base64
-        uid = urlsafe_base64_decode(uidb64).decode()
-        user = User.objects.get(pk=uid)
+        user = User.objects.get(pk=urlsafe_base64_decode(uidb64).decode())
     except (TypeError, ValueError, OverflowError, User.DoesNotExist):
         user = None
-
-    if user is not None and default_token_generator.check_token(user, token):
-        # Token is valid, allow user to reset password
-        if request.method == 'POST':
-            form = SetPasswordForm(user, request.POST)
-            if form.is_valid():
-                form.save()
-                update_session_auth_hash(request, user)
-                messages.success(request, 'Your password has been reset successfully.')
-                return render(request, 'password_reset_done.html')
-        else:
-            form = SetPasswordForm(user)
-        return render(request, 'reset_password.html', {'form': form})
-    else:
-        # Token is invalid, show error message
-        messages.error(request, 'The reset password link is invalid or has expired.')
-        return render(request, 'password_reset_failed.html')
-    
-def create_account(request):
-    if request.method == 'POST':
-        # Create a form instance and populate it with data from the request
-        form = UserCreationForm(request.POST)
-        if form.is_valid():
-            # If the form is valid, save the user's data
-            form.save()
-            # Authenticate and login the user
-            username = form.cleaned_data.get('username')
-            password = form.cleaned_data.get('password1')
-            user = authenticate(request, username=username, password=password)
-            if user is not None:
-                login(request, user)
-                messages.success(request, 'Your account has been created successfully!')
-                return redirect('dashboard')  # Redirect to dashboard after successful login
-        else:
-            # If the form is not valid, display form errors
-            for field, errors in form.errors.items():
-                for error in errors:
-                    messages.error(request, f'{field.capitalize()}: {error}')
-    else:
-        # If it's a GET request, render the form
-        form = UserCreationForm()
-    return render(request, 'create_account.html', {'form': form})
-
-def user_logout(request):
-    logout(request)
-    return redirect('login')  # Redirect to login page after logout
-
-def dashboard(request):
-    # Add logic to fetch data for the dashboard
-    return render(request, 'dashboard.html')
-
-def add_bank_account(request):
-    if request.method == 'POST':
-        form = BankAccountForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Bank account added successfully.')
-            return redirect('dashboard')
-        else:
-            messages.error(request, 'Failed to add bank account. Please check the form.')
-    else:
-        form = BankAccountForm()
-    return render(request, 'add_bank_account.html', {'form': form})
-
-def edit_bank_account(request):
-    # Get the bank account object by primary key (pk)
-    bank_account = get_object_or_404(BankAccount)
-
-    if request.method == 'POST':
-        # Populate the form with the existing bank account data
-        form = BankAccountForm(request.POST, instance=bank_account)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Bank account updated successfully.')
-            return redirect('dashboard')
-        else:
-            messages.error(request, 'Failed to update bank account. Please check the form.')
-    else:
-        # Create a form instance with the existing bank account data
-        form = BankAccountForm(instance=bank_account)
-    return render(request, 'edit_bank_account.html', {'form': form})
+    if user is None or not default_token_generator.check_token(user, token):
+        return render(request, "password_reset_failed.html")
+    form = SetPasswordForm(user, request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        login(request, user)
+        return render(request, "password_reset_done.html")
+    return render(request, "reset_password.html", {"form": form})

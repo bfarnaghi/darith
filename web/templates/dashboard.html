@@ -1,92 +1,195 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Dashboard</title>
-    <!-- Add any CSS or meta tags needed -->
-</head>
-<body>
-    <h1>Welcome to Your Dashboard</h1>
+{# Author: Behnam <b.farnaghi@gmail.com> #}
+{# AI-assisted implementation; manually reviewed and verified by the developer. #}
+{% extends "base.html" %}
+{% load static humanize %}
 
-    <!-- Display User Information -->
-    <h2>User Information</h2>
-    <p>Username: {{ request.user.username }}</p>
-    <p>Email: {{ request.user.email }}</p>
-    <!-- Add more user-related information as needed -->
+{% block title %}My money | Darith{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">{% endblock %}
 
-    <!-- Display Bank Accounts -->
-    <h2>Bank Accounts</h2>
-    <ul>
-    {% for account in bank_accounts %}
-        <li>{{ account.name }} - Balance: {{ account.balance }}</li>
-        <!-- Add buttons/links for editing/deleting each bank account -->
-    {% endfor %}
-    </ul>
+{% block body %}
+<div class="app-shell" data-active-tab="{{ active_tab }}">
+    <aside class="sidebar">
+        <a class="brand" href="{% url 'dashboard' %}" aria-label="Darith dashboard">
+            <span class="brand-mark">D</span>
+            <span>Darith</span>
+        </a>
+        <nav class="primary-nav" aria-label="Main navigation">
+            <button class="nav-item" type="button" data-tab-target="overview"><span aria-hidden="true">⌂</span>Overview</button>
+            <button class="nav-item" type="button" data-tab-target="accounts"><span aria-hidden="true">▣</span>Accounts</button>
+            <button class="nav-item" type="button" data-tab-target="transactions"><span aria-hidden="true">↕</span>Transactions</button>
+            <button class="nav-item" type="button" data-tab-target="plans"><span aria-hidden="true">↻</span>Monthly plans</button>
+            <button class="nav-item" type="button" data-tab-target="categories"><span aria-hidden="true">#</span>Categories</button>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-chip">
+                <span class="avatar">{{ request.user.username|first|upper }}</span>
+                <span><strong>{{ request.user.username }}</strong><small>Personal workspace</small></span>
+            </div>
+            <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button class="icon-button" type="submit" title="Log out" aria-label="Log out">→</button>
+            </form>
+        </div>
+    </aside>
 
-    <!-- Form for Adding New Bank Account -->
-    <h3>Add New Bank Account</h3>
-    <form method="post" action="{% url 'add_bank_account' %}">
-        {% csrf_token %}
-        <label for="account_name">Account Name:</label>
-        <input type="text" id="account_name" name="name" required><br>
-        <label for="initial_balance">Initial Balance:</label>
-        <input type="number" id="initial_balance" name="balance" required><br>
-        <button type="submit">Add Account</button>
-    </form>
+    <main class="workspace">
+        <header class="topbar">
+            <div>
+                <p class="eyebrow">{{ today|date:"F Y" }}</p>
+                <h1 data-page-title>Overview</h1>
+            </div>
+            <div class="quick-actions">
+                <button class="button button-secondary" type="button" data-dialog-open="income-create">+ Income</button>
+                <button class="button button-primary" type="button" data-dialog-open="expense-create">+ Expense</button>
+            </div>
+            <details class="mobile-overflow">
+                <summary class="avatar" aria-label="Open account menu">{{ request.user.username|first|upper }}</summary>
+                <div class="mobile-menu">
+                    <strong>{{ request.user.username }}</strong>
+                    <button type="button" data-tab-target="categories">Categories</button>
+                    <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit">Log out</button></form>
+                </div>
+            </details>
+        </header>
 
+        {% if messages %}
+        <div class="message-stack" aria-live="polite">
+            {% for message in messages %}<div class="message message-{{ message.tags|default:'info' }}">{{ message }}</div>{% endfor %}
+        </div>
+        {% endif %}
 
-    <!-- Display Expenses -->
-    <h2>Expenses</h2>
-    <ul>
-    {% for expense in expenses %}
-        <li>{{ expense.text }} - Amount: {{ expense.amount }} - Date: {{ expense.date }}</li>
-        <!-- Add buttons/links for editing/deleting each expense -->
-    {% endfor %}
-    </ul>
+        <section class="panel" data-tab-panel="overview">
+            <div class="budget-hero">
+                <div class="budget-main">
+                    <p>Free to spend this month</p>
+                    <strong>{% if budget.free_to_spend < 0 %}−€{{ budget.free_to_spend_abs|floatformat:2|intcomma }}{% else %}€{{ budget.free_to_spend|floatformat:2|intcomma }}{% endif %}</strong>
+                    <span>{% if budget.daily_allowance < 0 %}−€{{ budget.daily_allowance_abs|floatformat:2|intcomma }}{% else %}€{{ budget.daily_allowance|floatformat:2|intcomma }}{% endif %} per day for {{ budget.days_remaining }} day{{ budget.days_remaining|pluralize }}</span>
+                </div>
+                <div class="budget-meter" aria-label="Monthly budget status">
+                    <span class="status-dot status-{{ budget.status }}"></span>
+                    <div><small>Month-end outlook</small><strong>€{{ budget.projected_balance|floatformat:2|intcomma }}</strong></div>
+                </div>
+            </div>
 
-    <!-- Form for Adding New Expense -->
-    <h3>Add New Expense</h3>
-    <form method="post" action="{% url 'submit_expense' %}">
-        {% csrf_token %}
-        <label for="expense_text">Text:</label>
-        <input type="text" id="expense_text" name="text" required><br>
-        <label for="expense_amount">Amount:</label>
-        <input type="number" id="expense_amount" name="amount" required><br>
-        <label for="expense_date">Date:</label>
-        <input type="date" id="expense_date" name="date" required><br>
-        <!-- Add a dropdown for selecting expense category -->
-        <!-- Add a dropdown for selecting bank account -->
-        <button type="submit">Add Expense</button>
-    </form>
+            <div class="notice notice-{{ budget.status }}">
+                <span class="notice-symbol" aria-hidden="true">{% if budget.status == 'healthy' %}✓{% else %}!{% endif %}</span>
+                <div><strong>{% if budget.status == 'healthy' %}On track{% else %}Budget warning{% endif %}</strong><p>{{ budget.warning }}</p></div>
+            </div>
 
+            <div class="metric-grid">
+                <article class="metric"><span>Current balance</span><strong>€{{ budget.current_balance|floatformat:2|intcomma }}</strong><small>Across {{ accounts|length }} account{{ accounts|length|pluralize }}</small></article>
+                <article class="metric"><span>Expected income</span><strong class="positive">+€{{ budget.expected_income|floatformat:2|intcomma }}</strong><small>Still due this month</small></article>
+                <article class="metric"><span>Expected expenses</span><strong class="negative">−€{{ budget.expected_expenses|floatformat:2|intcomma }}</strong><small>Still due this month</small></article>
+                <article class="metric"><span>Savings reserved</span><strong>€{{ budget.savings_target|floatformat:2|intcomma }}</strong><small>Monthly goals</small></article>
+            </div>
 
-    <!-- Display Incomes -->
-    <h2>Incomes</h2>
-    <ul>
-    {% for income in incomes %}
-        <li>{{ income.text }} - Amount: {{ income.amount }} - Date: {{ income.date }}</li>
-        <!-- Add buttons/links for editing/deleting each income -->
-    {% endfor %}
-    </ul>
+            <div class="overview-grid">
+                <section class="content-block">
+                    <div class="section-heading"><div><p class="eyebrow">Latest activity</p><h2>Recent transactions</h2></div><button class="text-button" type="button" data-tab-target="transactions">View all</button></div>
+                    {% include "partials/transaction_list.html" with items=recent_transactions compact=True %}
+                </section>
+                <section class="content-block upcoming-block">
+                    <div class="section-heading"><div><p class="eyebrow">This month</p><h2>Coming up</h2></div><button class="text-button" type="button" data-tab-target="plans">Manage</button></div>
+                    <div class="upcoming-list">
+                        {% for item in budget.upcoming %}
+                        <div class="upcoming-item"><span class="transaction-mark {{ item.kind }}">{% if item.kind == 'income' %}+{% else %}−{% endif %}</span><div><strong>{{ item.name }}</strong><small>{{ item.date|date:"D, j M" }}</small></div><b class="{% if item.kind == 'income' %}positive{% else %}negative{% endif %}">{% if item.kind == 'income' %}+{% else %}−{% endif %}€{{ item.amount|floatformat:2|intcomma }}</b></div>
+                        {% empty %}<div class="empty-state"><strong>No more planned items</strong><span>Your remaining month is clear.</span></div>{% endfor %}
+                    </div>
+                </section>
+            </div>
+        </section>
 
-    <!-- Form for Adding New Income -->
-    <h3>Add New Income</h3>
-    <form method="post" action="{% url 'submit_income' %}">
-        {% csrf_token %}
-        <label for="income_text">Text:</label>
-        <input type="text" id="income_text" name="text" required><br>
-        <label for="income_amount">Amount:</label>
-        <input type="number" id="income_amount" name="amount" required><br>
-        <label for="income_date">Date:</label>
-        <input type="date" id="income_date" name="date" required><br>
-        <!-- Add a dropdown for selecting income category -->
-        <!-- Add a dropdown for selecting bank account -->
-        <button type="submit">Add Income</button>
-    </form>
+        <section class="panel" data-tab-panel="accounts" hidden>
+            <div class="section-heading page-heading"><div><p class="eyebrow">Live balances</p><h2>Your accounts</h2></div><button class="button button-primary" type="button" data-dialog-open="account-create">+ Add account</button></div>
+            <div class="account-grid">
+                {% for account, form in account_edit_forms %}
+                <article class="account-card">
+                    <div class="account-card-top"><span class="account-icon">{{ account.name|first|upper }}</span><button class="icon-button" type="button" data-dialog-open="account-edit-{{ account.id }}" aria-label="Edit {{ account.name }}" title="Edit account">•••</button></div>
+                    <p>{{ account.name }}</p><strong>€{{ account.balance|floatformat:2|intcomma }}</strong><small>Current balance</small>
+                </article>
+                {% empty %}<button class="empty-account" type="button" data-dialog-open="account-create"><span>+</span><strong>Add your first bank account</strong></button>{% endfor %}
+            </div>
+        </section>
 
+        <section class="panel" data-tab-panel="transactions" hidden>
+            <div class="section-heading page-heading"><div><p class="eyebrow">Money in and out</p><h2>All activity</h2></div><div class="quick-actions"><button class="button button-secondary" type="button" data-dialog-open="income-create">+ Income</button><button class="button button-primary" type="button" data-dialog-open="expense-create">+ Expense</button></div></div>
+            <section class="content-block transaction-block">
+                {% include "partials/transaction_list.html" with items=transactions %}
+            </section>
+        </section>
 
+        <section class="panel" data-tab-panel="plans" hidden>
+            <div class="section-heading page-heading"><div><p class="eyebrow">Automatic monthly entries</p><h2>Income, expenses and savings</h2></div><div class="quick-actions"><button class="button button-secondary" type="button" data-dialog-open="recurring-income-create">+ Income plan</button><button class="button button-primary" type="button" data-dialog-open="monthly-expense-create">+ Expense plan</button></div></div>
+            <div class="plan-grid">
+                <section class="content-block">
+                    <div class="section-heading"><h3>Recurring income</h3><span class="count-badge">{{ recurring_incomes|length }}</span></div>
+                    <div class="plan-list">
+                        {% for item, form in recurring_income_edit_forms %}
+                        <button class="plan-row" type="button" data-dialog-open="recurring-income-edit-{{ item.id }}"><span class="transaction-mark income">+</span><span><strong>{{ item.name }}</strong><small>Monthly on day {{ item.day_of_month }} · {{ item.bank_account.name }}</small></span><b class="positive">€{{ item.amount|floatformat:2|intcomma }}</b></button>
+                        {% empty %}<div class="empty-state"><strong>No recurring income</strong><span>Add salary or other regular income.</span></div>{% endfor %}
+                    </div>
+                </section>
+                <section class="content-block">
+                    <div class="section-heading"><h3>Recurring expenses</h3><span class="count-badge">{{ recurring_expenses|length }}</span></div>
+                    <div class="plan-list">
+                        {% for item, form in monthly_expense_edit_forms %}
+                        <button class="plan-row" type="button" data-dialog-open="monthly-expense-edit-{{ item.id }}"><span class="transaction-mark expense">−</span><span><strong>{{ item.name }}</strong><small>Monthly on day {{ item.day_of_month }} · {{ item.bank_account.name }}</small></span><b class="negative">€{{ item.amount|floatformat:2|intcomma }}</b></button>
+                        {% empty %}<div class="empty-state"><strong>No recurring expenses</strong><span>Add rent, subscriptions, or bills.</span></div>{% endfor %}
+                    </div>
+                </section>
+            </div>
+            <section class="content-block savings-block">
+                <div class="section-heading"><div><p class="eyebrow">Reserved before free spending</p><h3>Savings goals</h3></div><button class="button button-secondary" type="button" data-dialog-open="saving-create">+ Add goal</button></div>
+                <div class="saving-grid">
+                    {% for item, form in savings_goal_edit_forms %}
+                    <button class="saving-card" type="button" data-dialog-open="saving-edit-{{ item.id }}"><span class="saving-icon">◎</span><span><strong>{{ item.name }}</strong><small>Every month</small></span><b>€{{ item.monthly_amount|floatformat:2|intcomma }}</b></button>
+                    {% empty %}<div class="empty-state"><strong>No savings goal yet</strong><span>Reserve part of your monthly balance.</span></div>{% endfor %}
+                </div>
+            </section>
+        </section>
 
-    <!-- Add more sections for displaying and managing other data as needed -->
+        <section class="panel" data-tab-panel="categories" hidden>
+            <div class="section-heading page-heading"><div><p class="eyebrow">Organize activity</p><h2>Custom categories</h2></div></div>
+            <div class="category-grid">
+                <section class="content-block">
+                    <div class="section-heading"><h3>Expense categories</h3><button class="button button-secondary button-small" type="button" data-dialog-open="expense-category-create">+ Add</button></div>
+                    <div class="category-list">{% for item in expense_categories %}<div class="category-row"><span>{{ item.name }}</span><div><button class="icon-button" type="button" data-dialog-open="expense-category-edit-{{ item.id }}" aria-label="Edit {{ item.name }}">✎</button><form method="post" action="{% url 'delete_category' 'expense' item.id %}" data-confirm="Delete this category?">{% csrf_token %}<button class="icon-button danger-button" type="submit" aria-label="Delete {{ item.name }}">×</button></form></div></div>{% endfor %}</div>
+                </section>
+                <section class="content-block">
+                    <div class="section-heading"><h3>Income categories</h3><button class="button button-secondary button-small" type="button" data-dialog-open="income-category-create">+ Add</button></div>
+                    <div class="category-list">{% for item in income_categories %}<div class="category-row"><span>{{ item.name }}</span><div><button class="icon-button" type="button" data-dialog-open="income-category-edit-{{ item.id }}" aria-label="Edit {{ item.name }}">✎</button><form method="post" action="{% url 'delete_category' 'income' item.id %}" data-confirm="Delete this category?">{% csrf_token %}<button class="icon-button danger-button" type="submit" aria-label="Delete {{ item.name }}">×</button></form></div></div>{% endfor %}</div>
+                </section>
+            </div>
+        </section>
+    </main>
 
-</body>
-</html>
+    <nav class="mobile-nav" aria-label="Mobile navigation">
+        <button type="button" data-tab-target="overview"><span>⌂</span>Home</button>
+        <button type="button" data-tab-target="accounts"><span>▣</span>Accounts</button>
+        <button class="mobile-add" type="button" data-dialog-open="expense-create" aria-label="Add expense">+</button>
+        <button type="button" data-tab-target="transactions"><span>↕</span>Activity</button>
+        <button type="button" data-tab-target="plans"><span>↻</span>Plans</button>
+    </nav>
+</div>
+
+{% include "partials/form_dialog.html" with dialog_id="account-create" title="Add bank account" form=account_form action_url="create_bank_account" submit_label="Add account" %}
+{% include "partials/form_dialog.html" with dialog_id="expense-create" title="Add expense" form=expense_form action_url="create_expense" submit_label="Add expense" %}
+{% include "partials/form_dialog.html" with dialog_id="income-create" title="Add income" form=income_form action_url="create_income" submit_label="Add income" %}
+{% include "partials/form_dialog.html" with dialog_id="recurring-income-create" title="Add recurring income" form=recurring_income_form action_url="create_recurring_income" submit_label="Add income plan" %}
+{% include "partials/form_dialog.html" with dialog_id="monthly-expense-create" title="Add recurring expense" form=monthly_expense_form action_url="create_monthly_expense" submit_label="Add expense plan" %}
+{% include "partials/form_dialog.html" with dialog_id="saving-create" title="Add savings goal" form=savings_goal_form action_url="create_savings_goal" submit_label="Add goal" %}
+
+{% for item, form in account_edit_forms %}{% url 'update_bank_account' item.id as edit_url %}{% url 'delete_bank_account' item.id as delete_url %}{% include "partials/form_dialog.html" with dialog_prefix="account-edit-" dialog_object_id=item.id title="Edit bank account" form=form direct_action=edit_url delete_action=delete_url submit_label="Save changes" %}{% endfor %}
+{% for item, form in expense_edit_forms %}{% url 'update_expense' item.id as edit_url %}{% url 'delete_expense' item.id as delete_url %}{% include "partials/form_dialog.html" with dialog_prefix="expense-edit-" dialog_object_id=item.id title="Edit expense" form=form direct_action=edit_url delete_action=delete_url submit_label="Save changes" %}{% endfor %}
+{% for item, form in income_edit_forms %}{% url 'update_income' item.id as edit_url %}{% url 'delete_income' item.id as delete_url %}{% include "partials/form_dialog.html" with dialog_prefix="income-edit-" dialog_object_id=item.id title="Edit income" form=form direct_action=edit_url delete_action=delete_url submit_label="Save changes" %}{% endfor %}
+{% for item, form in recurring_income_edit_forms %}{% url 'update_recurring_income' item.id as edit_url %}{% url 'delete_recurring_income' item.id as delete_url %}{% include "partials/form_dialog.html" with dialog_prefix="recurring-income-edit-" dialog_object_id=item.id title="Edit recurring income" form=form direct_action=edit_url delete_action=delete_url submit_label="Save changes" %}{% endfor %}
+{% for item, form in monthly_expense_edit_forms %}{% url 'update_monthly_expense' item.id as edit_url %}{% url 'delete_monthly_expense' item.id as delete_url %}{% include "partials/form_dialog.html" with dialog_prefix="monthly-expense-edit-" dialog_object_id=item.id title="Edit recurring expense" form=form direct_action=edit_url delete_action=delete_url submit_label="Save changes" %}{% endfor %}
+{% for item, form in savings_goal_edit_forms %}{% url 'update_savings_goal' item.id as edit_url %}{% url 'delete_savings_goal' item.id as delete_url %}{% include "partials/form_dialog.html" with dialog_prefix="saving-edit-" dialog_object_id=item.id title="Edit savings goal" form=form direct_action=edit_url delete_action=delete_url submit_label="Save changes" %}{% endfor %}
+
+{% url 'create_category' 'expense' as expense_category_url %}{% include "partials/form_dialog.html" with dialog_id="expense-category-create" title="Add expense category" form=category_form direct_action=expense_category_url submit_label="Add category" %}
+{% url 'create_category' 'income' as income_category_url %}{% include "partials/form_dialog.html" with dialog_id="income-category-create" title="Add income category" form=category_form direct_action=income_category_url submit_label="Add category" %}
+{% for item in expense_categories %}{% url 'update_category' 'expense' item.id as edit_url %}<dialog class="form-dialog" id="expense-category-edit-{{ item.id }}"><div class="dialog-head"><h2>Edit category</h2><button class="icon-button" type="button" data-dialog-close aria-label="Close">×</button></div><form method="post" action="{{ edit_url }}" class="dialog-form">{% csrf_token %}<p><label for="expense-category-{{ item.id }}">Name</label><input class="form-control" id="expense-category-{{ item.id }}" name="name" value="{{ item.name }}" required maxlength="50"></p><div class="dialog-actions"><button class="button button-primary" type="submit">Save changes</button></div></form></dialog>{% endfor %}
+{% for item in income_categories %}{% url 'update_category' 'income' item.id as edit_url %}<dialog class="form-dialog" id="income-category-edit-{{ item.id }}"><div class="dialog-head"><h2>Edit category</h2><button class="icon-button" type="button" data-dialog-close aria-label="Close">×</button></div><form method="post" action="{{ edit_url }}" class="dialog-form">{% csrf_token %}<p><label for="income-category-{{ item.id }}">Name</label><input class="form-control" id="income-category-{{ item.id }}" name="name" value="{{ item.name }}" required maxlength="50"></p><div class="dialog-actions"><button class="button button-primary" type="submit">Save changes</button></div></form></dialog>{% endfor %}
+{% endblock %}
+
+{% block scripts %}<script src="{% static 'js/dashboard.js' %}"></script>{% endblock %}

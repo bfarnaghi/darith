@@ -1,50 +1,28 @@
+{# Author: Behnam <b.farnaghi@gmail.com> #}
+{# AI-assisted implementation; manually reviewed and verified by the developer. #}
+{% extends "base.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Login</title>
-    <link rel="stylesheet" type="text/css" href="{% static 'css/login.css' %}">
-</head>
-<body>
-    <div class="login-container">
-        <h2>Login to PyFiGenius</h2>
-        <form method="post">
-            {% csrf_token %}
-            {% if messages %}
-                <div class="messages">
-                    {% for message in messages %}
-                        <div class="message {% if message.tags == 'error' %}error-message{% elif message.tags == 'success' %}success-message{% else %}warning-message{% endif %}">
-                            {{ message }}
-                        </div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-            <div class="form-group">
-                <label for="username">Username:</label>
-                <input type="text" id="username" name="username" required>
-            </div>
-            <div class="form-group">
-                <label for="password">Password:</label>
-                <input type="password" id="password" name="password" required>
-            </div>
-            <div class="form-group">
-                <button type="submit">Login</button>
-            </div>
-            <div class="form-links">
-                <div class="link">
-                    <a href="{% url 'forgot_password' %}">I forgot my password</a>
-                </div>
-            </div>
-            <div class="form-links">
-                <div class="link">
-                    <a href="{% url 'create_account' %}">Create account</a>
-                </div>
-            </div>
-        </form>
-    </div>
-    <script src="{% static 'js/messages.js' %}"></script> <!-- Include messages.js file -->
-</body>
-</html>
-
-
+{% block title %}Sign in | Darith{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{% static 'css/auth.css' %}">{% endblock %}
+{% block body %}
+<main class="auth-shell">
+    <section class="auth-intro">
+        <a class="auth-brand" href="{% url 'login' %}"><span>D</span>Darith</a>
+        <div class="auth-summary"><p>PERSONAL MONEY, MADE CLEAR</p><h1>Know what is safe to spend today.</h1><div class="summary-visual"><span>Free this month</span><strong>€1,240</strong><small>after plans and savings</small><i></i></div></div>
+        <small class="auth-footnote">Private by account. Built for everyday decisions.</small>
+    </section>
+    <section class="auth-form-side">
+        <div class="auth-form-wrap">
+            <p class="auth-kicker">Welcome back</p><h2>Sign in to your account</h2>
+            {% if messages %}{% for message in messages %}<div class="auth-message {{ message.tags }}">{{ message }}</div>{% endfor %}{% endif %}
+            <form method="post" class="auth-form">
+                {% csrf_token %}
+                <p><label for="username">Username</label><input id="username" name="username" autocomplete="username" required autofocus></p>
+                <p><span class="label-row"><label for="password">Password</label><a href="{% url 'forgot_password' %}">Forgot password?</a></span><input type="password" id="password" name="password" autocomplete="current-password" required></p>
+                <button class="auth-submit" type="submit">Sign in</button>
+            </form>
+            <p class="auth-switch">New to Darith? <a href="{% url 'create_account' %}">Create an account</a></p>
+        </div>
+    </section>
+</main>
+{% endblock %}

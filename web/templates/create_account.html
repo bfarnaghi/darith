@@ -1,49 +1,27 @@
+{# Author: Behnam <b.farnaghi@gmail.com> #}
+{# AI-assisted implementation; manually reviewed and verified by the developer. #}
+{% extends "base.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Create Account</title>
-    <link rel="stylesheet" type="text/css" href="{% static 'css/create_account.css' %}">
-    <!-- Google reCAPTCHA -->
-    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-</head>
-<body>
-    <div class="create-account-container">
-        <h2>Create Account</h2>
-        <form method="post">
-            {% csrf_token %}
-            {% if messages %}
-                <div class="messages">
-                    {% for message in messages %}
-                    <div class="message {% if message.tags == 'error' %}error-message{% elif message.tags == 'success' %}success-message{% else %}warning-message{% endif %}">
-                            {{ message }}
-                        </div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-            <div class="form-group">
-                <label for="username">Username:</label>
-                <input type="text" id="username" name="username" required>
-            </div>
-            <div class="form-group">
-                <label for="email">Email:</label>
-                <input type="email" id="email" name="email" required>
-            </div>
-            <div class="form-group">
-                <label for="password1">Password:</label>
-                <input type="password" id="password1" name="password1" required>
-            </div>
-            <div class="form-group">
-                <label for="password2">Confirm Password:</label>
-                <input type="password" id="password2" name="password2" required>
-            </div>
-            <!-- Google reCAPTCHA -->
-            <!-- <div class="g-recaptcha" data-sitekey="YOUR_SITE_KEY"></div>-->
-            <br>
-            <button type="submit">Create Account</button>
-        </form>
-    </div>
-    <script src="{% static 'js/messages.js' %}"></script> <!-- Include messages.js file -->
-</body>
-</html>
+{% block title %}Create account | Darith{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{% static 'css/auth.css' %}">{% endblock %}
+{% block body %}
+<main class="auth-shell">
+    <section class="auth-intro">
+        <a class="auth-brand" href="{% url 'login' %}"><span>D</span>Darith</a>
+        <div class="auth-summary"><p>YOUR MONTH AT A GLANCE</p><h1>Give every euro a clear purpose.</h1><div class="summary-visual saving"><span>Monthly saving</span><strong>€400</strong><small>reserved before free spending</small><i></i></div></div>
+        <small class="auth-footnote">Accounts, plans, savings, and daily spending in one place.</small>
+    </section>
+    <section class="auth-form-side">
+        <div class="auth-form-wrap">
+            <p class="auth-kicker">Get started</p><h2>Create your account</h2>
+            <form method="post" class="auth-form">
+                {% csrf_token %}
+                {% for field in form %}<p><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<small class="field-help">{{ field.help_text|safe }}</small>{% endif %}{% for error in field.errors %}<span class="field-error">{{ error }}</span>{% endfor %}</p>{% endfor %}
+                {% for error in form.non_field_errors %}<div class="auth-message error">{{ error }}</div>{% endfor %}
+                <button class="auth-submit" type="submit">Create account</button>
+            </form>
+            <p class="auth-switch">Already registered? <a href="{% url 'login' %}">Sign in</a></p>
+        </div>
+    </section>
+</main>
+{% endblock %}

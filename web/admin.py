@@ -1,11 +1,30 @@
+# Author: Behnam <b.farnaghi@gmail.com>
+# AI-assisted implementation; manually reviewed and verified by the developer.
 from django.contrib import admin
-from .models import *
 
-# Register your models here.
-admin.site.register(Expense)
-admin.site.register(Income)
-admin.site.register(Token)
-admin.site.register(ExpenseCategory)
-admin.site.register(IncomeCategory)
-admin.site.register(BankAccount)
-admin.site.register(MonthlyExpense)
+from .models import (
+    BankAccount,
+    Expense,
+    ExpenseCategory,
+    Income,
+    IncomeCategory,
+    MonthlyExpense,
+    RecurringIncome,
+    SavingsGoal,
+    Token,
+)
+
+
+admin.site.register(
+    [
+        BankAccount,
+        Expense,
+        ExpenseCategory,
+        Income,
+        IncomeCategory,
+        MonthlyExpense,
+        RecurringIncome,
+        SavingsGoal,
+        Token,
+    ]
+)

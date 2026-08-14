@@ -1,5 +1,7 @@
+# Author: Behnam <b.farnaghi@gmail.com>
+# AI-assisted implementation; manually reviewed and verified by the developer.
 """
-URL configuration for PyFiGenius project.
+URL configuration for Darith project.
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/5.0/topics/http/urls/
