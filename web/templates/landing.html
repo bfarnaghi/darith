@@ -1,0 +1,66 @@
+{# Author: Behnam <b.farnaghi@gmail.com> #}
+{# AI-assisted implementation; manually reviewed and verified by the developer. #}
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Darith | Personal money, made clear{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{% static 'css/landing.css' %}">{% endblock %}
+
+{% block body %}
+<header class="site-header">
+    <div class="site-header-inner">
+        <a class="site-brand" href="{% url 'home' %}" aria-label="Darith home"><img src="{% static 'images/logo.png' %}" alt=""><span>Darith</span></a>
+        <nav class="site-nav" aria-label="Website navigation"><a href="#how-it-works">How it works</a><a href="#security">Security</a></nav>
+        <div class="site-actions">
+            {% if request.user.is_authenticated %}<a class="header-primary" href="{% url 'dashboard' %}">Open dashboard</a>{% else %}<a class="header-link" href="{% url 'login' %}">Sign in</a><a class="header-primary" href="{% url 'create_account' %}">Create account</a>{% endif %}
+        </div>
+    </div>
+</header>
+
+<main>
+    <section class="product-hero" aria-labelledby="hero-title">
+        <div class="product-hero-inner">
+            <p class="hero-kicker">Personal money, made clear</p>
+            <h1 id="hero-title">Darith</h1>
+            <p class="hero-copy">Know what is safe to spend after bills, daily costs, and savings are accounted for.</p>
+            <div class="hero-actions">
+                {% if request.user.is_authenticated %}<a class="hero-primary" href="{% url 'dashboard' %}">Open dashboard</a>{% else %}<a class="hero-primary" href="{% url 'create_account' %}">Get started</a><a class="hero-secondary" href="{% url 'login' %}">Sign in</a>{% endif %}
+            </div>
+            <p class="hero-detail">Accounts · recurring plans · savings goals · clear monthly outlook</p>
+        </div>
+    </section>
+
+    <section class="how-section" id="how-it-works" aria-labelledby="how-title">
+        <div class="section-inner">
+            <div class="section-intro"><p class="section-kicker">How it works</p><h2 id="how-title">Your month, reduced to one useful number.</h2></div>
+            <div class="process-grid">
+                <article><span>01</span><h3>Bring it together</h3><p>Accounts, income, expenses, transfers, and goals live in one ledger.</p></article>
+                <article><span>02</span><h3>Plan what repeats</h3><p>Regular income, bills, daily costs, and savings are carried into each month.</p></article>
+                <article><span>03</span><h3>Spend with context</h3><p>Darith shows what remains and warns when the plan no longer fits the balance.</p></article>
+            </div>
+        </div>
+    </section>
+
+    <section class="decision-band">
+        <div class="section-inner decision-inner"><p class="section-kicker">Built for real life</p><h2>Plan ahead without turning money into a second job.</h2><p>Automatic monthly movements, goal funding, daily expense reserves, and private status animations keep the dashboard personal and current.</p></div>
+    </section>
+
+    <section class="security-section" id="security" aria-labelledby="security-title">
+        <div class="section-inner">
+            <div class="security-heading"><p class="section-kicker">Security by design</p><h2 id="security-title">Protected at every practical layer.</h2><p>Darith is designed for secure public hosting while keeping each account's financial records isolated.</p></div>
+            <div class="security-grid">
+                <article><h3>Account isolation</h3><p>Financial records and private dashboard GIFs are returned only for the signed-in owner.</p></article>
+                <article><h3>Protected access</h3><p>Argon2 password hashing, CSRF protection, secure cookies, and browser security headers protect sessions.</p></article>
+                <article><h3>Hardened hosting</h3><p>Production requires HTTPS, PostgreSQL over TLS, encrypted backups, and encrypted storage from the hosting provider.</p></article>
+            </div>
+            <p class="security-note">Darith uses server-side protection, not end-to-end encryption. Authorized server or database administrators can access hosted data.</p>
+        </div>
+    </section>
+
+    <section class="closing-section">
+        <div class="section-inner closing-inner"><p class="section-kicker">A calmer monthly view</p><h2>Make the next spending decision with the whole month in sight.</h2>{% if request.user.is_authenticated %}<a href="{% url 'dashboard' %}">Open Darith</a>{% else %}<a href="{% url 'create_account' %}">Create your account</a>{% endif %}</div>
+    </section>
+</main>
+
+<footer class="site-footer"><div class="section-inner"><span>© 2026 Darith</span><span>darith.app</span></div></footer>
+{% endblock %}

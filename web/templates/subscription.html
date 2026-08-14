@@ -1,0 +1,48 @@
+{# Author: Behnam <b.farnaghi@gmail.com> #}
+{# AI-assisted implementation; manually reviewed and verified by the developer. #}
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Subscription | Darith{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{% static 'css/subscription.css' %}">{% endblock %}
+
+{% block body %}
+<div class="billing-shell">
+    <header class="billing-header">
+        <a class="billing-brand" href="{% url 'home' %}"><img src="{% static 'images/logo.png' %}" alt=""><span>Darith</span></a>
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="quiet-button" type="submit">Log out</button></form>
+    </header>
+
+    <main class="billing-main">
+        {% if messages %}<div class="billing-messages" aria-live="polite">{% for message in messages %}<div class="billing-message {{ message.tags }}">{{ message }}</div>{% endfor %}</div>{% endif %}
+
+        <section class="billing-copy">
+            <p class="billing-kicker">Account access</p>
+            <h1>{% if plan %}{{ plan.name }}{% else %}Darith subscription{% endif %}</h1>
+
+            {% if checkout_result == 'success' and not subscription.has_access %}<div class="access-state success"><strong>Checkout completed</strong><span>Stripe is confirming access. Refresh this page in a moment.</span></div>{% endif %}
+            {% if checkout_result == 'canceled' %}<div class="access-state warning"><strong>Checkout canceled</strong><span>No subscription change was made.</span></div>{% endif %}
+
+            {% if subscription.has_admin_access %}
+                <div class="access-state success"><strong>Access granted by administrator</strong><span>{% if subscription.admin_bypass_until %}Available until {{ subscription.admin_bypass_until|date:"j M Y" }}.{% else %}No payment is required for this account.{% endif %}</span></div>
+                <a class="primary-button" href="{% url 'dashboard' %}">Open dashboard</a>
+            {% elif subscription.has_stripe_access %}
+                <div class="access-state success"><strong>{{ subscription.get_status_display }}</strong><span>{% if subscription.status == 'trialing' %}Trial ends {{ subscription.trial_ends_at|date:"j M Y" }}.{% elif subscription.cancel_at_period_end %}Access continues until {{ subscription.current_period_end|date:"j M Y" }}.{% else %}Next billing period ends {{ subscription.current_period_end|date:"j M Y" }}.{% endif %}</span></div>
+                <div class="billing-actions"><a class="primary-button" href="{% url 'dashboard' %}">Open dashboard</a><form method="post" action="{% url 'subscription_portal' %}">{% csrf_token %}<button class="secondary-button" type="submit">Manage billing</button></form></div>
+            {% elif plan and plan.stripe_price_id %}
+                <div class="plan-price"><strong>{% if plan.currency == 'eur' %}€{% endif %}{{ plan.monthly_price|floatformat:2 }}</strong><span>{{ plan.currency|upper }} / month</span></div>
+                {% if plan.trial_days %}<p class="trial-copy">{{ plan.trial_days }} days free, then billed monthly. Cancel from the billing portal.</p>{% endif %}
+                {% if subscription.stripe_customer_id and subscription.status != 'canceled' and subscription.status != 'not_started' %}
+                    <div class="access-state warning"><strong>{{ subscription.get_status_display }}</strong><span>Open billing to update payment details or resolve the subscription.</span></div>
+                    <form method="post" action="{% url 'subscription_portal' %}">{% csrf_token %}<button class="primary-button" type="submit">Open billing</button></form>
+                {% else %}
+                    <form method="post" action="{% url 'subscription_checkout' %}">{% csrf_token %}<button class="primary-button" type="submit">{% if plan.trial_days %}Start free trial{% else %}Subscribe{% endif %}</button></form>
+                {% endif %}
+                <p class="secure-copy">Payment details are collected and stored by Stripe.</p>
+            {% else %}
+                <div class="access-state warning"><strong>Billing is not available</strong><span>An administrator must activate a Stripe Price before subscriptions can start.</span></div>
+            {% endif %}
+        </section>
+    </main>
+</div>
+{% endblock %}

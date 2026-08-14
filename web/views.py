@@ -1,14 +1,20 @@
 # Author: Behnam <b.farnaghi@gmail.com>
 # AI-assisted implementation; manually reviewed and verified by the developer.
+import logging
+
+import stripe
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import SetPasswordForm
 from django.contrib.auth.models import User
 from django.contrib.auth.tokens import default_token_generator
+from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
 from django.db import IntegrityError
-from django.http import Http404
+from django.db.models.deletion import ProtectedError
+from django.http import FileResponse, Http404, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -16,19 +22,25 @@ from django.utils import timezone
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
 
 from .forms import (
     BankAccountForm,
+    BudgetPreferenceForm,
     CategoryForm,
+    DashboardAnimationForm,
     ExpenseForm,
     IncomeForm,
     MonthlyExpenseForm,
     RecurringIncomeForm,
     RegistrationForm,
     SavingsGoalForm,
+    TransferForm,
 )
+from .exports import build_user_csv_response
 from .models import (
     BankAccount,
+    BudgetPreference,
     Expense,
     ExpenseCategory,
     Income,
@@ -36,16 +48,36 @@ from .models import (
     MonthlyExpense,
     RecurringIncome,
     SavingsGoal,
+    Transfer,
 )
-from .services import build_monthly_budget, delete_transaction, post_due_recurring, save_transaction
+from .services import (
+    InsufficientFunds,
+    build_monthly_budget,
+    delete_transaction,
+    delete_transfer,
+    fund_goal_for_month,
+    goal_funding_reminders,
+    post_due_recurring,
+    save_transaction,
+    save_transfer,
+)
+from .subscriptions import (
+    create_checkout_session,
+    create_customer_portal_session,
+    get_active_plan,
+    get_user_subscription,
+    process_stripe_event,
+    SubscriptionConfigurationError,
+)
 
 
+logger = logging.getLogger(__name__)
 DEFAULT_EXPENSE_CATEGORIES = ["Bills", "Food", "Health", "Housing", "Leisure", "Transport"]
 DEFAULT_INCOME_CATEGORIES = ["Freelance", "Other", "Salary"]
 
 
 def home(request):
-    return redirect("dashboard" if request.user.is_authenticated else "login")
+    return render(request, "landing.html")
 
 
 def _dashboard_redirect(tab="overview"):
@@ -75,6 +107,12 @@ def dashboard(request):
         messages.info(request, f"Posted {posted_count} scheduled transaction(s).")
 
     accounts = list(BankAccount.objects.filter(user=request.user))
+    preference, _ = BudgetPreference.objects.get_or_create(user=request.user)
+    transfers = list(
+        Transfer.objects.filter(user=request.user).select_related(
+            "source_bank", "source_goal", "destination_bank", "destination_goal"
+        )
+    )
     expenses = list(
         Expense.objects.filter(user=request.user).select_related("category", "bank_account")
     )
@@ -105,6 +143,18 @@ def dashboard(request):
             "object": item,
         }
         for item in incomes
+    ] + [
+        {
+            "id": item.id,
+            "kind": "transfer",
+            "text": item.name,
+            "amount": item.amount,
+            "date": item.date,
+            "source": item.source,
+            "destination": item.destination,
+            "object": item,
+        }
+        for item in transfers
     ]
     transactions.sort(key=lambda item: (item["date"], item["id"]), reverse=True)
 
@@ -114,7 +164,12 @@ def dashboard(request):
     recurring_expenses = list(
         MonthlyExpense.objects.filter(user=request.user).select_related("category", "bank_account")
     )
-    savings_goals = list(SavingsGoal.objects.filter(user=request.user))
+    savings_goals = list(
+        SavingsGoal.objects.filter(user=request.user).select_related("bank_account")
+    )
+    goal_reminders = goal_funding_reminders(request.user, today)
+    budget = build_monthly_budget(request.user, today)
+    active_animation = getattr(preference, f"{budget['status']}_gif")
 
     context = {
         "active_tab": request.GET.get("tab", "overview"),
@@ -125,10 +180,22 @@ def dashboard(request):
         "recurring_incomes": recurring_incomes,
         "recurring_expenses": recurring_expenses,
         "savings_goals": savings_goals,
+        "goal_reminders": goal_reminders,
+        "subscriptions_enabled": settings.SUBSCRIPTIONS_ENABLED,
+        "user_subscription": (
+            get_user_subscription(request.user)
+            if settings.SUBSCRIPTIONS_ENABLED
+            else None
+        ),
         "expense_categories": ExpenseCategory.objects.filter(user=request.user),
         "income_categories": IncomeCategory.objects.filter(user=request.user),
-        "budget": build_monthly_budget(request.user, today),
+        "budget": budget,
+        "budget_preference": preference,
+        "active_budget_animation": bool(active_animation),
         "account_form": BankAccountForm(),
+        "budget_preference_form": BudgetPreferenceForm(instance=preference),
+        "dashboard_animation_form": DashboardAnimationForm(instance=preference),
+        "transfer_form": TransferForm(user=request.user, initial={"date": today}),
         "expense_form": ExpenseForm(user=request.user, initial={"date": today}),
         "income_form": IncomeForm(user=request.user, initial={"date": today}),
         "recurring_income_form": RecurringIncomeForm(
@@ -137,7 +204,9 @@ def dashboard(request):
         "monthly_expense_form": MonthlyExpenseForm(
             user=request.user, initial={"start_date": today}
         ),
-        "savings_goal_form": SavingsGoalForm(initial={"start_date": today}),
+        "savings_goal_form": SavingsGoalForm(
+            user=request.user, initial={"start_date": today, "current_balance": 0}
+        ),
         "category_form": CategoryForm(),
         "account_edit_forms": [
             (item, BankAccountForm(instance=item, auto_id=f"account_{item.id}_%s"))
@@ -170,11 +239,127 @@ def dashboard(request):
             for item in recurring_expenses
         ],
         "savings_goal_edit_forms": [
-            (item, SavingsGoalForm(instance=item, auto_id=f"saving_{item.id}_%s"))
+            (
+                item,
+                SavingsGoalForm(
+                    instance=item, user=request.user, auto_id=f"saving_{item.id}_%s"
+                ),
+            )
             for item in savings_goals
+        ],
+        "transfer_edit_forms": [
+            (
+                item,
+                TransferForm(
+                    instance=item, user=request.user, auto_id=f"transfer_{item.id}_%s"
+                ),
+            )
+            for item in transfers
         ],
     }
     return render(request, "dashboard.html", context)
+
+
+@login_required
+def export_data_csv(request):
+    return build_user_csv_response(request.user)
+
+
+def _require_subscriptions_enabled():
+    if not settings.SUBSCRIPTIONS_ENABLED:
+        raise Http404("Subscriptions are not enabled.")
+
+
+@login_required
+def subscription_overview(request):
+    _require_subscriptions_enabled()
+    return render(
+        request,
+        "subscription.html",
+        {
+            "plan": get_active_plan(),
+            "subscription": get_user_subscription(request.user),
+            "checkout_result": request.GET.get("checkout", ""),
+        },
+    )
+
+
+@require_POST
+@login_required
+def subscription_checkout(request):
+    _require_subscriptions_enabled()
+    plan = get_active_plan()
+    if plan is None or not plan.stripe_price_id:
+        messages.error(request, "A subscription plan is not available yet.")
+        return redirect("subscription_overview")
+
+    user_subscription = get_user_subscription(request.user)
+    if user_subscription and user_subscription.has_access:
+        messages.info(request, "This account already has access.")
+        return redirect("subscription_overview")
+    if (
+        user_subscription
+        and user_subscription.stripe_customer_id
+        and user_subscription.stripe_subscription_id
+        and user_subscription.status
+        not in {
+            user_subscription.STATUS_CANCELED,
+            user_subscription.STATUS_NOT_STARTED,
+        }
+    ):
+        messages.info(request, "Manage the existing subscription in billing.")
+        return redirect("subscription_overview")
+
+    try:
+        session = create_checkout_session(request, plan)
+    except SubscriptionConfigurationError:
+        logger.exception("Darith and Stripe subscription prices do not match.")
+        messages.error(request, "The subscription price needs administrator review.")
+        return redirect("subscription_overview")
+    except stripe.StripeError:
+        logger.exception("Stripe Checkout session creation failed.")
+        messages.error(request, "Checkout is temporarily unavailable. Please try again.")
+        return redirect("subscription_overview")
+    return redirect(session.url)
+
+
+@require_POST
+@login_required
+def subscription_portal(request):
+    _require_subscriptions_enabled()
+    user_subscription = get_user_subscription(request.user)
+    if user_subscription is None or not user_subscription.stripe_customer_id:
+        messages.error(request, "No Stripe billing account is connected yet.")
+        return redirect("subscription_overview")
+    try:
+        session = create_customer_portal_session(request, user_subscription)
+    except stripe.StripeError:
+        logger.exception("Stripe customer portal session creation failed.")
+        messages.error(request, "Billing is temporarily unavailable. Please try again.")
+        return redirect("subscription_overview")
+    return redirect(session.url)
+
+
+@csrf_exempt
+@require_POST
+def stripe_webhook(request):
+    if not settings.SUBSCRIPTIONS_ENABLED:
+        return HttpResponse(status=404)
+    try:
+        event = stripe.Webhook.construct_event(
+            request.body,
+            request.headers.get("Stripe-Signature", ""),
+            settings.STRIPE_WEBHOOK_SECRET,
+        )
+    except (ValueError, stripe.SignatureVerificationError):
+        return HttpResponseBadRequest("Invalid Stripe webhook signature.")
+
+    try:
+        process_stripe_event(event)
+    except Exception:
+        logger.exception("Stripe webhook processing failed.")
+        return HttpResponse(status=500)
+    return HttpResponse(status=200)
 
 
 @require_POST
@@ -214,8 +399,14 @@ def update_bank_account(request, account_id):
 @login_required
 def delete_bank_account(request, account_id):
     account = get_object_or_404(BankAccount, pk=account_id, user=request.user)
-    account.delete()
-    messages.success(request, "Bank account removed. Its transaction history was kept.")
+    try:
+        account.delete()
+        messages.success(request, "Bank account removed. Its transaction history was kept.")
+    except ProtectedError:
+        messages.error(
+            request,
+            "This account is used by a transfer. Delete that transfer or change the goal account first.",
+        )
     return _dashboard_redirect("accounts")
 
 
@@ -282,10 +473,51 @@ def delete_income(request, income_id):
     return _dashboard_redirect("transactions")
 
 
+@require_POST
+@login_required
+def create_transfer(request):
+    form = TransferForm(request.POST, user=request.user)
+    if form.is_valid():
+        try:
+            save_transfer(form, request.user)
+            messages.success(request, "Transfer completed.")
+        except (InsufficientFunds, ValidationError) as error:
+            messages.error(request, " ".join(error.messages))
+    else:
+        _show_form_errors(request, form)
+    return _dashboard_redirect("transactions")
+
+
+@require_POST
+@login_required
+def update_transfer(request, item_id):
+    item = get_object_or_404(Transfer, pk=item_id, user=request.user)
+    form = TransferForm(request.POST, instance=item, user=request.user)
+    if form.is_valid():
+        try:
+            save_transfer(form, request.user, item)
+            messages.success(request, "Transfer updated.")
+        except (InsufficientFunds, ValidationError) as error:
+            messages.error(request, " ".join(error.messages))
+    else:
+        _show_form_errors(request, form)
+    return _dashboard_redirect("transactions")
+
+
+@require_POST
+@login_required
+def remove_transfer(request, item_id):
+    item = get_object_or_404(Transfer, pk=item_id, user=request.user)
+    delete_transfer(item)
+    messages.success(request, "Transfer removed and balances restored.")
+    return _dashboard_redirect("transactions")
+
+
 def _create_plan(request, form_class, tab="plans"):
     kwargs = {"user": request.user} if form_class in (
         RecurringIncomeForm,
         MonthlyExpenseForm,
+        SavingsGoalForm,
     ) else {}
     form = form_class(request.POST, **kwargs)
     if form.is_valid():
@@ -301,7 +533,7 @@ def _create_plan(request, form_class, tab="plans"):
 def _update_plan(request, form_class, model, item_id):
     item = get_object_or_404(model, pk=item_id, user=request.user)
     kwargs = {"instance": item}
-    if form_class in (RecurringIncomeForm, MonthlyExpenseForm):
+    if form_class in (RecurringIncomeForm, MonthlyExpenseForm, SavingsGoalForm):
         kwargs["user"] = request.user
     form = form_class(request.POST, **kwargs)
     if form.is_valid():
@@ -367,9 +599,79 @@ def update_savings_goal(request, item_id):
 @require_POST
 @login_required
 def delete_savings_goal(request, item_id):
-    get_object_or_404(SavingsGoal, pk=item_id, user=request.user).delete()
-    messages.success(request, "Savings goal removed.")
+    goal = get_object_or_404(SavingsGoal, pk=item_id, user=request.user)
+    try:
+        goal.delete()
+        messages.success(request, "Savings goal removed.")
+    except ProtectedError:
+        messages.error(
+            request,
+            "This goal has transfer history. Move its balance out and keep the goal for your records.",
+        )
     return _dashboard_redirect("plans")
+
+
+@require_POST
+@login_required
+def fund_savings_goal(request, item_id):
+    goal = get_object_or_404(SavingsGoal, pk=item_id, user=request.user)
+    try:
+        item = fund_goal_for_month(goal, request.user, timezone.localdate())
+        if item:
+            messages.success(request, f"EUR {item.amount:,.2f} moved to {goal.name}.")
+        else:
+            messages.info(request, "This goal is already funded for the month.")
+    except (InsufficientFunds, ValidationError) as error:
+        messages.error(request, " ".join(error.messages))
+    return _dashboard_redirect("overview")
+
+
+@require_POST
+@login_required
+def update_budget_preference(request):
+    preference, _ = BudgetPreference.objects.get_or_create(user=request.user)
+    form = BudgetPreferenceForm(request.POST, instance=preference)
+    if form.is_valid():
+        form.save()
+        messages.success(request, "Daily spending expectation updated.")
+    else:
+        _show_form_errors(request, form)
+    return _dashboard_redirect("overview")
+
+
+@require_POST
+@login_required
+def update_dashboard_animations(request):
+    preference, _ = BudgetPreference.objects.get_or_create(user=request.user)
+    form = DashboardAnimationForm(
+        request.POST, request.FILES, instance=preference
+    )
+    if form.is_valid():
+        form.save()
+        messages.success(request, "Dashboard animations updated.")
+    else:
+        _show_form_errors(request, form)
+    return _dashboard_redirect("overview")
+
+
+@login_required
+def dashboard_animation(request, status):
+    if status not in {"healthy", "warning", "danger"}:
+        raise Http404("Unknown budget status.")
+    preference = get_object_or_404(BudgetPreference, user=request.user)
+    animation = getattr(preference, f"{status}_gif")
+    if not animation.name:
+        raise Http404("No animation is configured for this status.")
+    try:
+        animation.open("rb")
+    except (FileNotFoundError, OSError) as error:
+        raise Http404("The animation file is unavailable.") from error
+
+    response = FileResponse(animation, content_type="image/gif")
+    response["Cache-Control"] = "private, no-store"
+    response["Content-Disposition"] = f'inline; filename="darith-{status}.gif"'
+    response["Cross-Origin-Resource-Policy"] = "same-origin"
+    return response
 
 
 def _category_model(kind):

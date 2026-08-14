@@ -1,50 +1,93 @@
+<p align="center">
+  <img src="web/static/images/logo.png" alt="Darith logo" width="180">
+</p>
+
 # Darith
 
-Darith is a responsive Django app for managing personal money in EUR.
+Darith is a responsive Django app for managing personal money in EUR on mobile and desktop.
+
+**Website:** [https://darith.app](https://darith.app)
 
 ## What it does
 
-- Tracks the current balance of multiple bank accounts.
-- Adds, edits, and removes manual income and expenses.
-- Organizes expenses and income with personal categories.
-- Posts monthly income and expenses automatically on their due date.
-- Reserves monthly savings goals.
-- Shows how much is free to spend for the rest of the month and per day.
-- Warns when the projected balance cannot cover planned expenses and savings.
+- Tracks current balances across multiple bank accounts.
+- Adds, edits, and removes income, expenses, and transfers.
+- Moves money between bank accounts and savings goals.
+- Posts recurring income and expenses from their effective dates.
+- Supports ongoing monthly savings and dated targets such as a bicycle or holiday.
+- Keeps a separate balance for every savings goal.
+- Calculates monthly goal contributions and shows a reminder until you mark them saved.
+- Reserves expected daily costs, upcoming bills, and goal funding before calculating free spending.
+- Warns when spendable accounts cannot cover the remaining daily costs.
+- Shows an optional private GIF chosen by the user for on-track, warning, and out-of-budget states.
+- Exports the signed-in user's financial data as a CSV file.
+- Optionally supports a 14-day Stripe subscription trial and administrator access bypass.
 
 ## Run locally
 
-```bash
+~~~bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 python manage.py migrate
 python manage.py runserver
-```
+~~~
 
-Open `http://127.0.0.1:8000`, create an account, and sign in.
+Open `http://127.0.0.1:8000`, create a user account, and sign in.
 
 ## How to use it
 
-1. Add each bank account with its current real balance.
-2. Record manual income or expenses. The selected account balance updates automatically.
-3. Add salary, rent, bills, and similar items under **Monthly plans**. Due items are posted when you open the dashboard.
-4. Add a monthly savings goal. It is reserved in the budget but is not moved between accounts.
-5. Check **Free to spend** for the amount left after upcoming monthly income, expenses, and savings.
+1. Add each real bank account and its current balance under **Accounts**.
+2. Set **Expected daily costs** from the Overview. Darith reserves that amount for every remaining day of the month.
+3. Record manual income and expenses. Their selected bank balance updates immediately.
+4. Use **Transfer** to move money between banks, from a bank to a goal, or from a goal back to a bank.
+5. Add salary, rent, bills, and subscriptions under **Monthly plans**. The first effective date sets the monthly charge day; the optional last date stops it.
+6. Create an ongoing savings goal with a monthly amount, or enter a target amount and target date. Choose the bank that will fund it.
+7. When a monthly savings reminder appears, press **Mark saved**. Darith transfers the calculated amount from the selected bank into that goal once for the month.
+8. Check **Free to spend** for money left after scheduled income, bills, expected daily costs, and unfunded savings goals.
+9. Use **Export CSV** above the transaction list to download your accounts, goals, plans, transactions, and transfers.
+10. Use the gear button in **Free to spend** to upload or remove a GIF for each budget state. GIFs are limited to 2 MB, 1200 x 1200 pixels, and 300 frames.
 
-Editing or deleting a transaction reverses its old balance change. Deleting a bank account keeps its transaction history.
+Editing or deleting a transaction or transfer reverses its previous balance change. A bank or goal with transfer history is kept to protect the ledger.
 
-For server setup, see [DEPLOYMENT.md](DEPLOYMENT.md).
+Due recurring items are processed whenever the dashboard opens. A server can also run them daily without a login:
+
+~~~bash
+python manage.py process_scheduled_transactions
+~~~
+
+## Public deployment
+
+Production mode requires PostgreSQL with TLS and refuses insecure defaults. Darith also uses Argon2 password hashing, secure cookies, HTTPS redirects, browser security headers, private authenticated GIF delivery, and encrypted database/media backup scripts.
+
+Database encryption at rest must be enabled with your PostgreSQL host or encrypted server volume. This protects stolen disks and backups, but it is not per-user end-to-end encryption. See [DEPLOYMENT.md](DEPLOYMENT.md) for the complete setup.
+
+## Optional subscriptions
+
+Subscriptions are off by default. When enabled, Darith uses Stripe's hosted Checkout and customer portal for monthly payments, supports a configurable free trial, and accepts signed Stripe webhooks as the source of subscription status. An administrator can change the displayed monthly plan or grant selected users temporary or permanent access from Django admin.
+
+See the **Optional Stripe subscriptions** section in [DEPLOYMENT.md](DEPLOYMENT.md) before enabling payments. A changed price requires a new Stripe Price; existing subscriptions keep their previous price unless they are migrated separately.
+
+## Replace the logo
+
+Replace `web/static/images/logo.png` with your own square PNG. Keep the same filename; the login pages, dashboard, favicon, and mobile home-screen icon will update automatically. A 512 x 512 image is recommended.
+
+## License
+
+Darith is publicly available as **source-available software** under the [PolyForm Noncommercial License 1.0.0](LICENSE). Academic research, education, evaluation, and other permitted noncommercial uses are welcome. Commercial use by anyone other than the copyright holder requires a separate written license; contact `b.farnaghi@gmail.com`.
+
+See [NOTICE](NOTICE) for attribution and [CONTRIBUTING.md](CONTRIBUTING.md) before contributing. PolyForm Noncommercial is not an OSI-approved open-source license.
 
 ## Tests
 
-```bash
+~~~bash
 python manage.py test
-```
+python manage.py check
+~~~
 
 Optional browser test:
 
-```bash
-pip install -r requirements-dev.txt
+~~~bash
+python -m pip install -r requirements-dev.txt
 python scripts/ui_smoke.py
-```
+~~~

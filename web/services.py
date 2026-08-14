@@ -2,15 +2,30 @@
 # AI-assisted implementation; manually reviewed and verified by the developer.
 import calendar
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, ROUND_UP
 
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Sum
 
-from .models import BankAccount, Expense, Income, MonthlyExpense, RecurringIncome, SavingsGoal
+from .models import (
+    BankAccount,
+    BudgetPreference,
+    Expense,
+    Income,
+    MonthlyExpense,
+    RecurringIncome,
+    SavingsGoal,
+    Transfer,
+)
 
 
 ZERO = Decimal("0.00")
+CENT = Decimal("0.01")
+
+
+class InsufficientFunds(ValidationError):
+    pass
 
 
 def month_bounds(day):
@@ -49,6 +64,12 @@ def adjust_account_balance(account_id, delta):
     account.save(update_fields=["balance"])
 
 
+def adjust_goal_balance(goal_id, delta):
+    goal = SavingsGoal.objects.select_for_update().get(pk=goal_id)
+    goal.current_balance += delta
+    goal.save(update_fields=["current_balance"])
+
+
 @transaction.atomic
 def save_transaction(form, user, instance=None):
     previous = None
@@ -77,6 +98,127 @@ def delete_transaction(item):
         reverse_delta = item.amount if isinstance(item, Expense) else -item.amount
         adjust_account_balance(item.bank_account_id, reverse_delta)
     item.delete()
+
+
+def _source_balance(item):
+    if item.source_bank_id:
+        return BankAccount.objects.select_for_update().get(pk=item.source_bank_id).balance
+    return SavingsGoal.objects.select_for_update().get(pk=item.source_goal_id).current_balance
+
+
+def _apply_transfer(item, reverse=False, check_funds=True):
+    source_delta = item.amount if reverse else -item.amount
+    if not reverse and check_funds and _source_balance(item) < item.amount:
+        raise InsufficientFunds("The source account does not have enough money.")
+
+    if item.source_bank_id:
+        adjust_account_balance(item.source_bank_id, source_delta)
+    else:
+        adjust_goal_balance(item.source_goal_id, source_delta)
+
+    if item.destination_bank_id:
+        adjust_account_balance(item.destination_bank_id, -source_delta)
+    else:
+        adjust_goal_balance(item.destination_goal_id, -source_delta)
+
+
+@transaction.atomic
+def save_transfer(form, user, instance=None):
+    previous = None
+    if instance and instance.pk:
+        previous = Transfer.objects.select_for_update().get(pk=instance.pk)
+        _apply_transfer(previous, reverse=True, check_funds=False)
+
+    item = form.save(commit=False)
+    item.user = user
+    item.full_clean()
+    item.save()
+    _apply_transfer(item)
+    return item
+
+
+@transaction.atomic
+def delete_transfer(item):
+    locked = Transfer.objects.select_for_update().get(pk=item.pk)
+    _apply_transfer(locked, reverse=True, check_funds=False)
+    locked.delete()
+
+
+def goal_monthly_contribution(goal, as_of):
+    remaining = max((goal.target_amount or ZERO) - goal.current_balance, ZERO)
+    if goal.target_amount is None:
+        return goal.monthly_amount
+    if remaining == ZERO:
+        return ZERO
+    if not goal.target_date or as_of >= goal.target_date:
+        return remaining
+
+    months_remaining = (
+        (goal.target_date.year - as_of.year) * 12
+        + goal.target_date.month
+        - as_of.month
+        + 1
+    )
+    return (remaining / max(months_remaining, 1)).quantize(CENT, rounding=ROUND_UP)
+
+
+def goal_funding_reminders(user, today):
+    period = today.replace(day=1)
+    goals = SavingsGoal.objects.filter(user=user, start_date__lte=today).select_related(
+        "bank_account"
+    )
+    funded_goal_ids = set(
+        Transfer.objects.filter(
+            user=user, destination_goal__isnull=False, goal_period=period
+        ).values_list("destination_goal_id", flat=True)
+    )
+    reminders = []
+    for goal in goals:
+        if goal.pk in funded_goal_ids:
+            continue
+        due = goal_monthly_contribution(goal, today)
+        if due <= ZERO:
+            continue
+        reminders.append(
+            {
+                "goal": goal,
+                "amount": due,
+                "source_account": goal.bank_account,
+                "can_fund": bool(goal.bank_account and goal.bank_account.balance >= due),
+            }
+        )
+    return reminders
+
+
+@transaction.atomic
+def fund_goal_for_month(goal, user, today):
+    goal = (
+        SavingsGoal.objects.select_for_update()
+        .select_related("bank_account")
+        .get(pk=goal.pk, user=user)
+    )
+    period = today.replace(day=1)
+    if Transfer.objects.filter(destination_goal=goal, goal_period=period).exists():
+        return None
+    if not goal.bank_account_id:
+        raise ValidationError("Choose a funding bank account for this goal first.")
+
+    amount = goal_monthly_contribution(goal, today)
+    if amount <= ZERO:
+        return None
+    item = Transfer(
+        user=user,
+        name=f"Save for {goal.name}",
+        amount=amount,
+        date=today,
+        source_bank=goal.bank_account,
+        destination_goal=goal,
+        goal_period=period,
+    )
+    item.full_clean()
+    item.save()
+    _apply_transfer(item)
+    return item
 
 
 def post_due_recurring(user, through_date):
@@ -160,29 +302,45 @@ def build_monthly_budget(user, today):
                     {"kind": "expense", "name": plan.name, "date": occurrence, "amount": plan.amount}
                 )
 
-    goals = SavingsGoal.objects.filter(
-        user=user, start_date__lte=month_end
-    ).filter(end_date__isnull=True) | SavingsGoal.objects.filter(
-        user=user, start_date__lte=month_end, end_date__gte=month_start
-    )
-    savings_target = _sum(goals.distinct(), "monthly_amount")
+    reminders = goal_funding_reminders(user, today)
+    savings_target = sum((item["amount"] for item in reminders), ZERO)
     current_balance = _sum(accounts, "balance")
+    savings_balance = _sum(SavingsGoal.objects.filter(user=user), "current_balance")
     projected_balance = current_balance + expected_income - expected_expenses
-    free_to_spend = projected_balance - savings_target
     days_remaining = (month_end - today).days + 1
+    daily_expense = (
+        BudgetPreference.objects.filter(user=user)
+        .values_list("expected_daily_expense", flat=True)
+        .first()
+        or ZERO
+    )
+    remaining_daily_expenses = daily_expense * days_remaining
+    free_to_spend = projected_balance - remaining_daily_expenses - savings_target
     daily_allowance = free_to_spend / days_remaining
 
-    if free_to_spend < 0:
+    if projected_balance < remaining_daily_expenses:
         status = "danger"
-        shortfall = abs(free_to_spend)
-        warning = f"Your plan is short by EUR {shortfall:,.2f} for this month's commitments."
-    elif projected_balance < savings_target:
+        shortfall = remaining_daily_expenses - projected_balance
+        if savings_balance >= shortfall:
+            warning = (
+                f"Your spendable accounts are EUR {shortfall:,.2f} short of expected "
+                "daily costs. You may need to move money from savings."
+            )
+        else:
+            warning = (
+                f"Your spendable accounts are EUR {shortfall:,.2f} short of expected "
+                "daily costs, even before this month's saving goals."
+            )
+    elif free_to_spend < ZERO:
         status = "warning"
-        shortfall = savings_target - projected_balance
-        warning = f"Your projected balance is EUR {shortfall:,.2f} below your savings target."
+        shortfall = abs(free_to_spend)
+        warning = (
+            f"Daily costs are covered, but EUR {shortfall:,.2f} is still needed "
+            "for this month's saving goals."
+        )
     else:
         status = "healthy"
-        warning = "Your planned expenses and savings are covered this month."
+        warning = "Expected bills, daily costs, and saving goals are covered this month."
 
     actual_income = _sum(
         Income.objects.filter(user=user, date__range=(month_start, today)), "amount"
@@ -195,8 +353,11 @@ def build_monthly_budget(user, today):
         "month_start": month_start,
         "month_end": month_end,
         "current_balance": current_balance,
+        "savings_balance": savings_balance,
         "expected_income": expected_income,
         "expected_expenses": expected_expenses,
+        "expected_daily_expense": daily_expense,
+        "remaining_daily_expenses": remaining_daily_expenses,
         "savings_target": savings_target,
         "projected_balance": projected_balance,
         "free_to_spend": free_to_spend,
