@@ -67,12 +67,6 @@ class BudgetPreferenceForm(StyledFormMixin, forms.ModelForm):
 
 
 class DashboardAnimationForm(StyledFormMixin, forms.ModelForm):
-    remove_healthy_gif = forms.BooleanField(required=False, label="Remove on-track GIF")
-    remove_warning_gif = forms.BooleanField(required=False, label="Remove warning GIF")
-    remove_danger_gif = forms.BooleanField(
-        required=False, label="Remove out-of-budget GIF"
-    )
-
     class Meta:
         model = BudgetPreference
         fields = ["healthy_gif", "warning_gif", "danger_gif"]
@@ -86,36 +80,6 @@ class DashboardAnimationForm(StyledFormMixin, forms.ModelForm):
             "warning_gif": forms.FileInput(attrs={"accept": "image/gif"}),
             "danger_gif": forms.FileInput(attrs={"accept": "image/gif"}),
         }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        for field_name in (
-            "remove_healthy_gif",
-            "remove_warning_gif",
-            "remove_danger_gif",
-        ):
-            self.fields[field_name].widget.attrs["class"] = "form-checkbox"
-
-    def clean(self):
-        cleaned_data = super().clean()
-        for state in ("healthy", "warning", "danger"):
-            if cleaned_data.get(f"{state}_gif") and cleaned_data.get(
-                f"remove_{state}_gif"
-            ):
-                self.add_error(
-                    f"remove_{state}_gif",
-                    "Choose a replacement or remove the current GIF, not both.",
-                )
-        return cleaned_data
-
-    def save(self, commit=True):
-        instance = super().save(commit=False)
-        for state in ("healthy", "warning", "danger"):
-            if self.cleaned_data.get(f"remove_{state}_gif"):
-                setattr(instance, f"{state}_gif", None)
-        if commit:
-            instance.save()
-        return instance
 
 
 class TransactionForm(UserScopedFormMixin, StyledFormMixin, forms.ModelForm):

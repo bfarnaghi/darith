@@ -186,17 +186,6 @@ EMAIL_HOST_PASSWORD = os.environ.get("DJANGO_EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = env_bool("DJANGO_EMAIL_USE_TLS", False)
 
 SUBSCRIPTIONS_ENABLED = env_bool("DARITH_SUBSCRIPTIONS_ENABLED", False)
-STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "").strip()
-STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "").strip()
-if SUBSCRIPTIONS_ENABLED:
-    if not STRIPE_SECRET_KEY.startswith("sk_"):
-        raise ImproperlyConfigured(
-            "STRIPE_SECRET_KEY is required when subscriptions are enabled."
-        )
-    if not STRIPE_WEBHOOK_SECRET.startswith("whsec_"):
-        raise ImproperlyConfigured(
-            "STRIPE_WEBHOOK_SECRET is required when subscriptions are enabled."
-        )
 
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"

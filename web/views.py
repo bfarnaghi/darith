@@ -1,8 +1,5 @@
 # Author: Behnam <b.farnaghi@gmail.com>
 # AI-assisted implementation; manually reviewed and verified by the developer.
-import logging
-
-import stripe
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
@@ -14,7 +11,7 @@ from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
 from django.db import IntegrityError
 from django.db.models.deletion import ProtectedError
-from django.http import FileResponse, Http404, HttpResponse, HttpResponseBadRequest
+from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -22,7 +19,6 @@ from django.utils import timezone
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.views.decorators.http import require_POST
-from django.views.decorators.csrf import csrf_exempt
 
 from .forms import (
     BankAccountForm,
@@ -62,16 +58,12 @@ from .services import (
     save_transfer,
 )
 from .subscriptions import (
-    create_checkout_session,
-    create_customer_portal_session,
     get_active_plan,
     get_user_subscription,
-    process_stripe_event,
-    SubscriptionConfigurationError,
+    report_manual_payment,
 )
 
 
-logger = logging.getLogger(__name__)
 DEFAULT_EXPENSE_CATEGORIES = ["Bills", "Food", "Health", "Housing", "Leisure", "Transport"]
 DEFAULT_INCOME_CATEGORIES = ["Freelance", "Other", "Salary"]
 
@@ -278,88 +270,33 @@ def subscription_overview(request):
         "subscription.html",
         {
             "plan": get_active_plan(),
-            "subscription": get_user_subscription(request.user),
-            "checkout_result": request.GET.get("checkout", ""),
+            "subscription": get_user_subscription(request.user, create=True),
         },
     )
 
 
 @require_POST
 @login_required
-def subscription_checkout(request):
+def report_subscription_payment(request):
     _require_subscriptions_enabled()
     plan = get_active_plan()
-    if plan is None or not plan.stripe_price_id:
+    if plan is None:
         messages.error(request, "A subscription plan is not available yet.")
         return redirect("subscription_overview")
 
-    user_subscription = get_user_subscription(request.user)
-    if user_subscription and user_subscription.has_access:
-        messages.info(request, "This account already has access.")
-        return redirect("subscription_overview")
+    subscription = get_user_subscription(request.user, create=True)
     if (
-        user_subscription
-        and user_subscription.stripe_customer_id
-        and user_subscription.stripe_subscription_id
-        and user_subscription.status
-        not in {
-            user_subscription.STATUS_CANCELED,
-            user_subscription.STATUS_NOT_STARTED,
-        }
+        subscription.status == subscription.STATUS_PENDING
+        and subscription.payment_reported_at
     ):
-        messages.info(request, "Manage the existing subscription in billing.")
-        return redirect("subscription_overview")
-
-    try:
-        session = create_checkout_session(request, plan)
-    except SubscriptionConfigurationError:
-        logger.exception("Darith and Stripe subscription prices do not match.")
-        messages.error(request, "The subscription price needs administrator review.")
-        return redirect("subscription_overview")
-    except stripe.StripeError:
-        logger.exception("Stripe Checkout session creation failed.")
-        messages.error(request, "Checkout is temporarily unavailable. Please try again.")
-        return redirect("subscription_overview")
-    return redirect(session.url)
-
-
-@require_POST
-@login_required
-def subscription_portal(request):
-    _require_subscriptions_enabled()
-    user_subscription = get_user_subscription(request.user)
-    if user_subscription is None or not user_subscription.stripe_customer_id:
-        messages.error(request, "No Stripe billing account is connected yet.")
-        return redirect("subscription_overview")
-    try:
-        session = create_customer_portal_session(request, user_subscription)
-    except stripe.StripeError:
-        logger.exception("Stripe customer portal session creation failed.")
-        messages.error(request, "Billing is temporarily unavailable. Please try again.")
-        return redirect("subscription_overview")
-    return redirect(session.url)
-
-
-@csrf_exempt
-@require_POST
-def stripe_webhook(request):
-    if not settings.SUBSCRIPTIONS_ENABLED:
-        return HttpResponse(status=404)
-    try:
-        event = stripe.Webhook.construct_event(
-            request.body,
-            request.headers.get("Stripe-Signature", ""),
-            settings.STRIPE_WEBHOOK_SECRET,
+        messages.info(request, "Your payment is already waiting for verification.")
+    else:
+        report_manual_payment(request.user)
+        messages.success(
+            request,
+            "Payment reported. An administrator will verify it and update your access.",
         )
-    except (ValueError, stripe.SignatureVerificationError):
-        return HttpResponseBadRequest("Invalid Stripe webhook signature.")
-
-    try:
-        process_stripe_event(event)
-    except Exception:
-        logger.exception("Stripe webhook processing failed.")
-        return HttpResponse(status=500)
-    return HttpResponse(status=200)
+    return redirect("subscription_overview")
 
 
 @require_POST
@@ -648,9 +585,32 @@ def update_dashboard_animations(request):
     )
     if form.is_valid():
         form.save()
-        messages.success(request, "Dashboard animations updated.")
+        messages.success(request, "Dashboard GIFs updated.")
     else:
         _show_form_errors(request, form)
+    return _dashboard_redirect("overview")
+
+
+@require_POST
+@login_required
+def remove_dashboard_gif(request, status):
+    status_labels = {
+        "healthy": "on-track",
+        "warning": "warning",
+        "danger": "out-of-budget",
+    }
+    if status not in status_labels:
+        raise Http404("Unknown budget status.")
+
+    preference, _ = BudgetPreference.objects.get_or_create(user=request.user)
+    field_name = f"{status}_gif"
+    current_gif = getattr(preference, field_name)
+    if current_gif.name:
+        setattr(preference, field_name, None)
+        preference.save(update_fields=[field_name])
+        messages.success(request, f"The {status_labels[status]} GIF was removed.")
+    else:
+        messages.info(request, "There is no GIF to remove for this budget state.")
     return _dashboard_redirect("overview")
 
 

@@ -10,12 +10,11 @@ import tempfile
 from datetime import date, timedelta
 from decimal import Decimal
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -29,17 +28,12 @@ from .models import (
     MonthlyExpense,
     RecurringIncome,
     SavingsGoal,
-    StripeWebhookEvent,
     SubscriptionPlan,
     Transfer,
     UserSubscription,
 )
 from .services import build_monthly_budget, goal_funding_reminders, post_due_recurring
-from .subscriptions import (
-    SubscriptionConfigurationError,
-    create_checkout_session,
-    process_stripe_event,
-)
+from .subscriptions import initialize_user_subscription, report_manual_payment
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -132,7 +126,8 @@ class FinanceTestCase(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Personal money, made clear")
-        self.assertContains(response, "Security by design")
+        self.assertContains(response, "Your information stays private")
+        self.assertNotContains(response, "animations")
         self.assertContains(response, reverse("create_account"))
 
         self.client.force_login(self.user)
@@ -171,6 +166,55 @@ class FinanceTestCase(TestCase):
                 reverse("dashboard_animation", args=["healthy"])
             )
             self.assertEqual(response.status_code, 404)
+
+    def test_dashboard_gif_can_be_replaced_and_removed_with_a_button(self):
+        with tempfile.TemporaryDirectory() as media_root, self.settings(
+            MEDIA_ROOT=media_root
+        ):
+            self.client.post(
+                reverse("update_dashboard_animations"),
+                {
+                    "healthy_gif": SimpleUploadedFile(
+                        "first.gif", VALID_GIF, content_type="image/gif"
+                    )
+                },
+            )
+            preference = BudgetPreference.objects.get(user=self.user)
+            first_path = preference.healthy_gif.path
+            self.assertTrue(os.path.exists(first_path))
+
+            with self.captureOnCommitCallbacks(execute=True):
+                self.client.post(
+                    reverse("update_dashboard_animations"),
+                    {
+                        "healthy_gif": SimpleUploadedFile(
+                            "replacement.gif", VALID_GIF, content_type="image/gif"
+                        )
+                    },
+                )
+
+            preference.refresh_from_db()
+            replacement_path = preference.healthy_gif.path
+            self.assertNotEqual(first_path, replacement_path)
+            self.assertFalse(os.path.exists(first_path))
+            self.assertTrue(os.path.exists(replacement_path))
+            self.assertContains(self.client.get(reverse("dashboard")), "Remove GIF")
+
+            with self.captureOnCommitCallbacks(execute=True):
+                response = self.client.post(
+                    reverse("remove_dashboard_gif", args=["healthy"])
+                )
+
+            self.assertRedirects(response, f"{reverse('dashboard')}?tab=overview")
+            preference.refresh_from_db()
+            self.assertFalse(preference.healthy_gif)
+            self.assertFalse(os.path.exists(replacement_path))
+            self.assertEqual(
+                self.client.get(
+                    reverse("dashboard_animation", args=["healthy"])
+                ).status_code,
+                404,
+            )
 
     def test_dashboard_gif_rejects_invalid_content_and_oversized_files(self):
         with tempfile.TemporaryDirectory() as media_root, self.settings(
@@ -703,7 +747,7 @@ class RegistrationTests(TestCase):
         self.assertEqual(int(self.client.session["_auth_user_id"]), user.id)
 
 
-class SubscriptionAccessTests(TestCase):
+class ManualSubscriptionTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(
             "subscriber", "subscriber@example.com", "good-password-123"
@@ -712,50 +756,30 @@ class SubscriptionAccessTests(TestCase):
             name="Darith Monthly",
             monthly_price=Decimal("8.00"),
             currency="eur",
-            stripe_price_id="price_monthly_test",
+            payment_instructions="Send a bank transfer to the Darith account.",
             trial_days=14,
             is_active=True,
         )
 
-    def test_admin_bypass_honors_optional_expiry(self):
-        subscription = UserSubscription.objects.create(
-            user=self.user,
-            admin_bypass=True,
-            admin_bypass_until=timezone.now() + timedelta(days=3),
+    @override_settings(SUBSCRIPTIONS_ENABLED=True)
+    def test_new_user_receives_the_configured_trial(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        subscription = UserSubscription.objects.get(user=self.user)
+        self.assertEqual(subscription.status, UserSubscription.STATUS_TRIALING)
+        self.assertEqual(
+            subscription.access_until,
+            timezone.localdate(self.user.date_joined) + timedelta(days=14),
         )
         self.assertTrue(subscription.has_access)
 
-        subscription.admin_bypass_until = timezone.now() - timedelta(seconds=1)
-        self.assertFalse(subscription.has_access)
-
-        subscription.admin_bypass_until = None
-        self.assertTrue(subscription.has_access)
-
-    def test_trial_and_active_periods_control_access(self):
-        subscription = UserSubscription.objects.create(
-            user=self.user,
-            plan=self.plan,
-            status=UserSubscription.STATUS_TRIALING,
-            trial_ends_at=timezone.now() + timedelta(days=14),
-        )
-        self.assertTrue(subscription.has_access)
-
-        subscription.trial_ends_at = timezone.now() - timedelta(seconds=1)
-        self.assertFalse(subscription.has_access)
-
-        subscription.status = UserSubscription.STATUS_ACTIVE
-        subscription.current_period_end = timezone.now() + timedelta(days=30)
-        self.assertTrue(subscription.has_access)
-
-        subscription.status = UserSubscription.STATUS_PAST_DUE
-        self.assertFalse(subscription.has_access)
-
-    @override_settings(
-        SUBSCRIPTIONS_ENABLED=True,
-        STRIPE_SECRET_KEY="sk_test_example",
-        STRIPE_WEBHOOK_SECRET="whsec_example",
-    )
-    def test_middleware_redirects_unsubscribed_user_and_allows_bypass(self):
+    @override_settings(SUBSCRIPTIONS_ENABLED=True)
+    def test_middleware_requires_manual_access_when_trial_is_disabled(self):
+        self.plan.trial_days = 0
+        self.plan.save()
         self.client.force_login(self.user)
 
         response = self.client.get(reverse("dashboard"))
@@ -766,142 +790,112 @@ class SubscriptionAccessTests(TestCase):
             f"{reverse('subscription_overview')}?next=%2Fdashboard%2F",
         )
 
-        UserSubscription.objects.create(user=self.user, admin_bypass=True)
+        subscription = UserSubscription.objects.get(user=self.user)
+        subscription.status = UserSubscription.STATUS_ACTIVE
+        subscription.access_until = timezone.localdate() + timedelta(days=30)
+        subscription.save()
         response = self.client.get(reverse("dashboard"))
         self.assertEqual(response.status_code, 200)
 
-    @override_settings(
-        SUBSCRIPTIONS_ENABLED=True,
-        STRIPE_SECRET_KEY="sk_test_example",
-        STRIPE_WEBHOOK_SECRET="whsec_example",
-    )
-    def test_checkout_uses_trial_and_matching_monthly_stripe_price(self):
-        request = RequestFactory().post(
-            reverse("subscription_checkout"), HTTP_HOST="localhost"
-        )
-        request.user = self.user
-        stripe_price = {
-            "active": True,
-            "currency": "eur",
-            "unit_amount": 800,
-            "recurring": {"interval": "month", "interval_count": 1},
-        }
-        checkout_session = SimpleNamespace(
-            id="cs_test_123",
-            expires_at=int((timezone.now() + timedelta(hours=1)).timestamp()),
-            status="open",
-            url="https://checkout.stripe.com/test",
-        )
+    @override_settings(SUBSCRIPTIONS_ENABLED=True)
+    def test_user_reports_payment_and_admin_activation_grants_access(self):
+        self.plan.trial_days = 0
+        self.plan.save()
+        self.client.force_login(self.user)
 
-        with patch(
-            "web.subscriptions.stripe.Price.retrieve", return_value=stripe_price
-        ), patch(
-            "web.subscriptions.stripe.checkout.Session.create",
-            return_value=checkout_session,
-        ) as create_session:
-            result = create_checkout_session(request, self.plan)
+        response = self.client.post(reverse("report_subscription_payment"))
 
-        self.assertEqual(result.id, "cs_test_123")
-        parameters = create_session.call_args.kwargs
-        self.assertEqual(parameters["payment_method_collection"], "always")
-        self.assertEqual(parameters["subscription_data"]["trial_period_days"], 14)
-        self.assertEqual(parameters["line_items"][0]["price"], "price_monthly_test")
+        self.assertRedirects(response, reverse("subscription_overview"))
         subscription = UserSubscription.objects.get(user=self.user)
         self.assertEqual(subscription.status, UserSubscription.STATUS_PENDING)
+        self.assertIsNotNone(subscription.payment_reported_at)
+        self.assertEqual(subscription.payment_reference, f"DARITH-{self.user.pk:06d}")
+        self.assertFalse(subscription.has_access)
 
-    @override_settings(STRIPE_SECRET_KEY="sk_test_example")
-    def test_checkout_rejects_price_amount_mismatch(self):
-        request = RequestFactory().post(
-            reverse("subscription_checkout"), HTTP_HOST="localhost"
-        )
-        request.user = self.user
-        stripe_price = {
-            "active": True,
-            "currency": "eur",
-            "unit_amount": 1200,
-            "recurring": {"interval": "month", "interval_count": 1},
-        }
+        response = self.client.get(reverse("subscription_overview"))
+        self.assertContains(response, self.plan.payment_instructions)
+        self.assertContains(response, subscription.payment_reference)
+        self.assertContains(response, "Payment awaiting verification")
 
-        with patch(
-            "web.subscriptions.stripe.Price.retrieve", return_value=stripe_price
-        ):
-            with self.assertRaises(SubscriptionConfigurationError):
-                create_checkout_session(request, self.plan)
-
-
-class StripeWebhookTests(TestCase):
-    def setUp(self):
-        self.user = User.objects.create_user(
-            "webhook-user", "webhook@example.com", "good-password-123"
-        )
-        self.plan = SubscriptionPlan.objects.create(
-            name="Darith Monthly",
-            monthly_price=Decimal("8.00"),
-            stripe_price_id="price_webhook_test",
-            is_active=True,
-        )
-
-    def subscription_event(self, event_id, event_type, status, created):
-        return {
-            "id": event_id,
-            "type": event_type,
-            "created": created,
-            "data": {
-                "object": {
-                    "id": "sub_test_123",
-                    "customer": "cus_test_123",
-                    "status": status,
-                    "trial_end": created + (14 * 24 * 60 * 60),
-                    "cancel_at_period_end": False,
-                    "metadata": {
-                        "darith_user_id": str(self.user.pk),
-                        "darith_plan_id": str(self.plan.pk),
-                    },
-                    "items": {
-                        "data": [
-                            {
-                                "price": {"id": self.plan.stripe_price_id},
-                                "current_period_end": created + (30 * 24 * 60 * 60),
-                            }
-                        ]
-                    },
-                }
-            },
-        }
-
-    def test_webhook_grants_access_once_and_cancellation_revokes_it(self):
-        created = int(timezone.now().timestamp())
-        trial_event = self.subscription_event(
-            "evt_trial", "customer.subscription.created", "trialing", created
-        )
-
-        self.assertTrue(process_stripe_event(trial_event))
-        self.assertFalse(process_stripe_event(trial_event))
-
-        subscription = UserSubscription.objects.get(user=self.user)
-        self.assertEqual(subscription.status, UserSubscription.STATUS_TRIALING)
-        self.assertEqual(subscription.stripe_customer_id, "cus_test_123")
+        subscription.status = UserSubscription.STATUS_ACTIVE
+        subscription.access_until = timezone.localdate() + timedelta(days=30)
+        subscription.save()
+        subscription.refresh_from_db()
+        self.assertIsNone(subscription.payment_reported_at)
+        self.assertIsNotNone(subscription.last_payment_verified_at)
         self.assertTrue(subscription.has_access)
-        self.assertEqual(StripeWebhookEvent.objects.count(), 1)
 
-        active_event = self.subscription_event(
-            "evt_active", "customer.subscription.updated", "active", created + 1
+        response = self.client.get(reverse("dashboard"))
+        self.assertEqual(response.status_code, 200)
+
+    def test_admin_can_verify_payment_and_set_access_date(self):
+        self.plan.trial_days = 0
+        self.plan.save()
+        subscription = report_manual_payment(self.user)
+        administrator = User.objects.create_superuser(
+            "administrator",
+            "admin@example.com",
+            "admin-password-123",
         )
-        self.assertTrue(process_stripe_event(active_event))
+        self.client.force_login(administrator)
+        paid_through = timezone.localdate() + timedelta(days=30)
 
+        response = self.client.post(
+            reverse("admin:web_usersubscription_change", args=[subscription.pk]),
+            {
+                "user": self.user.pk,
+                "plan": self.plan.pk,
+                "status": UserSubscription.STATUS_ACTIVE,
+                "access_until": paid_through.isoformat(),
+                "payment_note": "Wise payment verified.",
+                "_save": "Save",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
         subscription.refresh_from_db()
         self.assertEqual(subscription.status, UserSubscription.STATUS_ACTIVE)
-        self.assertIsNotNone(subscription.current_period_end)
-        self.assertTrue(subscription.has_access)
+        self.assertEqual(subscription.access_until, paid_through)
+        self.assertIsNone(subscription.payment_reported_at)
+        self.assertIsNotNone(subscription.last_payment_verified_at)
+        self.assertEqual(subscription.payment_note, "Wise payment verified.")
 
-        canceled_event = self.subscription_event(
-            "evt_canceled",
-            "customer.subscription.deleted",
-            "canceled",
-            created + 2,
+    def test_reporting_a_renewal_keeps_existing_access_until_expiry(self):
+        subscription = UserSubscription.objects.create(
+            user=self.user,
+            plan=self.plan,
+            status=UserSubscription.STATUS_ACTIVE,
+            access_until=timezone.localdate() + timedelta(days=5),
         )
-        self.assertTrue(process_stripe_event(canceled_event))
+
+        report_manual_payment(self.user)
 
         subscription.refresh_from_db()
-        self.assertEqual(subscription.status, UserSubscription.STATUS_CANCELED)
+        self.assertEqual(subscription.status, UserSubscription.STATUS_PENDING)
+        self.assertTrue(subscription.has_access)
+        self.assertIsNotNone(subscription.payment_reported_at)
+
+    @override_settings(SUBSCRIPTIONS_ENABLED=True)
+    def test_expired_access_is_revoked_and_home_stays_public(self):
+        subscription = UserSubscription.objects.create(
+            user=self.user,
+            plan=self.plan,
+            status=UserSubscription.STATUS_ACTIVE,
+            access_until=timezone.localdate() - timedelta(days=1),
+        )
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("dashboard"))
+
+        self.assertEqual(response.status_code, 302)
+        subscription.refresh_from_db()
+        self.assertEqual(subscription.status, UserSubscription.STATUS_EXPIRED)
         self.assertFalse(subscription.has_access)
+        self.assertEqual(self.client.get(reverse("home")).status_code, 200)
+
+    def test_initialization_is_idempotent(self):
+        first = initialize_user_subscription(self.user)
+        second = initialize_user_subscription(self.user)
+
+        self.assertEqual(first.pk, second.pk)
+        self.assertEqual(UserSubscription.objects.filter(user=self.user).count(), 1)

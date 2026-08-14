@@ -48,7 +48,7 @@
                 <div class="mobile-menu">
                     <strong>{{ request.user.username }}</strong>
                     <button type="button" data-tab-target="categories">Categories</button>
-                    <button type="button" data-dialog-open="dashboard-animation-edit">Dashboard animations</button>
+                    <button type="button" data-dialog-open="dashboard-animation-edit">Dashboard GIFs</button>
                     <a href="{% url 'export_data_csv' %}">Export CSV</a>
                     {% if subscriptions_enabled %}<a href="{% url 'subscription_overview' %}">Billing</a>{% endif %}
                     <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit">Log out</button></form>
@@ -64,7 +64,7 @@
 
         <section class="panel" data-tab-panel="overview">
             <div class="budget-hero">
-                <button class="budget-settings" type="button" data-dialog-open="dashboard-animation-edit" aria-label="Dashboard animations" title="Dashboard animations">⚙</button>
+                <button class="budget-settings" type="button" data-dialog-open="dashboard-animation-edit" aria-label="Dashboard GIFs" title="Dashboard GIFs">⚙</button>
                 <div class="budget-main">
                     <p>Free to spend this month</p>
                     <strong>{% if budget.free_to_spend < 0 %}−€{{ budget.free_to_spend_abs|floatformat:2|intcomma }}{% else %}€{{ budget.free_to_spend|floatformat:2|intcomma }}{% endif %}</strong>
@@ -208,29 +208,29 @@
 {% include "partials/form_dialog.html" with dialog_id="transfer-create" title="Move money" form=transfer_form action_url="create_transfer" submit_label="Transfer money" %}
 {% include "partials/form_dialog.html" with dialog_id="daily-spending-edit" title="Expected daily spending" form=budget_preference_form action_url="update_budget_preference" submit_label="Save daily amount" %}
 <dialog class="form-dialog animation-dialog" id="dashboard-animation-edit">
-    <div class="dialog-head"><h2>Dashboard animations</h2><button class="icon-button" type="button" data-dialog-close aria-label="Close">×</button></div>
+    <div class="dialog-head"><h2>Dashboard GIFs</h2><button class="icon-button" type="button" data-dialog-close aria-label="Close">×</button></div>
     <form method="post" action="{% url 'update_dashboard_animations' %}" enctype="multipart/form-data" class="animation-form">
         {% csrf_token %}
         <p class="animation-intro">Choose one private GIF for each budget state. Each file can be up to 2 MB, 1200 x 1200 pixels, and 300 frames.</p>
         <section class="animation-option">
             <div class="animation-copy"><span class="status-dot"></span><strong>On track</strong><small>Shown when bills, daily costs, and goals are covered.</small></div>
-            <div class="animation-preview">{% if budget_preference.healthy_gif %}<img src="{% url 'dashboard_animation' 'healthy' %}" alt="Current on-track animation">{% else %}<span>No GIF</span>{% endif %}</div>
+            <div class="animation-preview">{% if budget_preference.healthy_gif %}<img src="{% url 'dashboard_animation' 'healthy' %}" alt="Current on-track GIF">{% else %}<span>No GIF</span>{% endif %}</div>
             <label for="{{ dashboard_animation_form.healthy_gif.id_for_label }}">Choose GIF</label>{{ dashboard_animation_form.healthy_gif }}
-            {% if budget_preference.healthy_gif %}<label class="remove-animation">{{ dashboard_animation_form.remove_healthy_gif }} Remove current GIF</label>{% endif %}
+            {% if budget_preference.healthy_gif %}<button class="remove-gif-button" type="submit" formaction="{% url 'remove_dashboard_gif' 'healthy' %}" formnovalidate>Remove GIF</button>{% endif %}
         </section>
         <section class="animation-option">
             <div class="animation-copy"><span class="status-dot status-warning"></span><strong>Warning</strong><small>Shown when daily costs are covered but saving goals are short.</small></div>
-            <div class="animation-preview">{% if budget_preference.warning_gif %}<img src="{% url 'dashboard_animation' 'warning' %}" alt="Current warning animation">{% else %}<span>No GIF</span>{% endif %}</div>
+            <div class="animation-preview">{% if budget_preference.warning_gif %}<img src="{% url 'dashboard_animation' 'warning' %}" alt="Current warning GIF">{% else %}<span>No GIF</span>{% endif %}</div>
             <label for="{{ dashboard_animation_form.warning_gif.id_for_label }}">Choose GIF</label>{{ dashboard_animation_form.warning_gif }}
-            {% if budget_preference.warning_gif %}<label class="remove-animation">{{ dashboard_animation_form.remove_warning_gif }} Remove current GIF</label>{% endif %}
+            {% if budget_preference.warning_gif %}<button class="remove-gif-button" type="submit" formaction="{% url 'remove_dashboard_gif' 'warning' %}" formnovalidate>Remove GIF</button>{% endif %}
         </section>
         <section class="animation-option">
             <div class="animation-copy"><span class="status-dot status-danger"></span><strong>Out of budget</strong><small>Shown when spendable accounts cannot cover expected daily costs.</small></div>
-            <div class="animation-preview">{% if budget_preference.danger_gif %}<img src="{% url 'dashboard_animation' 'danger' %}" alt="Current out-of-budget animation">{% else %}<span>No GIF</span>{% endif %}</div>
+            <div class="animation-preview">{% if budget_preference.danger_gif %}<img src="{% url 'dashboard_animation' 'danger' %}" alt="Current out-of-budget GIF">{% else %}<span>No GIF</span>{% endif %}</div>
             <label for="{{ dashboard_animation_form.danger_gif.id_for_label }}">Choose GIF</label>{{ dashboard_animation_form.danger_gif }}
-            {% if budget_preference.danger_gif %}<label class="remove-animation">{{ dashboard_animation_form.remove_danger_gif }} Remove current GIF</label>{% endif %}
+            {% if budget_preference.danger_gif %}<button class="remove-gif-button" type="submit" formaction="{% url 'remove_dashboard_gif' 'danger' %}" formnovalidate>Remove GIF</button>{% endif %}
         </section>
-        <div class="dialog-actions"><button class="button button-secondary" type="button" data-dialog-close>Cancel</button><button class="button button-primary" type="submit">Save animations</button></div>
+        <div class="dialog-actions"><button class="button button-secondary" type="button" data-dialog-close>Cancel</button><button class="button button-primary" type="submit">Save GIFs</button></div>
     </form>
 </dialog>
 {% include "partials/form_dialog.html" with dialog_id="expense-create" title="Add expense" form=expense_form action_url="create_expense" submit_label="Add expense" %}

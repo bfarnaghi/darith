@@ -16,10 +16,8 @@ EXEMPT_URL_NAMES = {
     "login",
     "logout",
     "reset_password",
-    "stripe_webhook",
-    "subscription_checkout",
     "subscription_overview",
-    "subscription_portal",
+    "report_subscription_payment",
 }
 
 

@@ -9,7 +9,6 @@ from django.core.validators import (
     FileExtensionValidator,
     MaxValueValidator,
     MinValueValidator,
-    RegexValidator,
 )
 from django.db import models, transaction
 from django.db.models import Q
@@ -300,18 +299,11 @@ class SubscriptionPlan(models.Model):
         choices=[("eur", "EUR")],
         default="eur",
     )
-    stripe_price_id = models.CharField(
-        max_length=255,
+    payment_instructions = models.TextField(
         blank=True,
-        validators=[
-            RegexValidator(
-                regex=r"^price_",
-                message="Use a Stripe recurring Price ID beginning with price_.",
-            )
-        ],
         help_text=(
-            "Create a monthly recurring Price in Stripe, then paste its price_ ID here. "
-            "Stripe prices are immutable, so create a new Price when the amount changes."
+            "Explain how to pay manually, for example by bank transfer, PayPal, "
+            "Revolut, or Wise. These instructions are shown to users."
         ),
     )
     trial_days = models.PositiveSmallIntegerField(
@@ -345,23 +337,15 @@ class UserSubscription(models.Model):
     STATUS_PENDING = "pending"
     STATUS_TRIALING = "trialing"
     STATUS_ACTIVE = "active"
-    STATUS_PAST_DUE = "past_due"
+    STATUS_EXPIRED = "expired"
     STATUS_CANCELED = "canceled"
-    STATUS_UNPAID = "unpaid"
-    STATUS_INCOMPLETE = "incomplete"
-    STATUS_INCOMPLETE_EXPIRED = "incomplete_expired"
-    STATUS_PAUSED = "paused"
     STATUS_CHOICES = [
         (STATUS_NOT_STARTED, "Not started"),
-        (STATUS_PENDING, "Checkout pending"),
-        (STATUS_TRIALING, "Trialing"),
+        (STATUS_PENDING, "Payment reported"),
+        (STATUS_TRIALING, "Free trial"),
         (STATUS_ACTIVE, "Active"),
-        (STATUS_PAST_DUE, "Past due"),
+        (STATUS_EXPIRED, "Expired"),
         (STATUS_CANCELED, "Canceled"),
-        (STATUS_UNPAID, "Unpaid"),
-        (STATUS_INCOMPLETE, "Incomplete"),
-        (STATUS_INCOMPLETE_EXPIRED, "Incomplete expired"),
-        (STATUS_PAUSED, "Paused"),
     ]
 
     user = models.OneToOneField(
@@ -377,62 +361,60 @@ class UserSubscription(models.Model):
     status = models.CharField(
         max_length=24, choices=STATUS_CHOICES, default=STATUS_NOT_STARTED
     )
-    stripe_customer_id = models.CharField(max_length=255, blank=True, null=True, unique=True)
-    stripe_subscription_id = models.CharField(
-        max_length=255, blank=True, null=True, unique=True
-    )
-    checkout_session_id = models.CharField(max_length=255, blank=True)
-    checkout_session_expires_at = models.DateTimeField(blank=True, null=True)
-    trial_ends_at = models.DateTimeField(blank=True, null=True)
-    current_period_end = models.DateTimeField(blank=True, null=True)
-    cancel_at_period_end = models.BooleanField(default=False)
-    last_stripe_event_at = models.DateTimeField(blank=True, null=True)
-    admin_bypass = models.BooleanField(
-        default=False,
-        help_text="Grant access without requiring a Stripe subscription.",
-    )
-    admin_bypass_until = models.DateTimeField(
+    access_until = models.DateField(
         blank=True,
         null=True,
-        help_text="Leave empty for an access bypass with no expiry.",
+        help_text="The last calendar date on which this user can access Darith.",
     )
-    admin_note = models.CharField(max_length=255, blank=True)
+    payment_reported_at = models.DateTimeField(blank=True, null=True)
+    last_payment_verified_at = models.DateTimeField(blank=True, null=True)
+    payment_note = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Private note for payment reference, method, or complimentary access.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    @property
-    def has_admin_access(self):
-        if not self.admin_bypass:
-            return False
-        return self.admin_bypass_until is None or self.admin_bypass_until > timezone.now()
+    def save(self, *args, **kwargs):
+        if self.pk and self.status == self.STATUS_ACTIVE and self.payment_reported_at:
+            previous_status = (
+                type(self).objects.filter(pk=self.pk).values_list("status", flat=True).first()
+            )
+            if previous_status == self.STATUS_PENDING:
+                self.last_payment_verified_at = timezone.now()
+                self.payment_reported_at = None
+                if kwargs.get("update_fields") is not None:
+                    kwargs["update_fields"] = set(kwargs["update_fields"]) | {
+                        "last_payment_verified_at",
+                        "payment_reported_at",
+                    }
+        super().save(*args, **kwargs)
 
     @property
-    def has_stripe_access(self):
-        now = timezone.now()
-        if self.status == self.STATUS_TRIALING:
-            return self.trial_ends_at is not None and self.trial_ends_at > now
-        if self.status == self.STATUS_ACTIVE:
-            return self.current_period_end is not None and self.current_period_end > now
-        return False
+    def payment_reference(self):
+        return f"DARITH-{self.user_id:06d}"
 
     @property
     def has_access(self):
-        return self.has_admin_access or self.has_stripe_access
+        return (
+            self.status
+            in {self.STATUS_PENDING, self.STATUS_TRIALING, self.STATUS_ACTIVE}
+            and self.access_until is not None
+            and self.access_until >= timezone.localdate()
+        )
+
+    @property
+    def is_expired(self):
+        return self.access_until is not None and self.access_until < timezone.localdate()
+
+    def clean(self):
+        super().clean()
+        if self.status in {self.STATUS_TRIALING, self.STATUS_ACTIVE} and not self.access_until:
+            raise ValidationError("Trial and active subscriptions need an access expiry date.")
 
     def __str__(self):
         return f"{self.user.username} - {self.get_status_display()}"
-
-
-class StripeWebhookEvent(models.Model):
-    event_id = models.CharField(max_length=255, primary_key=True)
-    event_type = models.CharField(max_length=120)
-    processed_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ["-processed_at"]
-
-    def __str__(self):
-        return f"{self.event_type} - {self.event_id}"
 
 
 class Transfer(models.Model):

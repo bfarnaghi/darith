@@ -20,27 +20,39 @@
             <p class="billing-kicker">Account access</p>
             <h1>{% if plan %}{{ plan.name }}{% else %}Darith subscription{% endif %}</h1>
 
-            {% if checkout_result == 'success' and not subscription.has_access %}<div class="access-state success"><strong>Checkout completed</strong><span>Stripe is confirming access. Refresh this page in a moment.</span></div>{% endif %}
-            {% if checkout_result == 'canceled' %}<div class="access-state warning"><strong>Checkout canceled</strong><span>No subscription change was made.</span></div>{% endif %}
-
-            {% if subscription.has_admin_access %}
-                <div class="access-state success"><strong>Access granted by administrator</strong><span>{% if subscription.admin_bypass_until %}Available until {{ subscription.admin_bypass_until|date:"j M Y" }}.{% else %}No payment is required for this account.{% endif %}</span></div>
-                <a class="primary-button" href="{% url 'dashboard' %}">Open dashboard</a>
-            {% elif subscription.has_stripe_access %}
-                <div class="access-state success"><strong>{{ subscription.get_status_display }}</strong><span>{% if subscription.status == 'trialing' %}Trial ends {{ subscription.trial_ends_at|date:"j M Y" }}.{% elif subscription.cancel_at_period_end %}Access continues until {{ subscription.current_period_end|date:"j M Y" }}.{% else %}Next billing period ends {{ subscription.current_period_end|date:"j M Y" }}.{% endif %}</span></div>
-                <div class="billing-actions"><a class="primary-button" href="{% url 'dashboard' %}">Open dashboard</a><form method="post" action="{% url 'subscription_portal' %}">{% csrf_token %}<button class="secondary-button" type="submit">Manage billing</button></form></div>
-            {% elif plan and plan.stripe_price_id %}
-                <div class="plan-price"><strong>{% if plan.currency == 'eur' %}€{% endif %}{{ plan.monthly_price|floatformat:2 }}</strong><span>{{ plan.currency|upper }} / month</span></div>
-                {% if plan.trial_days %}<p class="trial-copy">{{ plan.trial_days }} days free, then billed monthly. Cancel from the billing portal.</p>{% endif %}
-                {% if subscription.stripe_customer_id and subscription.status != 'canceled' and subscription.status != 'not_started' %}
-                    <div class="access-state warning"><strong>{{ subscription.get_status_display }}</strong><span>Open billing to update payment details or resolve the subscription.</span></div>
-                    <form method="post" action="{% url 'subscription_portal' %}">{% csrf_token %}<button class="primary-button" type="submit">Open billing</button></form>
+            {% if subscription.has_access %}
+                {% if subscription.status == 'pending' %}
+                    <div class="access-state pending"><strong>Payment awaiting verification</strong><span>Your existing access remains available through {{ subscription.access_until|date:"j M Y" }}.</span></div>
+                {% elif subscription.status == 'trialing' %}
+                    <div class="access-state success"><strong>Free trial</strong><span>Your trial is available through {{ subscription.access_until|date:"j M Y" }}.</span></div>
                 {% else %}
-                    <form method="post" action="{% url 'subscription_checkout' %}">{% csrf_token %}<button class="primary-button" type="submit">{% if plan.trial_days %}Start free trial{% else %}Subscribe{% endif %}</button></form>
+                    <div class="access-state success"><strong>Subscription active</strong><span>Your access is available through {{ subscription.access_until|date:"j M Y" }}.</span></div>
                 {% endif %}
-                <p class="secure-copy">Payment details are collected and stored by Stripe.</p>
+                <a class="primary-button" href="{% url 'dashboard' %}">Open dashboard</a>
+            {% elif subscription.payment_reported_at %}
+                <div class="access-state pending"><strong>Payment awaiting verification</strong><span>Reported {{ subscription.payment_reported_at|date:"j M Y, H:i" }}. An administrator will update your access after confirming the payment.</span></div>
+            {% elif subscription.is_expired %}
+                <div class="access-state warning"><strong>Access expired</strong><span>Your previous access ended {{ subscription.access_until|date:"j M Y" }}.</span></div>
+            {% endif %}
+
+            {% if plan %}
+                <div class="plan-price"><strong>{% if plan.currency == 'eur' %}€{% endif %}{{ plan.monthly_price|floatformat:2 }}</strong><span>{{ plan.currency|upper }} / month</span></div>
+                <ol class="payment-steps"><li>Pay using one of the methods below.</li><li>Include your Darith reference with the payment.</li><li>Report the payment here for administrator verification.</li></ol>
+
+                <section class="payment-details" aria-labelledby="payment-details-title">
+                    <h2 id="payment-details-title">Payment instructions</h2>
+                    {% if plan.payment_instructions %}<p>{{ plan.payment_instructions|linebreaksbr }}</p>{% else %}<p>Payment instructions have not been configured yet. Contact the Darith administrator before paying.</p>{% endif %}
+                    <div class="payment-reference"><span>Your reference</span><code>{{ subscription.payment_reference }}</code></div>
+                </section>
+
+                {% if subscription.payment_reported_at %}
+                    <p class="reported-copy">Your latest payment report is already waiting for verification.</p>
+                {% else %}
+                    <form method="post" action="{% url 'report_subscription_payment' %}">{% csrf_token %}<button class="primary-button" type="submit">I have paid</button></form>
+                {% endif %}
+                <p class="secure-copy">Darith does not collect card or bank credentials. Payment is completed directly with the method listed above.</p>
             {% else %}
-                <div class="access-state warning"><strong>Billing is not available</strong><span>An administrator must activate a Stripe Price before subscriptions can start.</span></div>
+                <div class="access-state warning"><strong>Subscriptions are not configured</strong><span>An administrator must create and activate a subscription plan.</span></div>
             {% endif %}
         </section>
     </main>

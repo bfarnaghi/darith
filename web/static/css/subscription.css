@@ -25,7 +25,7 @@ button { font: inherit; letter-spacing: 0; }
 .quiet-button { min-height: 38px; padding: 0 12px; border: 1px solid #31537c; border-radius: 6px; color: #d9e7f7; background: transparent; cursor: pointer; }
 .quiet-button:hover { background: #12376a; }
 .billing-main { display: grid; min-height: calc(100vh - 74px); place-items: center; padding: 46px 20px; }
-.billing-copy { width: min(540px, 100%); }
+.billing-copy { width: min(620px, 100%); }
 .billing-kicker { margin: 0 0 8px; color: var(--primary); font-size: 11px; font-weight: 800; text-transform: uppercase; }
 .billing-copy h1 { margin: 0 0 30px; font-size: 34px; line-height: 1.15; }
 .plan-price { display: flex; align-items: baseline; gap: 11px; margin-bottom: 12px; }
@@ -42,8 +42,17 @@ button { font: inherit; letter-spacing: 0; }
 .access-state { display: grid; gap: 4px; margin-bottom: 24px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 7px; }
 .access-state span { font-size: 13px; line-height: 1.45; }
 .access-state.success { color: var(--mint); border-color: #b7e3d3; background: var(--mint-light); }
+.access-state.pending { color: #084a94; border-color: #b9d3f6; background: #e7f0ff; }
 .access-state.warning { color: var(--gold); border-color: #e6d194; background: var(--gold-light); }
-.billing-messages { width: min(540px, 100%); margin: 0 auto 18px; }
+.payment-steps { display: grid; gap: 8px; margin: 0 0 24px; padding-left: 22px; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.payment-details { margin-bottom: 20px; padding: 18px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--paper); }
+.payment-details h2 { margin: 0 0 9px; font-size: 16px; }
+.payment-details > p { margin: 0; color: #46556d; font-size: 13px; line-height: 1.6; }
+.payment-reference { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 17px; padding-top: 14px; border-top: 1px solid var(--line); }
+.payment-reference span { color: var(--muted); font-size: 12px; font-weight: 700; }
+.payment-reference code { padding: 7px 9px; border-radius: 5px; color: #073a9b; background: #e7f0ff; font-size: 13px; font-weight: 800; }
+.reported-copy { margin: 0 0 14px; color: #084a94; font-size: 13px; }
+.billing-messages { width: min(620px, 100%); margin: 0 auto 18px; }
 .billing-message { padding: 12px 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); }
 .billing-message.error { color: #7f2c3c; border-color: #e7bcc5; background: #fae8ec; }
 @media (max-width: 520px) {
@@ -52,4 +61,6 @@ button { font: inherit; letter-spacing: 0; }
     .billing-copy h1 { font-size: 29px; }
     .plan-price strong { font-size: 38px; }
     .billing-actions, .billing-actions form, .primary-button, .secondary-button { width: 100%; }
+    .payment-details { padding-inline: 0; background: transparent; }
+    .payment-reference { align-items: flex-start; flex-direction: column; }
 }

@@ -1,6 +1,9 @@
 # Author: Behnam <b.farnaghi@gmail.com>
 # AI-assisted implementation; manually reviewed and verified by the developer.
+from datetime import timedelta
+
 from django.contrib import admin
+from django.utils import timezone
 
 from .models import (
     BankAccount,
@@ -12,7 +15,6 @@ from .models import (
     MonthlyExpense,
     RecurringIncome,
     SavingsGoal,
-    StripeWebhookEvent,
     SubscriptionPlan,
     Transfer,
     Token,
@@ -45,10 +47,14 @@ class SubscriptionPlanAdmin(admin.ModelAdmin):
         "currency",
         "trial_days",
         "is_active",
-        "stripe_price_id",
+        "instructions_configured",
     )
     list_filter = ("is_active", "currency")
-    search_fields = ("name", "stripe_price_id")
+    search_fields = ("name", "payment_instructions")
+
+    @admin.display(boolean=True, description="Payment instructions")
+    def instructions_configured(self, obj):
+        return bool(obj.payment_instructions.strip())
 
 
 @admin.register(UserSubscription)
@@ -57,67 +63,62 @@ class UserSubscriptionAdmin(admin.ModelAdmin):
         "user",
         "status",
         "plan",
-        "admin_bypass",
-        "admin_bypass_until",
-        "current_period_end",
+        "payment_reported_at",
+        "access_until",
+        "payment_reference_display",
     )
-    list_filter = ("status", "admin_bypass", "plan")
+    list_filter = ("status", "plan")
+    list_editable = ("status", "access_until")
+    actions = ("activate_for_30_days", "mark_expired")
     search_fields = (
         "user__username",
         "user__email",
-        "stripe_customer_id",
-        "stripe_subscription_id",
+        "payment_note",
     )
     readonly_fields = (
-        "status",
-        "stripe_customer_id",
-        "stripe_subscription_id",
-        "checkout_session_id",
-        "checkout_session_expires_at",
-        "trial_ends_at",
-        "current_period_end",
-        "cancel_at_period_end",
-        "last_stripe_event_at",
+        "payment_reference_display",
+        "payment_reported_at",
+        "last_payment_verified_at",
         "created_at",
         "updated_at",
     )
     fieldsets = (
         ("Account", {"fields": ("user", "plan")}),
         (
-            "Administrator access",
-            {"fields": ("admin_bypass", "admin_bypass_until", "admin_note")},
+            "Access",
+            {"fields": ("status", "access_until")},
         ),
         (
-            "Stripe state",
+            "Manual payment",
             {
                 "fields": (
-                    "status",
-                    "stripe_customer_id",
-                    "stripe_subscription_id",
-                    "trial_ends_at",
-                    "current_period_end",
-                    "cancel_at_period_end",
-                    "checkout_session_id",
-                    "checkout_session_expires_at",
-                    "last_stripe_event_at",
+                    "payment_reference_display",
+                    "payment_reported_at",
+                    "last_payment_verified_at",
+                    "payment_note",
                 )
             },
         ),
         ("Audit", {"fields": ("created_at", "updated_at")}),
     )
 
+    @admin.display(description="Payment reference")
+    def payment_reference_display(self, obj):
+        return obj.payment_reference if obj and obj.pk else "Saved after creation"
 
-@admin.register(StripeWebhookEvent)
-class StripeWebhookEventAdmin(admin.ModelAdmin):
-    list_display = ("event_type", "event_id", "processed_at")
-    search_fields = ("event_type", "event_id")
-    readonly_fields = ("event_type", "event_id", "processed_at")
+    @admin.action(description="Activate or extend selected users by 30 days")
+    def activate_for_30_days(self, request, queryset):
+        today = timezone.localdate()
+        for subscription in queryset:
+            start = max(subscription.access_until or today, today)
+            subscription.access_until = start + timedelta(days=30)
+            subscription.status = subscription.STATUS_ACTIVE
+            subscription.save()
 
-    def has_add_permission(self, request):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return False
+    @admin.action(description="Expire selected users now")
+    def mark_expired(self, request, queryset):
+        queryset.update(
+            status=UserSubscription.STATUS_EXPIRED,
+            access_until=timezone.localdate() - timedelta(days=1),
+            updated_at=timezone.now(),
+        )

@@ -19,6 +19,7 @@
 
 <main>
     <section class="product-hero" aria-labelledby="hero-title">
+        <img class="hero-logo" src="{% static 'images/logo.png' %}" alt="" aria-hidden="true">
         <div class="product-hero-inner">
             <p class="hero-kicker">Personal money, made clear</p>
             <h1 id="hero-title">Darith</h1>
@@ -42,18 +43,18 @@
     </section>
 
     <section class="decision-band">
-        <div class="section-inner decision-inner"><p class="section-kicker">Built for real life</p><h2>Plan ahead without turning money into a second job.</h2><p>Automatic monthly movements, goal funding, daily expense reserves, and private status animations keep the dashboard personal and current.</p></div>
+        <div class="section-inner decision-inner"><p class="section-kicker">Built for real life</p><h2>Plan ahead without turning money into a second job.</h2><p>Automatic monthly movements, goal funding, and daily expense reserves keep your dashboard personal and current.</p></div>
     </section>
 
     <section class="security-section" id="security" aria-labelledby="security-title">
         <div class="section-inner">
-            <div class="security-heading"><p class="section-kicker">Security by design</p><h2 id="security-title">Protected at every practical layer.</h2><p>Darith is designed for secure public hosting while keeping each account's financial records isolated.</p></div>
+            <div class="security-heading"><p class="section-kicker">Your privacy</p><h2 id="security-title">Your information stays private.</h2><p>Your balances, spending, and plans are available only after you sign in to your own account.</p></div>
             <div class="security-grid">
-                <article><h3>Account isolation</h3><p>Financial records and private dashboard GIFs are returned only for the signed-in owner.</p></article>
-                <article><h3>Protected access</h3><p>Argon2 password hashing, CSRF protection, secure cookies, and browser security headers protect sessions.</p></article>
-                <article><h3>Hardened hosting</h3><p>Production requires HTTPS, PostgreSQL over TLS, encrypted backups, and encrypted storage from the hosting provider.</p></article>
+                <article><h3>Your own private space</h3><p>Darith keeps each person's records separate, so other users cannot see your money information.</p></article>
+                <article><h3>A protected sign-in</h3><p>Your password is protected when it is saved and is never displayed when Darith checks it.</p></article>
+                <article><h3>Careful storage</h3><p>When Darith is hosted correctly, your information and its backups are kept with standard security protections.</p></article>
             </div>
-            <p class="security-note">Darith uses server-side protection, not end-to-end encryption. Authorized server or database administrators can access hosted data.</p>
+            <p class="security-note">Like other hosted services, the trusted person who operates the website may access information when necessary for maintenance or support.</p>
         </div>
     </section>
 

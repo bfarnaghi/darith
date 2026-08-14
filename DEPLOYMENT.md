@@ -240,30 +240,23 @@ sudo ufw allow 'Nginx Full'
 sudo ufw enable
 ~~~
 
-### 7. Optional Stripe subscriptions
+### 7. Optional manual subscriptions
 
-Darith works without payments while `DARITH_SUBSCRIPTIONS_ENABLED=false`. To launch monthly subscriptions safely:
+Darith works without subscriptions while `DARITH_SUBSCRIPTIONS_ENABLED=false`. To enable manual payments:
 
-1. Create a Product and a recurring monthly EUR Price in Stripe. Start in Stripe test mode.
-2. Configure Stripe's customer portal so users can update cards and cancel.
-3. Add the webhook endpoint `https://darith.app/billing/stripe/webhook/` in Stripe.
-4. Subscribe it to `checkout.session.completed`, `checkout.session.expired`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `customer.subscription.paused`, `customer.subscription.resumed`, and `customer.subscription.trial_will_end`.
-5. Put the Stripe secret key and webhook signing secret in `/etc/darith.env` as `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`.
-6. In `/admin/`, create one active **Subscription plan**. Its EUR monthly amount must exactly match the Stripe Price, and its `price_...` ID must come from the same Stripe mode as the secret key. Set the trial length, such as 14 days.
-7. Set `DARITH_SUBSCRIPTIONS_ENABLED=true`, run `manage.py check --deploy`, and restart Darith.
-8. Complete a test subscription and confirm that Checkout, webhook updates, cancellation, and the customer portal all work before switching to live keys.
+1. In `/admin/`, create one active **Subscription plan**.
+2. Set the monthly EUR price, optional trial length, and clear, specific payment instructions. The instructions may contain bank-transfer, PayPal, Revolut, Wise, or other details.
+3. Set `DARITH_SUBSCRIPTIONS_ENABLED=true` in `/etc/darith.env`, run `manage.py check --deploy`, and restart Darith.
+4. Create a normal test account and confirm that it sees the trial or manual payment page.
+5. Pay externally using the displayed `DARITH-......` user reference, then press **I have paid**.
+6. In `/admin/`, open **User subscriptions** and filter for **Payment reported**.
+7. Verify the external payment, change the status to **Active**, set **Access until** to the paid-through date, and optionally record the payment method or reference in **Payment note**.
 
-Stripe Prices are immutable. To change the monthly price, create a new Stripe Price and update Darith's active plan. Existing subscribers remain on their old price unless you deliberately migrate them in Stripe.
+The admin list also includes an **Activate or extend selected users by 30 days** action. To grant complimentary access, activate the user through a chosen date and explain it in the payment note. The **Expire selected users now** action revokes access immediately.
 
-To give a user free access, open **User subscriptions** in `/admin/`, select the user, enable **Admin bypass**, and optionally set an expiry date and note. This bypass does not create or modify a Stripe subscription.
+Darith does not process money, save payment credentials, or automatically renew access. You must verify every payment and extend the date manually. Once the access date passes, the middleware blocks the dashboard until access is extended.
 
-For local webhook testing, install the Stripe CLI and run:
-
-~~~bash
-stripe listen --forward-to http://127.0.0.1:8000/billing/stripe/webhook/
-~~~
-
-Before accepting live payments, publish terms, a privacy notice, cancellation and refund rules, business contact details, and the tax/VAT information required where you operate. Confirm these obligations with qualified legal and tax professionals.
+Before accepting payments, publish terms, a privacy notice, cancellation and refund rules, business contact details, and the tax/VAT information required where you operate. Confirm these obligations with qualified legal and tax professionals.
 
 ### 8. Configure encrypted backups
 

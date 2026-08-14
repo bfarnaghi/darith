@@ -21,7 +21,7 @@ Darith is a responsive Django app for managing personal money in EUR on mobile a
 - Warns when spendable accounts cannot cover the remaining daily costs.
 - Shows an optional private GIF chosen by the user for on-track, warning, and out-of-budget states.
 - Exports the signed-in user's financial data as a CSV file.
-- Optionally supports a 14-day Stripe subscription trial and administrator access bypass.
+- Optionally supports free trials and administrator-verified manual subscriptions.
 
 ## Run locally
 
@@ -64,13 +64,10 @@ Database encryption at rest must be enabled with your PostgreSQL host or encrypt
 
 ## Optional subscriptions
 
-Subscriptions are off by default. When enabled, Darith uses Stripe's hosted Checkout and customer portal for monthly payments, supports a configurable free trial, and accepts signed Stripe webhooks as the source of subscription status. An administrator can change the displayed monthly plan or grant selected users temporary or permanent access from Django admin.
+Subscriptions are off by default. When enabled, Darith uses a manual workflow: the administrator sets the monthly price, free-trial length, and payment instructions; users pay externally and report the payment; then the administrator verifies it and sets access through a chosen date in Django Admin.
 
-See the **Optional Stripe subscriptions** section in [DEPLOYMENT.md](DEPLOYMENT.md) before enabling payments. A changed price requires a new Stripe Price; existing subscriptions keep their previous price unless they are migrated separately.
+Darith does not collect card or bank credentials and has no payment-provider dependency. Renewals are also manual. See **Optional manual subscriptions** in [DEPLOYMENT.md](DEPLOYMENT.md).
 
-## Replace the logo
-
-Replace `web/static/images/logo.png` with your own square PNG. Keep the same filename; the login pages, dashboard, favicon, and mobile home-screen icon will update automatically. A 512 x 512 image is recommended.
 
 ## License
 
