@@ -108,7 +108,7 @@ User=darith
 Group=darith
 WorkingDirectory=/var/www/darith/app
 EnvironmentFile=/etc/darith.env
-ExecStart=/var/www/darith/app/.venv/bin/gunicorn darith.wsgi:application --workers 2 --bind 127.0.0.1:8001 --access-logfile - --error-logfile -
+ExecStart=/var/www/darith/app/.venv/bin/gunicorn darith.wsgi:application --workers 2 --bind 127.0.0.1:8001 --access-logfile - --error-logfile - --no-control-socket
 Restart=on-failure
 RestartSec=5
 UMask=0077
@@ -126,6 +126,10 @@ ReadWritePaths=/var/lib/darith/media
 [Install]
 WantedBy=multi-user.target
 ~~~
+
+The control socket is disabled because Darith does not use Gunicorn's optional
+runtime control interface, and the hardened service intentionally keeps the
+application directory read-only.
 
 Start it:
 

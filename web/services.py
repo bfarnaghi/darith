@@ -205,7 +205,6 @@ def goal_funding_reminders(user, today):
 def fund_goal_for_month(goal, user, today):
     goal = (
         SavingsGoal.objects.select_for_update()
-        .select_related("bank_account")
         .get(pk=goal.pk, user=user, is_archived=False)
     )
     period = today.replace(day=1)
