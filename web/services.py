@@ -342,34 +342,42 @@ def build_monthly_budget(user, today):
     )
     projected_balance = current_balance + expected_income - expected_expenses
     days_remaining = (month_end - today).days + 1
-    daily_expense = (
-        BudgetPreference.objects.filter(user=user)
-        .values_list("expected_daily_expense", flat=True)
-        .first()
-        or ZERO
+    preference = BudgetPreference.objects.filter(user=user).first()
+    daily_expense = preference.expected_daily_expense if preference else ZERO
+    currency_symbol = (
+        preference.currency_symbol
+        if preference
+        else BudgetPreference.CURRENCY_SYMBOLS[BudgetPreference.CURRENCY_EUR]
     )
     remaining_daily_expenses = daily_expense * days_remaining
-    free_to_spend = projected_balance - remaining_daily_expenses - savings_target
+    uncovered_future_expenses = max(expected_expenses - expected_income, ZERO)
+    available_before_daily_costs = current_balance - uncovered_future_expenses
+    free_to_spend = (
+        available_before_daily_costs - remaining_daily_expenses - savings_target
+    )
     daily_allowance = free_to_spend / days_remaining
 
-    if projected_balance < remaining_daily_expenses:
+    if available_before_daily_costs < remaining_daily_expenses:
         status = "danger"
-        shortfall = remaining_daily_expenses - projected_balance
+        shortfall = remaining_daily_expenses - available_before_daily_costs
         if savings_balance >= shortfall:
             warning = (
-                f"Your spendable accounts are EUR {shortfall:,.2f} short of expected "
+                f"Your spendable accounts are {currency_symbol}{shortfall:,.2f} "
+                "short of expected "
                 "daily costs. You may need to move money from savings."
             )
         else:
             warning = (
-                f"Your spendable accounts are EUR {shortfall:,.2f} short of expected "
+                f"Your spendable accounts are {currency_symbol}{shortfall:,.2f} "
+                "short of expected "
                 "daily costs, even before this month's saving goals."
             )
     elif free_to_spend < ZERO:
         status = "warning"
         shortfall = abs(free_to_spend)
         warning = (
-            f"Daily costs are covered, but EUR {shortfall:,.2f} is still needed "
+            f"Daily costs are covered, but {currency_symbol}{shortfall:,.2f} "
+            "is still needed "
             "for this month's saving goals."
         )
     else:
@@ -404,6 +412,7 @@ def build_monthly_budget(user, today):
         "expected_expenses": expected_expenses,
         "expected_daily_expense": daily_expense,
         "remaining_daily_expenses": remaining_daily_expenses,
+        "uncovered_future_expenses": uncovered_future_expenses,
         "savings_target": savings_target,
         "projected_balance": projected_balance,
         "free_to_spend": free_to_spend,

@@ -193,6 +193,8 @@ def dashboard(request):
         "income_categories": IncomeCategory.objects.filter(user=request.user),
         "budget": budget,
         "budget_preference": preference,
+        "currency_symbol": preference.currency_symbol,
+        "currency_code": preference.currency,
         "active_budget_animation": bool(active_animation),
         "account_form": BankAccountForm(),
         "budget_preference_form": BudgetPreferenceForm(instance=preference),
@@ -607,7 +609,11 @@ def fund_savings_goal(request, item_id):
     try:
         item = fund_goal_for_month(goal, request.user, timezone.localdate())
         if item:
-            messages.success(request, f"EUR {item.amount:,.2f} moved to {goal.name}.")
+            preference, _ = BudgetPreference.objects.get_or_create(user=request.user)
+            messages.success(
+                request,
+                f"{preference.currency_symbol}{item.amount:,.2f} moved to {goal.name}.",
+            )
         else:
             messages.info(request, "This goal is already funded for the month.")
     except (InsufficientFunds, ValidationError) as error:

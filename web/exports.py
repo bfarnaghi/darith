@@ -65,6 +65,9 @@ def build_user_csv_response(user):
     writer.writerow(CSV_COLUMNS)
 
     preference = BudgetPreference.objects.filter(user=user).first()
+    currency_code = (
+        preference.currency if preference else BudgetPreference.CURRENCY_EUR
+    )
     if preference:
         _write_row(
             writer,
@@ -72,7 +75,7 @@ def build_user_csv_response(user):
             record_id=preference.pk,
             name="Expected daily expense",
             amount=preference.expected_daily_expense,
-            currency="EUR",
+            currency=currency_code,
         )
 
     for account in BankAccount.objects.filter(user=user):
@@ -82,7 +85,7 @@ def build_user_csv_response(user):
             record_id=account.pk,
             name=account.name,
             balance=account.balance,
-            currency="EUR",
+            currency=currency_code,
         )
 
     for goal in SavingsGoal.objects.filter(user=user).select_related("bank_account"):
@@ -95,7 +98,7 @@ def build_user_csv_response(user):
             name=goal.name,
             amount=goal.monthly_amount,
             balance=goal.current_balance,
-            currency="EUR",
+            currency=currency_code,
             account=goal.bank_account.name if goal.bank_account else "",
             target_amount=goal.target_amount,
             target_date=goal.target_date,
@@ -112,7 +115,7 @@ def build_user_csv_response(user):
             end_date=item.end_date,
             name=item.name,
             amount=item.amount,
-            currency="EUR",
+            currency=currency_code,
             category=item.category.name if item.category else "",
             account=item.bank_account.name,
             recurring="monthly",
@@ -129,7 +132,7 @@ def build_user_csv_response(user):
             end_date=item.end_date,
             name=item.name,
             amount=-item.amount,
-            currency="EUR",
+            currency=currency_code,
             category=item.category.name if item.category else "",
             account=item.bank_account.name,
             recurring="monthly",
@@ -145,7 +148,7 @@ def build_user_csv_response(user):
             date=item.date,
             name=item.text,
             amount=item.amount,
-            currency="EUR",
+            currency=currency_code,
             category=item.category.name if item.category else "",
             account=item.bank_account.name if item.bank_account else "",
             recurring="yes" if item.recurring_income_id else "no",
@@ -161,7 +164,7 @@ def build_user_csv_response(user):
             date=item.date,
             name=item.text,
             amount=-item.amount,
-            currency="EUR",
+            currency=currency_code,
             category=item.category.name if item.category else "",
             account=item.bank_account.name if item.bank_account else "",
             recurring="yes" if item.monthly_expense_id else "no",
@@ -177,7 +180,7 @@ def build_user_csv_response(user):
             date=item.date,
             name=item.name,
             amount=item.amount,
-            currency="EUR",
+            currency=currency_code,
             source=item.source.name,
             destination=item.destination.name,
             recurring="monthly_goal" if item.goal_period else "no",

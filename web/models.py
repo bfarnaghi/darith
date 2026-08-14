@@ -89,11 +89,35 @@ class BudgetPreference(models.Model):
     THEME_OCEAN = "ocean"
     THEME_FOREST = "forest"
     THEME_GRAPHITE = "graphite"
+    THEME_PURPLE = "purple"
     THEME_CHOICES = [
         (THEME_OCEAN, "Ocean"),
         (THEME_FOREST, "Forest"),
         (THEME_GRAPHITE, "Graphite"),
+        (THEME_PURPLE, "Purple"),
     ]
+    CURRENCY_EUR = "EUR"
+    CURRENCY_USD = "USD"
+    CURRENCY_GBP = "GBP"
+    CURRENCY_CHF = "CHF"
+    CURRENCY_CAD = "CAD"
+    CURRENCY_AUD = "AUD"
+    CURRENCY_CHOICES = [
+        (CURRENCY_EUR, "Euro (EUR)"),
+        (CURRENCY_USD, "US dollar (USD)"),
+        (CURRENCY_GBP, "British pound (GBP)"),
+        (CURRENCY_CHF, "Swiss franc (CHF)"),
+        (CURRENCY_CAD, "Canadian dollar (CAD)"),
+        (CURRENCY_AUD, "Australian dollar (AUD)"),
+    ]
+    CURRENCY_SYMBOLS = {
+        CURRENCY_EUR: "\u20ac",
+        CURRENCY_USD: "$",
+        CURRENCY_GBP: "\u00a3",
+        CURRENCY_CHF: "CHF ",
+        CURRENCY_CAD: "CA$",
+        CURRENCY_AUD: "A$",
+    }
 
     user = models.OneToOneField(
         User, on_delete=models.CASCADE, related_name="budget_preference"
@@ -108,6 +132,11 @@ class BudgetPreference(models.Model):
         max_length=16,
         choices=THEME_CHOICES,
         default=THEME_OCEAN,
+    )
+    currency = models.CharField(
+        max_length=3,
+        choices=CURRENCY_CHOICES,
+        default=CURRENCY_EUR,
     )
     healthy_gif = models.FileField(
         upload_to=dashboard_animation_upload_to,
@@ -142,6 +171,10 @@ class BudgetPreference(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.expected_daily_expense} per day"
+
+    @property
+    def currency_symbol(self):
+        return self.CURRENCY_SYMBOLS.get(self.currency, self.currency)
 
 
 @receiver(post_delete, sender=BudgetPreference)

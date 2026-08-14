@@ -298,22 +298,24 @@ class FinanceTestCase(TestCase):
             )
             self.assertTrue(preference.danger_gif)
 
-    def test_dashboard_theme_is_saved_for_only_the_signed_in_user(self):
+    def test_dashboard_theme_and_currency_are_saved_for_only_the_signed_in_user(self):
         response = self.client.post(
-            reverse("update_dashboard_animations"), {"theme": "forest"}
+            reverse("update_dashboard_animations"),
+            {"theme": "purple", "currency": "USD"},
         )
 
         self.assertRedirects(response, f"{reverse('dashboard')}?tab=overview")
         preference = BudgetPreference.objects.get(user=self.user)
-        self.assertEqual(preference.theme, BudgetPreference.THEME_FOREST)
-        self.assertContains(
-            self.client.get(reverse("dashboard")), 'data-theme="forest"'
-        )
+        self.assertEqual(preference.theme, BudgetPreference.THEME_PURPLE)
+        self.assertEqual(preference.currency, BudgetPreference.CURRENCY_USD)
+        response = self.client.get(reverse("dashboard"))
+        self.assertContains(response, 'data-theme="purple"')
+        self.assertContains(response, "$1,000.00")
 
         self.client.force_login(self.other_user)
-        self.assertContains(
-            self.client.get(reverse("dashboard")), 'data-theme="ocean"'
-        )
+        response = self.client.get(reverse("dashboard"))
+        self.assertContains(response, 'data-theme="ocean"')
+        self.assertContains(response, "€0.00")
 
     def test_csv_export_contains_only_the_signed_in_users_data(self):
         Expense.objects.create(
@@ -347,6 +349,7 @@ class FinanceTestCase(TestCase):
             any(
                 row["record_type"] == "bank_account"
                 and row["name"] == "Main"
+                and row["currency"] == "EUR"
                 for row in rows
             )
         )
@@ -365,6 +368,19 @@ class FinanceTestCase(TestCase):
                 for row in rows
             )
         )
+
+    def test_csv_export_uses_the_users_display_currency(self):
+        BudgetPreference.objects.create(
+            user=self.user, currency=BudgetPreference.CURRENCY_GBP
+        )
+
+        response = self.client.get(reverse("export_data_csv"))
+        rows = list(
+            csv.DictReader(io.StringIO(response.content.decode("utf-8-sig")))
+        )
+
+        self.assertTrue(rows)
+        self.assertTrue(all(row["currency"] == "GBP" for row in rows))
 
     def test_dashboard_requires_login_and_renders_budget(self):
         self.client.logout()
@@ -616,8 +632,54 @@ class FinanceTestCase(TestCase):
         self.assertEqual(budget["expected_income"], Decimal("2000.00"))
         self.assertEqual(budget["expected_expenses"], Decimal("500.00"))
         self.assertEqual(budget["savings_target"], Decimal("400.00"))
-        self.assertEqual(budget["free_to_spend"], Decimal("2100.00"))
+        self.assertEqual(budget["projected_balance"], Decimal("2500.00"))
+        self.assertEqual(budget["free_to_spend"], Decimal("600.00"))
         self.assertEqual(budget["status"], "healthy")
+
+    def test_future_surplus_changes_outlook_without_becoming_spendable_early(self):
+        self.account.balance = Decimal("200.00")
+        self.account.save()
+        BudgetPreference.objects.create(
+            user=self.user,
+            expected_daily_expense=Decimal("10.00"),
+        )
+        RecurringIncome.objects.create(
+            user=self.user,
+            name="Salary",
+            amount=Decimal("1300.00"),
+            start_date=date(2026, 8, 28),
+            end_date=date(2026, 8, 28),
+            category=self.income_category,
+            bank_account=self.account,
+        )
+        MonthlyExpense.objects.create(
+            user=self.user,
+            name="Rent",
+            amount=Decimal("550.00"),
+            start_date=date(2026, 8, 28),
+            end_date=date(2026, 8, 28),
+            category=self.expense_category,
+            bank_account=self.account,
+        )
+
+        budget = build_monthly_budget(self.user, date(2026, 8, 14))
+
+        self.assertEqual(budget["current_balance"], Decimal("200.00"))
+        self.assertEqual(budget["expected_income"], Decimal("1300.00"))
+        self.assertEqual(budget["expected_expenses"], Decimal("550.00"))
+        self.assertEqual(budget["actual_income"], Decimal("0.00"))
+        self.assertEqual(budget["actual_expenses"], Decimal("0.00"))
+        self.assertEqual(budget["remaining_daily_expenses"], Decimal("180.00"))
+        self.assertEqual(budget["uncovered_future_expenses"], Decimal("0.00"))
+        self.assertEqual(budget["free_to_spend"], Decimal("20.00"))
+        self.assertEqual(budget["projected_balance"], Decimal("950.00"))
+
+        with patch("web.views.timezone.localdate", return_value=date(2026, 8, 14)):
+            response = self.client.get(reverse("dashboard"))
+        self.assertContains(response, "€0.00 received so far")
+        self.assertContains(response, "€1,300.00 still due")
+        self.assertContains(response, "First payment date")
+        self.assertContains(response, "First charge date")
 
     def test_budget_warns_when_commitments_are_not_covered(self):
         self.account.balance = Decimal("100.00")

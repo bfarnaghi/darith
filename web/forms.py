@@ -69,9 +69,10 @@ class BudgetPreferenceForm(StyledFormMixin, forms.ModelForm):
 class DashboardAnimationForm(StyledFormMixin, forms.ModelForm):
     class Meta:
         model = BudgetPreference
-        fields = ["theme", "healthy_gif", "warning_gif", "danger_gif"]
+        fields = ["theme", "currency", "healthy_gif", "warning_gif", "danger_gif"]
         labels = {
             "theme": "Color theme",
+            "currency": "Display currency",
             "healthy_gif": "On track GIF",
             "warning_gif": "Warning GIF",
             "danger_gif": "Out of budget GIF",
@@ -85,12 +86,20 @@ class DashboardAnimationForm(StyledFormMixin, forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["theme"].required = False
+        self.fields["currency"].required = False
 
     def clean_theme(self):
         return (
             self.cleaned_data.get("theme")
             or self.instance.theme
             or BudgetPreference.THEME_OCEAN
+        )
+
+    def clean_currency(self):
+        return (
+            self.cleaned_data.get("currency")
+            or self.instance.currency
+            or BudgetPreference.CURRENCY_EUR
         )
 
 
@@ -136,7 +145,7 @@ class DateRangeForm(UserScopedFormMixin, StyledFormMixin, forms.ModelForm):
         start_date = cleaned_data.get("start_date")
         end_date = cleaned_data.get("end_date")
         if start_date and end_date and end_date < start_date:
-            self.add_error("end_date", "End date must be on or after the effective date.")
+            self.add_error("end_date", "End date must be on or after the first date.")
         return cleaned_data
 
 
@@ -145,8 +154,8 @@ class RecurringIncomeForm(DateRangeForm):
         model = RecurringIncome
         fields = ["name", "amount", "start_date", "end_date", "category", "bank_account"]
         labels = {
-            "start_date": "First effective date",
-            "end_date": "Last effective date (optional)",
+            "start_date": "First payment date",
+            "end_date": "Stop repeating after (optional)",
         }
         widgets = {
             "amount": forms.NumberInput(attrs={"step": "0.01", "min": "0.01"}),
@@ -160,8 +169,8 @@ class MonthlyExpenseForm(DateRangeForm):
         model = MonthlyExpense
         fields = ["name", "amount", "start_date", "end_date", "category", "bank_account"]
         labels = {
-            "start_date": "First effective date",
-            "end_date": "Last effective date (optional)",
+            "start_date": "First charge date",
+            "end_date": "Stop repeating after (optional)",
         }
         widgets = {
             "amount": forms.NumberInput(attrs={"step": "0.01", "min": "0.01"}),
