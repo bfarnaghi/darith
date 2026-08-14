@@ -106,10 +106,14 @@ def dashboard(request):
         )
     )
     expenses = list(
-        Expense.objects.filter(user=request.user).select_related("category", "bank_account")
+        Expense.objects.filter(user=request.user, is_skipped=False).select_related(
+            "category", "bank_account"
+        )
     )
     incomes = list(
-        Income.objects.filter(user=request.user).select_related("category", "bank_account")
+        Income.objects.filter(user=request.user, is_skipped=False).select_related(
+            "category", "bank_account"
+        )
     )
     transactions = [
         {
@@ -384,8 +388,16 @@ def update_expense(request, expense_id):
 @login_required
 def delete_expense(request, expense_id):
     item = get_object_or_404(Expense, pk=expense_id, user=request.user)
+    is_recurring_occurrence = bool(item.monthly_expense_id)
     delete_transaction(item)
-    messages.success(request, "Expense removed and balance restored.")
+    if is_recurring_occurrence:
+        messages.success(
+            request,
+            "This monthly expense was removed and its balance restored. "
+            "Future months remain scheduled.",
+        )
+    else:
+        messages.success(request, "Expense removed and balance restored.")
     return _dashboard_redirect("transactions")
 
 
@@ -405,8 +417,16 @@ def update_income(request, income_id):
 @login_required
 def delete_income(request, income_id):
     item = get_object_or_404(Income, pk=income_id, user=request.user)
+    is_recurring_occurrence = bool(item.recurring_income_id)
     delete_transaction(item)
-    messages.success(request, "Income removed and balance updated.")
+    if is_recurring_occurrence:
+        messages.success(
+            request,
+            "This monthly income was removed and its balance updated. "
+            "Future months remain scheduled.",
+        )
+    else:
+        messages.success(request, "Income removed and balance updated.")
     return _dashboard_redirect("transactions")
 
 
@@ -496,8 +516,13 @@ def update_recurring_income(request, item_id):
 @require_POST
 @login_required
 def delete_recurring_income(request, item_id):
-    get_object_or_404(RecurringIncome, pk=item_id, user=request.user).delete()
-    messages.success(request, "Recurring income removed.")
+    item = get_object_or_404(RecurringIncome, pk=item_id, user=request.user)
+    item.posted_incomes.filter(is_skipped=True).delete()
+    item.delete()
+    messages.success(
+        request,
+        "Recurring income plan removed. Existing posted income remains in Activity.",
+    )
     return _dashboard_redirect("plans")
 
 
@@ -516,8 +541,13 @@ def update_monthly_expense(request, item_id):
 @require_POST
 @login_required
 def delete_monthly_expense(request, item_id):
-    get_object_or_404(MonthlyExpense, pk=item_id, user=request.user).delete()
-    messages.success(request, "Monthly expense removed.")
+    item = get_object_or_404(MonthlyExpense, pk=item_id, user=request.user)
+    item.posted_expenses.filter(is_skipped=True).delete()
+    item.delete()
+    messages.success(
+        request,
+        "Monthly expense plan removed. Existing posted expenses remain in Activity.",
+    )
     return _dashboard_redirect("plans")
 
 

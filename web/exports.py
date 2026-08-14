@@ -135,7 +135,7 @@ def build_user_csv_response(user):
             recurring="monthly",
         )
 
-    for item in Income.objects.filter(user=user).select_related(
+    for item in Income.objects.filter(user=user, is_skipped=False).select_related(
         "category", "bank_account", "recurring_income"
     ):
         _write_row(
@@ -151,7 +151,7 @@ def build_user_csv_response(user):
             recurring="yes" if item.recurring_income_id else "no",
         )
 
-    for item in Expense.objects.filter(user=user).select_related(
+    for item in Expense.objects.filter(user=user, is_skipped=False).select_related(
         "category", "bank_account", "monthly_expense"
     ):
         _write_row(

@@ -198,6 +198,7 @@ class Income(models.Model):
         null=True,
         related_name="posted_incomes",
     )
+    is_skipped = models.BooleanField(default=False, editable=False)
 
     class Meta:
         ordering = ["-date", "-id"]
@@ -236,6 +237,7 @@ class Expense(models.Model):
         null=True,
         related_name="posted_expenses",
     )
+    is_skipped = models.BooleanField(default=False, editable=False)
 
     class Meta:
         ordering = ["-date", "-id"]

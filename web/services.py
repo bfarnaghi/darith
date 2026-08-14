@@ -94,10 +94,21 @@ def save_transaction(form, user, instance=None):
 
 @transaction.atomic
 def delete_transaction(item):
+    item = type(item).objects.select_for_update().get(pk=item.pk)
     if item.bank_account_id:
         reverse_delta = item.amount if isinstance(item, Expense) else -item.amount
         adjust_account_balance(item.bank_account_id, reverse_delta)
-    item.delete()
+
+    recurring_plan_id = (
+        item.monthly_expense_id
+        if isinstance(item, Expense)
+        else item.recurring_income_id
+    )
+    if recurring_plan_id:
+        item.is_skipped = True
+        item.save(update_fields=["is_skipped"])
+    else:
+        item.delete()
 
 
 def _source_balance(item):
@@ -343,10 +354,20 @@ def build_monthly_budget(user, today):
         warning = "Expected bills, daily costs, and saving goals are covered this month."
 
     actual_income = _sum(
-        Income.objects.filter(user=user, date__range=(month_start, today)), "amount"
+        Income.objects.filter(
+            user=user,
+            date__range=(month_start, today),
+            is_skipped=False,
+        ),
+        "amount",
     )
     actual_expenses = _sum(
-        Expense.objects.filter(user=user, date__range=(month_start, today)), "amount"
+        Expense.objects.filter(
+            user=user,
+            date__range=(month_start, today),
+            is_skipped=False,
+        ),
+        "amount",
     )
 
     return {

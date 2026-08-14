@@ -454,6 +454,26 @@ class FinanceTestCase(TestCase):
         self.account.refresh_from_db()
         self.assertEqual(self.account.balance, Decimal("1200.00"))
 
+    def test_deleting_posted_recurring_income_suppresses_that_month(self):
+        plan = RecurringIncome.objects.create(
+            user=self.user,
+            name="Salary",
+            amount=Decimal("100.00"),
+            start_date=date(2026, 8, 10),
+            category=self.income_category,
+            bank_account=self.account,
+        )
+        post_due_recurring(self.user, date(2026, 8, 14))
+        income = plan.posted_incomes.get()
+
+        self.client.post(reverse("delete_income", args=[income.pk]))
+
+        income.refresh_from_db()
+        self.assertTrue(income.is_skipped)
+        self.assertEqual(post_due_recurring(self.user, date(2026, 8, 14)), 0)
+        self.account.refresh_from_db()
+        self.assertEqual(self.account.balance, Decimal("1000.00"))
+
     def test_recurring_expense_posts_and_updates_balance(self):
         plan = MonthlyExpense.objects.create(
             user=self.user,
@@ -469,6 +489,82 @@ class FinanceTestCase(TestCase):
         self.assertEqual(expense.date, date(2026, 8, 5))
         self.account.refresh_from_db()
         self.assertEqual(self.account.balance, Decimal("550.00"))
+
+    def test_deleting_a_posted_monthly_expense_does_not_recreate_it(self):
+        plan = MonthlyExpense.objects.create(
+            user=self.user,
+            name="Rent",
+            amount=Decimal("450.00"),
+            start_date=date(2026, 8, 5),
+            category=self.expense_category,
+            bank_account=self.account,
+        )
+        post_due_recurring(self.user, date(2026, 8, 14))
+        expense = plan.posted_expenses.get()
+
+        response = self.client.post(reverse("delete_expense", args=[expense.pk]))
+
+        self.assertRedirects(response, f"{reverse('dashboard')}?tab=transactions")
+        expense.refresh_from_db()
+        self.assertTrue(expense.is_skipped)
+        self.account.refresh_from_db()
+        self.assertEqual(self.account.balance, Decimal("1000.00"))
+        self.assertEqual(post_due_recurring(self.user, date(2026, 8, 14)), 0)
+        self.assertEqual(
+            build_monthly_budget(self.user, date(2026, 8, 14))["actual_expenses"],
+            Decimal("0.00"),
+        )
+
+        dashboard_response = self.client.get(reverse("dashboard"))
+        transaction_ids = {
+            (item["kind"], item["id"])
+            for item in dashboard_response.context["transactions"]
+        }
+        self.assertNotIn(("expense", expense.pk), transaction_ids)
+
+        self.assertEqual(post_due_recurring(self.user, date(2026, 9, 5)), 1)
+        self.account.refresh_from_db()
+        self.assertEqual(self.account.balance, Decimal("550.00"))
+
+    def test_deleting_monthly_expense_plan_stops_future_postings(self):
+        plan = MonthlyExpense.objects.create(
+            user=self.user,
+            name="Membership",
+            amount=Decimal("20.00"),
+            start_date=date(2026, 9, 1),
+            category=self.expense_category,
+            bank_account=self.account,
+        )
+
+        response = self.client.post(
+            reverse("delete_monthly_expense", args=[plan.pk])
+        )
+
+        self.assertRedirects(response, f"{reverse('dashboard')}?tab=plans")
+        self.assertFalse(MonthlyExpense.objects.filter(pk=plan.pk).exists())
+        self.assertEqual(post_due_recurring(self.user, date(2026, 10, 1)), 0)
+        self.account.refresh_from_db()
+        self.assertEqual(self.account.balance, Decimal("1000.00"))
+
+    def test_future_monthly_expense_is_reserved_before_it_is_charged(self):
+        MonthlyExpense.objects.create(
+            user=self.user,
+            name="Insurance",
+            amount=Decimal("120.00"),
+            start_date=date(2026, 8, 20),
+            category=self.expense_category,
+            bank_account=self.account,
+        )
+
+        budget = build_monthly_budget(self.user, date(2026, 8, 14))
+
+        self.assertEqual(budget["expected_expenses"], Decimal("120.00"))
+        self.account.refresh_from_db()
+        self.assertEqual(self.account.balance, Decimal("1000.00"))
+        self.assertEqual(post_due_recurring(self.user, date(2026, 8, 19)), 0)
+        self.assertEqual(post_due_recurring(self.user, date(2026, 8, 20)), 1)
+        self.account.refresh_from_db()
+        self.assertEqual(self.account.balance, Decimal("880.00"))
 
     def test_monthly_budget_projects_plans_and_savings(self):
         RecurringIncome.objects.create(
