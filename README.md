@@ -63,6 +63,25 @@ Hosted access at [darith.app](https://darith.app) is available for people who wa
 
 People using the GitHub repository can also use [Buy Me a Coffee](https://buymeacoffee.com/darith) to support continued development.
 
+## Telegram admin notifications
+
+Darith can notify the administrator when a user registers, submits feedback, or reports a subscription payment. Create a Telegram bot, start a chat with it, and add these values to the server environment:
+
+~~~bash
+DARITH_TELEGRAM_BOT_TOKEN=123456:replace-with-your-bot-token
+DARITH_TELEGRAM_CHAT_ID=replace-with-your-chat-id
+~~~
+
+Restart the Darith application after changing the environment, then verify delivery from the same configured server environment:
+
+~~~bash
+python manage.py send_test_telegram
+~~~
+
+Both values are required; when either is missing, Telegram notifications remain disabled. Keep the bot token in `/etc/darith.env` or another protected server secret store and never commit it to Git.
+
+Alerts include only the username and the minimum event details. Feedback text and personal financial data are not sent to Telegram. Telegram errors are logged and do not prevent registration, feedback, or payment reporting.
+
 
 ## License
 

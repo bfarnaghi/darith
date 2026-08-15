@@ -3,6 +3,7 @@
 import base64
 import csv
 import io
+import json
 import os
 import subprocess
 import sys
@@ -39,6 +40,7 @@ from .models import (
     UserSubscription,
     UserFeedback,
 )
+from .notifications import send_telegram_admin_notification
 from .services import (
     build_monthly_budget,
     build_next_month_forecast,
@@ -102,6 +104,61 @@ class TutorialPageTests(SimpleTestCase):
         self.assertContains(response, "Passkey")
         self.assertContains(response, "No bank credentials")
         self.assertContains(response, "images/dashboard-preview.png")
+
+
+class TelegramNotificationTests(SimpleTestCase):
+    @override_settings(TELEGRAM_BOT_TOKEN="", TELEGRAM_CHAT_ID="")
+    @patch("web.notifications.urlopen")
+    def test_notification_is_disabled_without_credentials(self, urlopen_mock):
+        sent = send_telegram_admin_notification(
+            "New user created",
+            (("Username", "ben"),),
+        )
+
+        self.assertFalse(sent)
+        urlopen_mock.assert_not_called()
+
+    @override_settings(
+        TELEGRAM_BOT_TOKEN="123456:test-token",
+        TELEGRAM_CHAT_ID="-1001234567890",
+        TELEGRAM_NOTIFICATION_TIMEOUT_SECONDS=3,
+    )
+    @patch("web.notifications.urlopen")
+    def test_notification_posts_json_to_the_configured_chat(self, urlopen_mock):
+        urlopen_mock.return_value.__enter__.return_value.read.return_value = b'{"ok": true}'
+
+        sent = send_telegram_admin_notification(
+            "New feedback received",
+            (("Username", "ben"), ("Page", "dashboard")),
+        )
+
+        self.assertTrue(sent)
+        request = urlopen_mock.call_args.args[0]
+        payload = json.loads(request.data.decode("utf-8"))
+        self.assertEqual(
+            request.full_url,
+            "https://api.telegram.org/bot123456:test-token/sendMessage",
+        )
+        self.assertEqual(payload["chat_id"], "-1001234567890")
+        self.assertIn("New feedback received", payload["text"])
+        self.assertIn("Username: ben", payload["text"])
+        self.assertNotIn("feedback message", payload["text"])
+        urlopen_mock.assert_called_once_with(request, timeout=3)
+
+    @override_settings(
+        TELEGRAM_BOT_TOKEN="123456:test-token",
+        TELEGRAM_CHAT_ID="-1001234567890",
+        TELEGRAM_NOTIFICATION_TIMEOUT_SECONDS=1,
+    )
+    @patch("web.notifications.urlopen", side_effect=OSError("network unavailable"))
+    def test_notification_failure_does_not_escape(self, urlopen_mock):
+        sent = send_telegram_admin_notification(
+            "Subscription payment reported",
+            (("Reference", "DARITH-000001"),),
+        )
+
+        self.assertFalse(sent)
+        urlopen_mock.assert_called_once()
 
 
 class PricingPageTests(TestCase):
@@ -446,7 +503,8 @@ class FinanceTestCase(TestCase):
             "required",
         )
 
-    def test_feedback_is_saved_for_signed_in_user(self):
+    @patch("web.views.notify_feedback")
+    def test_feedback_is_saved_for_signed_in_user(self, notify_feedback_mock):
         response = self.client.post(
             reverse("submit_feedback"),
             {"message": "The monthly view is useful.", "page": "dashboard", "tab": "overview"},
@@ -455,6 +513,7 @@ class FinanceTestCase(TestCase):
         feedback = UserFeedback.objects.get()
         self.assertEqual(feedback.user, self.user)
         self.assertEqual(feedback.message, "The monthly view is useful.")
+        notify_feedback_mock.assert_called_once_with(feedback)
 
     def test_dashboard_gif_is_validated_and_private_to_its_owner(self):
         with tempfile.TemporaryDirectory() as media_root, self.settings(
@@ -1552,7 +1611,8 @@ class FinanceTestCase(TestCase):
 
 
 class RegistrationTests(TestCase):
-    def test_registration_saves_email_and_logs_user_in(self):
+    @patch("web.views.notify_new_user")
+    def test_registration_saves_email_and_logs_user_in(self, notify_new_user_mock):
         response = self.client.post(
             reverse("create_account"),
             {
@@ -1566,6 +1626,7 @@ class RegistrationTests(TestCase):
         user = User.objects.get(username="new-user")
         self.assertEqual(user.email, "new@example.com")
         self.assertEqual(int(self.client.session["_auth_user_id"]), user.id)
+        notify_new_user_mock.assert_called_once_with(user)
 
 
 class ManualSubscriptionTests(TestCase):
@@ -1619,7 +1680,10 @@ class ManualSubscriptionTests(TestCase):
         self.assertEqual(response.status_code, 200)
 
     @override_settings(SUBSCRIPTIONS_ENABLED=True)
-    def test_user_reports_payment_and_admin_activation_grants_access(self):
+    @patch("web.views.notify_subscription_payment")
+    def test_user_reports_payment_and_admin_activation_grants_access(
+        self, notify_subscription_payment_mock
+    ):
         self.plan.trial_days = 0
         self.plan.save()
         self.client.force_login(self.user)
@@ -1632,6 +1696,7 @@ class ManualSubscriptionTests(TestCase):
         self.assertIsNotNone(subscription.payment_reported_at)
         self.assertEqual(subscription.payment_reference, f"DARITH-{self.user.pk:06d}")
         self.assertFalse(subscription.has_access)
+        notify_subscription_payment_mock.assert_called_once_with(subscription)
 
         response = self.client.get(reverse("subscription_overview"))
         self.assertContains(response, self.plan.payment_instructions)

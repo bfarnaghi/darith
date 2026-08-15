@@ -55,6 +55,11 @@ from .models import (
     SavingsGoal,
     Transfer,
 )
+from .notifications import (
+    notify_feedback,
+    notify_new_user,
+    notify_subscription_payment,
+)
 from .security import (
     LOCKED_SESSION_KEY,
     PIN_ATTEMPTS_SESSION_KEY,
@@ -546,7 +551,8 @@ def report_subscription_payment(request):
     ):
         messages.info(request, "Your payment is already waiting for verification.")
     else:
-        report_manual_payment(request.user)
+        subscription = report_manual_payment(request.user)
+        notify_subscription_payment(subscription)
         messages.success(
             request,
             "Payment reported. An administrator will verify it and update your access.",
@@ -954,6 +960,7 @@ def submit_feedback(request):
         feedback.user = request.user
         feedback.page = request.POST.get("page", "dashboard")[:80]
         feedback.save()
+        notify_feedback(feedback)
         messages.success(request, "Thank you. Your feedback was sent.")
     else:
         _show_form_errors(request, form)
@@ -1107,6 +1114,7 @@ def create_account(request):
     form = RegistrationForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         user = form.save()
+        notify_new_user(user)
         login(request, user)
         mark_session_unlocked(request)
         messages.success(request, "Your account is ready.")
