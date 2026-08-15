@@ -43,7 +43,7 @@ def main():
         page.get_by_text("Limited admin view").wait_for()
         page.get_by_role("heading", name="From the Daric", exact=True).wait_for()
         page.locator('img[src*="daric-coin.jpg"]').wait_for()
-        page.get_by_role("link", name="Start free").first.wait_for()
+        page.get_by_role("link", name="Try Darith free").first.wait_for()
         page.get_by_text("45-day hosted trial").wait_for()
         page.get_by_role("link", name="Try Darith free for 45 days").wait_for()
         assert_no_horizontal_overflow(page)
@@ -51,7 +51,7 @@ def main():
 
         page.set_viewport_size({"width": 390, "height": 844})
         page.reload(wait_until="networkidle")
-        page.get_by_role("link", name="Start free").first.wait_for()
+        page.get_by_role("link", name="Try Darith free").first.wait_for()
         assert_no_horizontal_overflow(page)
         page.screenshot(path=OUTPUT_DIR / "landing-mobile.png", full_page=True)
 

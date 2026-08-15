@@ -24,7 +24,7 @@
             {% if request.user.is_authenticated %}
                 <a class="hero-action" href="{% url 'dashboard' %}">Open dashboard</a>
             {% else %}
-                <a class="hero-action" href="{% url 'create_account' %}">Start free</a>
+                <a class="hero-action" href="{% url 'create_account' %}">Try Darith free</a>
                 <p class="hero-trial-note">45-day hosted trial · No card required</p>
             {% endif %}
         </div>
@@ -79,5 +79,5 @@
     </section>
 </main>
 
-<footer class="site-footer"><div class="section-inner"><span>© 2026 Darith</span><span><a href="https://github.com/bfarnaghi/darith" target="_blank" rel="noopener noreferrer">Free local version on GitHub</a> · darith.app</span></div></footer>
+<footer class="site-footer"><div class="section-inner"><span>© 2026 Darith</span><span>Free self-hosted version · <a href="https://github.com/bfarnaghi/darith" target="_blank" rel="noopener noreferrer">GitHub</a></span></div></footer>
 {% endblock %}
