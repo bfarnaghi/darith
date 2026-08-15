@@ -81,22 +81,22 @@ button { color: inherit; }
     --primary-hover: #254f60;
 }
 .app-shell[data-theme="purple"] {
-    --ink: #241a2f;
-    --muted: #70647d;
-    --line: #e0d8e8;
-    --canvas: #f7f5f9;
-    --navy: #28183f;
-    --primary: #6d3cc4;
-    --primary-light: #efe7fb;
+    --ink: #251b2b;
+    --muted: #6f6278;
+    --line: #e5d8ed;
+    --canvas: #faf7fc;
+    --navy: #2b2033;
+    --primary: #76508f;
+    --primary-light: #f1e9f7;
     --cyan: #168ba1;
     --cyan-light: #e1f4f6;
     --blue: #39758e;
     --blue-light: #e5f1f5;
-    --hero: #593587;
-    --hero-control: #48296f;
-    --hero-line: #8966af;
-    --nav-active: #4d2c73;
-    --primary-hover: #572da1;
+    --hero: #76508f;
+    --hero-control: #644277;
+    --hero-line: #bf9bde;
+    --nav-active: #4d3859;
+    --primary-hover: #624176;
 }
 .sidebar {
     position: fixed;
@@ -414,7 +414,7 @@ button { color: inherit; }
 .theme-ocean { background: linear-gradient(135deg, #0a2f69 0 50%, #0b55d5 50%); }
 .theme-forest { background: linear-gradient(135deg, #142c25 0 50%, #17724f 50%); }
 .theme-graphite { background: linear-gradient(135deg, #242b31 0 50%, #31657a 50%); }
-.theme-purple { background: linear-gradient(135deg, #28183f 0 50%, #6d3cc4 50%); }
+.theme-purple { background: linear-gradient(135deg, #2b2033 0 50%, #bf9bde 50%); }
 .appearance-setting { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(180px, 1.3fr); align-items: center; gap: 16px; padding: 17px 0; border-bottom: 1px solid var(--line); }
 .deletion-setting > div { display: grid; gap: 4px; }
 .animation-intro { margin: 0; padding: 17px 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
@@ -428,7 +428,13 @@ button { color: inherit; }
 .remove-gif-button { grid-column: 3; min-height: 32px; justify-self: start; padding: 0 10px; border: 1px solid #e2b5b0; border-radius: 5px; color: #8b352d; background: var(--coral-light); cursor: pointer; font-size: 11px; font-weight: 750; }
 .remove-gif-button:hover { border-color: #cf8e86; background: #f8ddd9; }
 .animation-form .dialog-actions { margin-top: 0; }
-.security-settings { padding: 20px; border-top: 5px solid var(--canvas); }
+.settings-tabs { position: sticky; top: 66px; z-index: 2; display: grid; grid-template-columns: repeat(3, 1fr); padding: 0 20px; border-bottom: 1px solid var(--line); background: var(--paper); }
+.settings-tab { min-height: 48px; border: 0; border-bottom: 3px solid transparent; color: var(--muted); background: transparent; cursor: pointer; font-size: 12px; font-weight: 750; }
+.settings-tab:hover { color: var(--ink); }
+.settings-tab[aria-selected="true"] { border-bottom-color: var(--primary); color: var(--primary); }
+.settings-panel[hidden] { display: none; }
+.behavior-settings, .security-settings { padding: 20px; }
+.behavior-form { display: grid; }
 .settings-section-heading { display: grid; gap: 5px; margin-bottom: 14px; }
 .settings-section-heading h3 { margin: 0; font-size: 16px; }
 .settings-section-heading p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }

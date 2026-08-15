@@ -28,8 +28,37 @@ function activateTab(name, updateUrl = true) {
 tabButtons.forEach((button) => button.addEventListener("click", () => activateTab(button.dataset.tabTarget)));
 activateTab(app.dataset.activeTab, false);
 
+const settingsDialog = document.getElementById("dashboard-animation-edit");
+const settingsTabs = [...document.querySelectorAll("[data-settings-tab]")];
+const settingsPanels = [...document.querySelectorAll("[data-settings-panel]")];
+
+function activateSettingsTab(name) {
+    const selected = settingsPanels.some((panel) => panel.dataset.settingsPanel === name) ? name : "appearance";
+    settingsTabs.forEach((button) => {
+        const active = button.dataset.settingsTab === selected;
+        button.setAttribute("aria-selected", active ? "true" : "false");
+        button.tabIndex = active ? 0 : -1;
+    });
+    settingsPanels.forEach((panel) => { panel.hidden = panel.dataset.settingsPanel !== selected; });
+}
+
+settingsTabs.forEach((button) => {
+    button.addEventListener("click", () => activateSettingsTab(button.dataset.settingsTab));
+    button.addEventListener("keydown", (event) => {
+        if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+        event.preventDefault();
+        const direction = event.key === "ArrowRight" ? 1 : -1;
+        const nextIndex = (settingsTabs.indexOf(button) + direction + settingsTabs.length) % settingsTabs.length;
+        activateSettingsTab(settingsTabs[nextIndex].dataset.settingsTab);
+        settingsTabs[nextIndex].focus();
+    });
+});
 document.querySelectorAll("[data-dialog-open]").forEach((button) => {
-    button.addEventListener("click", () => document.getElementById(button.dataset.dialogOpen)?.showModal());
+    button.addEventListener("click", () => {
+        const dialog = document.getElementById(button.dataset.dialogOpen);
+        if (dialog === settingsDialog) activateSettingsTab("appearance");
+        dialog?.showModal();
+    });
 });
 document.querySelectorAll("[data-dialog-close]").forEach((button) => {
     button.addEventListener("click", () => button.closest("dialog").close());

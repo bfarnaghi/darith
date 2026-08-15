@@ -4,33 +4,9 @@
 
 # Darith
 
-Darith is a responsive Django app for managing personal money on mobile and desktop.
+Darith is a responsive personal-finance app that tracks accounts, recurring plans, and savings goals while showing what is safe to spend on mobile or desktop.
 
 **Website:** [https://darith.app](https://darith.app)
-
-## What it does
-
-- Tracks current balances across multiple bank accounts.
-- Lets tracking-only accounts stay outside free-to-spend and monthly calculations.
-- Adds, edits, and removes income, expenses, and transfers.
-- Moves money between bank accounts and savings goals.
-- Posts recurring income and expenses from their effective dates.
-- Supports ongoing monthly savings and dated targets such as a bicycle or holiday.
-- Keeps a separate balance for every savings goal.
-- Calculates monthly goal contributions and shows a reminder until you mark them saved.
-- Reserves expected daily costs, upcoming bills, and goal funding before calculating free spending.
-- Warns when spendable accounts cannot cover the remaining daily costs.
-- Forecasts the following month's status in the main dashboard box.
-- Lets each user choose a dashboard theme and display currency, including Iranian Toman.
-- Supports a private, size-limited profile picture for each user.
-- Lets each user choose whether deleting a transaction reverses its balance change.
-- Saves a per-user privacy switch that masks dashboard amounts as `******`.
-- Supports passkey, fingerprint, or Face ID unlock through WebAuthn, plus a hashed Darith PIN.
-- Can lock each user's dashboard after 1, 5, 15, or 30 minutes of inactivity.
-- Includes private in-app feedback submission.
-- Shows an optional private GIF chosen by the user for on-track, warning, and out-of-budget states.
-- Exports the signed-in user's financial data as a CSV file.
-- Optionally supports free trials and administrator-verified manual subscriptions.
 
 ## Run locally
 
@@ -55,13 +31,13 @@ Open `http://127.0.0.1:8000`, create a user account, and sign in.
 7. When a monthly savings reminder appears, press **Mark saved**. Darith transfers the calculated amount from the selected bank into that goal once for the month.
 8. Check **Free to spend** for money available now after uncovered bills, expected daily costs, and unfunded savings goals. Future surplus appears in the month-end outlook instead of becoming spendable early.
 9. Use **Export CSV** above the transaction list to download your accounts, goals, plans, transactions, and transfers.
-10. Use the gear button in **Free to spend** to choose a theme, display currency, profile picture, and deletion behavior. Iranian Toman is available as `IRT`. Currency changes labels only and does not convert stored amounts.
+10. Use **Settings → Appearance** to choose a theme, display currency, profile picture, and budget-state GIFs. Iranian Toman is shown as `IRT`. Currency changes labels only and does not convert stored amounts.
 11. Press the eye button in **Free to spend** to hide or show dashboard amounts. Darith remembers this choice for your user account.
 12. In Settings, you can upload and remove a GIF for each budget state. Profile pictures and GIFs are limited to 2 MB and 1200 x 1200 pixels; GIFs are also limited to 300 frames.
-13. Under **Settings → App lock**, add a passkey or Darith PIN and choose an inactivity timeout. Passkeys use the security built into your phone or computer; Darith does not receive your fingerprint or face data.
+13. Under **Settings → Security**, add a passkey or Darith PIN and choose an inactivity timeout. Passkeys use the security built into your phone or computer; Darith does not receive your fingerprint or face data.
 14. Use **Feedback** in the account menu to send a comment to the Darith administrator.
 
-Editing a transaction always updates its account balance. Deleting a transaction or transfer reverses its previous balance change by default; choose **Leave balances unchanged** in Settings when you prefer to correct balances manually. A bank or goal with transfer history is kept to protect the ledger.
+Editing a transaction always updates its account balance. Deleting a transaction or transfer reverses its previous balance change by default; choose **Leave balances unchanged** under **Settings → Behavior** when you prefer to correct balances manually. A bank or goal with transfer history is kept to protect the ledger.
 
 Due recurring items are processed whenever the dashboard opens. A server can also run them daily without a login:
 

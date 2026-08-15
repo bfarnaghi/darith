@@ -132,7 +132,7 @@ class BudgetPreference(models.Model):
         CURRENCY_CHF: "CHF ",
         CURRENCY_CAD: "CA$",
         CURRENCY_AUD: "A$",
-        CURRENCY_IRT: "Toman ",
+        CURRENCY_IRT: "IRT ",
     }
     DELETE_BALANCE_AUTOMATIC = "automatic"
     DELETE_BALANCE_MANUAL = "manual"

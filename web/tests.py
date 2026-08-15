@@ -228,6 +228,10 @@ class FinanceTestCase(TestCase):
         self.assertContains(response, "No bank credentials")
         self.assertContains(response, "Private by account")
         self.assertContains(response, "Clear data storage")
+        self.assertContains(response, "Limited admin view")
+        self.assertContains(response, "Daric")
+        self.assertContains(response, "images/daric-coin.jpg")
+        self.assertNotContains(response, 'class="hero-product"')
         self.assertNotContains(response, "animations")
         self.assertContains(response, reverse("create_account"))
         self.assertContains(response, "Try Darith")
@@ -582,7 +586,7 @@ class FinanceTestCase(TestCase):
         self.assertRedirects(response, f"{reverse('dashboard')}?tab=overview")
         preference = BudgetPreference.objects.get(user=self.user)
         self.assertEqual(preference.currency, BudgetPreference.CURRENCY_IRT)
-        self.assertContains(self.client.get(reverse("dashboard")), "Toman 1,000.00")
+        self.assertContains(self.client.get(reverse("dashboard")), "IRT 1,000.00")
 
     def test_financial_visibility_is_saved_per_user_and_masks_dashboard_amounts(self):
         response = self.client.post(reverse("toggle_financial_visibility"))
