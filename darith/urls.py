@@ -19,7 +19,11 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
+from web.seo_views import robots_txt, sitemap_xml
+
 urlpatterns = [
+    path('robots.txt', robots_txt, name='robots_txt'),
+    path('sitemap.xml', sitemap_xml, name='sitemap_xml'),
     path('admin/', admin.site.urls),
     path('',include('web.urls')),
 ]

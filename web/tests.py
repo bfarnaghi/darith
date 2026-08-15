@@ -61,6 +61,33 @@ def valid_profile_png():
     return output.getvalue()
 
 
+class SeoFileTests(SimpleTestCase):
+    def test_robots_txt_allows_public_home_and_blocks_private_pages(self):
+        response = self.client.get("/robots.txt")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "text/plain")
+        body = response.content.decode()
+        self.assertIn("User-agent: *", body)
+        self.assertIn("Allow: /", body)
+        self.assertIn("Disallow: /admin/", body)
+        self.assertIn("Disallow: /dashboard/", body)
+        self.assertIn("Disallow: /subscription/", body)
+        self.assertIn("Sitemap: https://darith.app/sitemap.xml", body)
+
+    def test_sitemap_xml_lists_only_public_homepage(self):
+        response = self.client.get("/sitemap.xml")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/xml")
+        body = response.content.decode()
+        self.assertIn('<?xml version="1.0" encoding="UTF-8"?>', body)
+        self.assertIn("<loc>https://darith.app/</loc>", body)
+        self.assertNotIn("/dashboard/", body)
+        self.assertNotIn("/admin/", body)
+        self.assertNotIn("/subscription/", body)
+
+
 class ProductionSettingsTests(SimpleTestCase):
     production_environment = {
         "DJANGO_DEBUG": "false",
