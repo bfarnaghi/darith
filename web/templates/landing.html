@@ -21,7 +21,12 @@
             <p class="hero-kicker">Personal money, made clear</p>
             <h1 id="hero-title">Know what's safe to spend this month.</h1>
             <p class="hero-copy">Add your balances, income, bills, daily costs, and savings goals. Darith shows what is safe to spend now and warns when the month no longer fits.</p>
-            {% if request.user.is_authenticated %}<a class="hero-action" href="{% url 'dashboard' %}">Open dashboard</a>{% else %}<a class="hero-action" href="{% url 'create_account' %}">Start free</a>{% endif %}
+            {% if request.user.is_authenticated %}
+                <a class="hero-action" href="{% url 'dashboard' %}">Open dashboard</a>
+            {% else %}
+                <a class="hero-action" href="{% url 'create_account' %}">Start free</a>
+                <p class="hero-trial-note">45-day hosted trial · No card required</p>
+            {% endif %}
         </div>
     </section>
 
@@ -59,7 +64,7 @@
     <section class="try-section" aria-labelledby="try-title">
         <div class="section-inner try-inner">
             <div><p>Start with your current balance</p><h2 id="try-title">Make the next spending decision with the whole month in sight.</h2></div>
-            {% if request.user.is_authenticated %}<a href="{% url 'dashboard' %}">Open dashboard</a>{% else %}<a href="{% url 'create_account' %}">Start your 45-day trial</a>{% endif %}
+            {% if request.user.is_authenticated %}<a href="{% url 'dashboard' %}">Open dashboard</a>{% else %}<a href="{% url 'create_account' %}">Try Darith free for 45 days</a>{% endif %}
         </div>
     </section>
 
