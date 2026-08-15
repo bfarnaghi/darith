@@ -19,6 +19,7 @@
             <button class="nav-item" type="button" data-tab-target="transactions"><span aria-hidden="true">↕</span>Transactions</button>
             <button class="nav-item" type="button" data-tab-target="plans"><span aria-hidden="true">↻</span>Monthly plans</button>
             <button class="nav-item" type="button" data-tab-target="categories"><span aria-hidden="true">#</span>Categories</button>
+            <a class="nav-item" href="{% url 'tutorial' %}"><span aria-hidden="true">i</span>Tutorial</a>
         </nav>
         <div class="sidebar-footer">
             <div class="user-chip">
@@ -50,6 +51,7 @@
                     <strong>{{ request.user.username }}</strong>
                     <button type="button" data-tab-target="categories">Categories</button>
                     <button type="button" data-dialog-open="dashboard-animation-edit">Settings</button>
+                    <a href="{% url 'tutorial' %}">Tutorial</a>
                     <button type="button" data-dialog-open="feedback-dialog">Feedback</button>
                     <a href="{% url 'export_data_csv' %}">Export CSV</a>
                     {% if subscriptions_enabled %}<a href="{% url 'subscription_overview' %}">Billing</a>{% endif %}

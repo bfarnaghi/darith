@@ -134,6 +134,7 @@ button { color: inherit; }
     background: transparent;
     cursor: pointer;
     text-align: left;
+    text-decoration: none;
 }
 .nav-item span { width: 19px; color: #cbdcf2; font-size: 20px; text-align: center; }
 .nav-item:hover, .nav-item.active { color: #fff; background: var(--nav-active); }

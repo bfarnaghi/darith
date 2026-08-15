@@ -98,6 +98,10 @@ def home(request):
     return render(request, "landing.html")
 
 
+def tutorial(request):
+    return render(request, "tutorial.html")
+
+
 def _dashboard_redirect(tab="overview"):
     return redirect(f"{reverse('dashboard')}?tab={tab}")
 

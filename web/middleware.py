@@ -21,6 +21,7 @@ EXEMPT_URL_NAMES = {
     "reset_password",
     "subscription_overview",
     "report_subscription_payment",
+    "tutorial",
 }
 
 
@@ -66,6 +67,7 @@ LOCK_EXEMPT_URL_NAMES = {
     "security_lock",
     "security_unlock",
     "session_locked",
+    "tutorial",
 }
 
 

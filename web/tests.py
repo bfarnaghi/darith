@@ -88,6 +88,22 @@ class SeoFileTests(SimpleTestCase):
         self.assertNotIn("/subscription/", body)
 
 
+class TutorialPageTests(SimpleTestCase):
+    def test_tutorial_is_public_and_explains_the_complete_workflow(self):
+        response = self.client.get(reverse("tutorial"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Understand your money, one section at a time.")
+        self.assertContains(response, "Free to spend this month")
+        self.assertContains(response, "How future income is treated")
+        self.assertContains(response, "Tracking-only accounts")
+        self.assertContains(response, "Automatic posting")
+        self.assertContains(response, "Saving goals")
+        self.assertContains(response, "Passkey")
+        self.assertContains(response, "No bank credentials")
+        self.assertContains(response, "images/dashboard-preview.png")
+
+
 class ProductionSettingsTests(SimpleTestCase):
     production_environment = {
         "DJANGO_DEBUG": "false",
@@ -272,6 +288,7 @@ class FinanceTestCase(TestCase):
         self.assertContains(response, "https://github.com/bfarnaghi/darith")
         self.assertContains(response, "images/darith-demo.gif")
         self.assertContains(response, "images/dashboard-mobile.png")
+        self.assertContains(response, reverse("tutorial"))
 
         self.client.force_login(self.user)
         response = self.client.get(reverse("home"))

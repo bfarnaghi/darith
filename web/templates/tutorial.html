@@ -1,0 +1,263 @@
+{# Author: Behnam <b.farnaghi@gmail.com> #}
+{# AI-assisted implementation; manually reviewed and verified by the developer. #}
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Tutorial | Darith{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{% static 'css/tutorial.css' %}">{% endblock %}
+
+{% block body %}
+<header class="tutorial-header">
+    <div class="tutorial-header-inner">
+        <a class="tutorial-brand" href="{% url 'home' %}" aria-label="Darith home"><img src="{% static 'images/logo.png' %}" alt=""><span>Darith</span></a>
+        <nav class="tutorial-header-nav" aria-label="Public navigation">
+            <a href="{% url 'home' %}">Home</a>
+            <a class="active" href="{% url 'tutorial' %}" aria-current="page">Tutorial</a>
+            {% if request.user.is_authenticated %}<a class="header-action" href="{% url 'dashboard' %}">Open dashboard</a>{% else %}<a class="header-action" href="{% url 'create_account' %}">Try Darith free</a>{% endif %}
+        </nav>
+    </div>
+</header>
+
+<main>
+    <section class="tutorial-hero" aria-labelledby="tutorial-title">
+        <div class="tutorial-inner tutorial-hero-inner">
+            <div class="tutorial-hero-copy">
+                <p>Darith guide</p>
+                <h1 id="tutorial-title">Understand your money, one section at a time.</h1>
+                <span>This guide explains what every main area does, what changes your balances, and how Darith decides what is safe to spend.</span>
+                <a href="#first-setup">Start with the setup</a>
+            </div>
+            <figure class="tutorial-hero-figure">
+                <img src="{% static 'images/dashboard-preview.png' %}" alt="Darith dashboard overview on desktop">
+                <figcaption>The Overview brings your current balance, plans, daily costs, and savings together.</figcaption>
+            </figure>
+        </div>
+    </section>
+
+    <section class="result-strip" aria-label="What Darith helps you understand">
+        <div class="tutorial-inner result-strip-inner">
+            <div><strong>Now</strong><span>Your real balance in accounts included in the budget.</span></div>
+            <div><strong>This month</strong><span>What remains after bills, daily costs, and saving goals.</span></div>
+            <div><strong>Next month</strong><span>An early warning based on your repeating plans.</span></div>
+        </div>
+    </section>
+
+    <div class="tutorial-inner tutorial-layout">
+        <aside class="tutorial-toc" aria-label="Tutorial sections">
+            <p>On this page</p>
+            <nav>
+                <a href="#first-setup">First setup</a>
+                <a href="#navigation">Navigation</a>
+                <a href="#overview">Overview</a>
+                <a href="#accounts">Accounts</a>
+                <a href="#transactions">Transactions</a>
+                <a href="#monthly-plans">Monthly plans</a>
+                <a href="#saving-goals">Saving goals</a>
+                <a href="#categories">Categories</a>
+                <a href="#settings">Settings</a>
+                <a href="#privacy">Privacy and data</a>
+                <a href="#subscription">Hosted access</a>
+            </nav>
+        </aside>
+
+        <article class="tutorial-content">
+            <section class="tutorial-section" id="first-setup">
+                <div class="section-number">01</div>
+                <p class="section-kicker">Begin here</p>
+                <h2>A useful first setup</h2>
+                <p class="section-lead">Darith becomes accurate when your starting balances and repeating commitments are accurate. This order takes only a few minutes and avoids confusing totals later.</p>
+                <ol class="setup-steps">
+                    <li><span>1</span><div><strong>Choose your display</strong><p>Open Settings, choose a currency and theme, and optionally add a profile picture. Currency changes how amounts are shown; it does not convert money between currencies.</p></div></li>
+                    <li><span>2</span><div><strong>Add your accounts</strong><p>Enter the current balance of each bank or cash account. Turn off <b>Include in monthly budget</b> for money you only want to track.</p></div></li>
+                    <li><span>3</span><div><strong>Set expected daily spending</strong><p>On Overview, choose Edit beside Expected daily costs. Enter a realistic average for food, transport, and other ordinary daily spending.</p></div></li>
+                    <li><span>4</span><div><strong>Add monthly plans</strong><p>Add salary and other repeating income, then rent, bills, subscriptions, and other repeating expenses with their first and optional last dates.</p></div></li>
+                    <li><span>5</span><div><strong>Add saving goals</strong><p>Choose a monthly amount or a target amount and date. Select the bank account that will fund each goal.</p></div></li>
+                    <li><span>6</span><div><strong>Record daily activity</strong><p>Add income and expenses when they happen. Darith updates the selected account and recalculates the month immediately.</p></div></li>
+                </ol>
+                <div class="note note-good"><strong>Best starting point</strong><p>Use the balance your bank shows today. Do not add old transactions unless you also adjust the starting balance to match them.</p></div>
+            </section>
+
+            <section class="tutorial-section" id="navigation">
+                <div class="section-number">02</div>
+                <p class="section-kicker">Finding your way</p>
+                <h2>Navigation and quick actions</h2>
+                <div class="feature-list">
+                    <div><strong>Desktop sidebar</strong><p>Move between Overview, Accounts, Transactions, Monthly plans, and Categories. Tutorial, feedback, billing, and logout are available near your profile.</p></div>
+                    <div><strong>Mobile navigation</strong><p>Use the bottom bar for Home, Accounts, Activity, and Plans. The large plus button opens a new expense. Categories, Settings, Tutorial, export, and account actions are in the profile menu.</p></div>
+                    <div><strong>Top actions</strong><p>Transfer moves existing money. Income adds money to an account. Expense subtracts money from an account.</p></div>
+                    <div><strong>Messages</strong><p>After an action, a message confirms what happened or explains why it could not be completed.</p></div>
+                </div>
+            </section>
+
+            <section class="tutorial-section" id="overview">
+                <div class="section-number">03</div>
+                <p class="section-kicker">Your monthly picture</p>
+                <h2>Overview</h2>
+                <p class="section-lead">Overview answers two different questions: what you have now, and what your plans say about the rest of the month.</p>
+
+                <div class="definition-list">
+                    <div><dt>Free to spend this month</dt><dd>Money left after Darith reserves uncovered future bills, expected daily costs for the remaining days, and saving contributions that are still due.</dd></div>
+                    <div><dt>Extra per day</dt><dd>The free-to-spend amount divided by the number of days remaining, including today.</dd></div>
+                    <div><dt>Current bank balance</dt><dd>The live total of bank and cash accounts that have <b>Include in monthly budget</b> enabled. Saving goal balances and tracking-only accounts are separate.</dd></div>
+                    <div><dt>Month-end outlook</dt><dd>Current included balance plus scheduled income still due, minus scheduled expenses still due. It is a plan-based account outlook before unrecorded daily spending and unfunded goals.</dd></div>
+                    <div><dt>Following month status</dt><dd>An early forecast that carries this month forward, then checks next month's repeating income, bills, daily costs, and goals.</dd></div>
+                </div>
+
+                <div class="calculation" aria-label="Free to spend calculation">
+                    <span>Included balance</span><b>&minus;</b><span>Uncovered future bills</span><b>&minus;</b><span>Remaining daily costs</span><b>&minus;</b><span>Saving due</span><b>=</b><strong>Free to spend</strong>
+                </div>
+
+                <div class="note note-info"><strong>How future income is treated</strong><p>Future income can cover future scheduled bills in the plan, but any extra future income does not become free-to-spend before it arrives. It does still appear in the month-end outlook.</p></div>
+
+                <h3>Budget status</h3>
+                <div class="status-list">
+                    <div class="status-healthy"><span></span><strong>On track</strong><p>Daily costs and this month's saving contributions are covered.</p></div>
+                    <div class="status-warning"><span></span><strong>Warning</strong><p>Expected daily costs are covered, but there is not enough left for all saving goals.</p></div>
+                    <div class="status-danger"><span></span><strong>Out of budget</strong><p>Included spendable accounts cannot cover the expected daily costs for the remaining days. Darith may suggest moving money from savings when savings can cover the gap.</p></div>
+                </div>
+
+                <h3>The six detail figures</h3>
+                <div class="feature-list compact">
+                    <div><strong>Current bank balance</strong><p>Total across included accounts.</p></div>
+                    <div><strong>Income this month</strong><p>Income already received plus repeating income still due.</p></div>
+                    <div><strong>Expenses this month</strong><p>Expenses already paid plus repeating expenses still due.</p></div>
+                    <div><strong>Expected daily costs</strong><p>Your daily estimate and its total for the remaining days.</p></div>
+                    <div><strong>Saving due</strong><p>This month's goal contributions that have not yet been funded.</p></div>
+                    <div><strong>Saved in goals</strong><p>Total held in active goal accounts, separate from spendable money.</p></div>
+                </div>
+
+                <h3>Activity, reminders, and coming up</h3>
+                <p><b>Recent transactions</b> shows the latest entries. <b>Coming up</b> shows repeating income and expenses due later this month. When a goal contribution is ready, <b>Fund your goals</b> shows the amount and source account; Mark saved creates a real transfer into the goal.</p>
+                <p>The eye button hides financial values across the dashboard and remembers that choice for your user. The gear button opens Settings.</p>
+            </section>
+
+            <section class="tutorial-section" id="accounts">
+                <div class="section-number">04</div>
+                <p class="section-kicker">Where money lives</p>
+                <h2>Accounts</h2>
+                <div class="feature-list">
+                    <div><strong>Bank and cash accounts</strong><p>Create an account with a name and its current balance. Income, expenses, and transfers update this balance automatically.</p></div>
+                    <div><strong>Included accounts</strong><p>Use these for money available to your monthly budget. Their balances and connected plans affect Overview.</p></div>
+                    <div><strong>Tracking-only accounts</strong><p>Turn off Include in monthly budget for cash, investments, or other money you want to record without changing free-to-spend or monthly forecasts.</p></div>
+                    <div><strong>Goal accounts</strong><p>Each saving goal has its own separate balance and appears in Accounts. It is funded by transfers, not counted as spendable bank money.</p></div>
+                </div>
+                <p>Select the three-dot button on an account to rename it, correct its current balance, change its budget inclusion, or remove it. Removing a bank account keeps transaction history, but an account still used by a transfer or goal may need those links changed first.</p>
+            </section>
+
+            <section class="tutorial-section" id="transactions">
+                <div class="section-number">05</div>
+                <p class="section-kicker">What already happened</p>
+                <h2>Transactions</h2>
+                <div class="feature-list">
+                    <div><strong>Income</strong><p>Add money that has already arrived. Choose its description, amount, date, category, and destination bank account.</p></div>
+                    <div><strong>Expense</strong><p>Record money already spent. Darith subtracts it from the selected bank account.</p></div>
+                    <div><strong>Transfer</strong><p>Move money between bank accounts, from a bank account to a goal, from a goal back to a bank, or between eligible accounts. The source must have enough money.</p></div>
+                    <div><strong>Export CSV</strong><p>Download your Darith data in a spreadsheet-friendly file for your own records or analysis.</p></div>
+                </div>
+                <div class="note note-info"><strong>Past and future dates</strong><p>Manual transactions and transfers represent completed activity, so they cannot be dated in the future. Use Monthly plans for future income and charges.</p></div>
+                <h3>Editing and deleting</h3>
+                <p>Select a transaction to edit or remove it. Editing reverses the old balance effect and applies the new values. In Settings &gt; Behavior, choose what deletion does:</p>
+                <ul class="plain-list">
+                    <li><b>Update balances automatically:</b> deleting an expense restores its amount; deleting income removes its amount; deleting a transfer restores both sides.</li>
+                    <li><b>Leave balances unchanged:</b> only the activity record is removed, and you correct account balances yourself if needed.</li>
+                </ul>
+                <p>Deleting one posted occurrence from a repeating plan skips only that occurrence. Future months remain scheduled.</p>
+            </section>
+
+            <section class="tutorial-section" id="monthly-plans">
+                <div class="section-number">06</div>
+                <p class="section-kicker">What should repeat</p>
+                <h2>Monthly plans</h2>
+                <p class="section-lead">Plans are for known future activity. They affect forecasts before their due date, then become normal transactions when due.</p>
+                <div class="feature-list">
+                    <div><strong>Recurring income</strong><p>Add salary or other monthly income. Choose the first payment date, optional final date, category, and receiving bank account.</p></div>
+                    <div><strong>Recurring expenses</strong><p>Add rent, bills, subscriptions, or other monthly charges. Choose the first charge date, optional final date, category, and paying bank account.</p></div>
+                    <div><strong>Date handling</strong><p>The day in the first date becomes the monthly due day. A date such as the 31st is moved to the last valid day in shorter months.</p></div>
+                    <div><strong>Automatic posting</strong><p>On or after the due date, Darith posts each occurrence once and updates the account. Due items are checked when the dashboard opens and can also be processed by the server's scheduled task.</p></div>
+                </div>
+                <p>Editing a plan changes future postings. Transactions already posted remain as they were. Deleting a plan stops future occurrences while keeping posted activity and its balance history.</p>
+            </section>
+
+            <section class="tutorial-section" id="saving-goals">
+                <div class="section-number">07</div>
+                <p class="section-kicker">Money with a purpose</p>
+                <h2>Saving goals</h2>
+                <p>Create a goal in one of two ways:</p>
+                <div class="feature-list">
+                    <div><strong>Ongoing goal</strong><p>Enter a fixed monthly amount, such as 400 each month. Darith reserves that amount until the goal is funded.</p></div>
+                    <div><strong>Dated target</strong><p>Enter a target amount and target date. Darith calculates the monthly contribution needed from the amount still remaining.</p></div>
+                </div>
+                <p>Also enter anything already saved, the first monthly saving date, and a default funding account. The goal then has a separate balance shown in Accounts.</p>
+                <h3>How funding works</h3>
+                <ol class="plain-list numbered">
+                    <li>A reminder shows the contribution still due for the active month.</li>
+                    <li>Mark saved transfers the amount from the chosen bank account into the goal immediately.</li>
+                    <li>On the goal's monthly date, Darith can fund it automatically when the source account has enough money.</li>
+                    <li>Each goal is funded at most once for a month, and the transfer appears in Activity.</li>
+                </ol>
+                <div class="note note-warning"><strong>Removing a goal</strong><p>Move its remaining balance back to a bank account first. Darith only removes a goal account when its balance is zero, and keeps its transfer history.</p></div>
+            </section>
+
+            <section class="tutorial-section" id="categories">
+                <div class="section-number">08</div>
+                <p class="section-kicker">Keep activity understandable</p>
+                <h2>Categories</h2>
+                <p>Income and expense categories are separate. Darith starts each user with practical defaults, and you can add, rename, or remove your own. Categories make the activity list easier to read and are included in the CSV export.</p>
+                <p>Each user's categories are private to that user. Removing a category does not remove the related transaction; the transaction remains in Activity without that category.</p>
+            </section>
+
+            <section class="tutorial-section" id="settings">
+                <div class="section-number">09</div>
+                <p class="section-kicker">Make Darith yours</p>
+                <h2>Settings</h2>
+                <h3>Appearance</h3>
+                <div class="feature-list compact">
+                    <div><strong>Profile picture</strong><p>JPEG, PNG, or WebP up to 2 MB and 1200 by 1200 pixels.</p></div>
+                    <div><strong>Theme</strong><p>Ocean, Forest, Graphite, or Purple. The choice is saved only for your user.</p></div>
+                    <div><strong>Currency</strong><p>EUR, USD, GBP, CHF, CAD, AUD, or Iranian Toman (IRT). This is display formatting, not currency conversion.</p></div>
+                    <div><strong>Status GIFs</strong><p>Optionally upload one private GIF for On track, Warning, and Out of budget. Each is limited to 2 MB, 1200 by 1200 pixels, and 300 frames. A new upload replaces the previous file, and Remove GIF clears it.</p></div>
+                </div>
+
+                <h3>Behavior</h3>
+                <p>Choose whether deleting a transaction automatically reverses its effect on balances or leaves balances unchanged for manual correction.</p>
+
+                <h3>Security</h3>
+                <div class="feature-list compact">
+                    <div><strong>Inactivity lock</strong><p>Choose Off, 1, 5, 15, or 30 minutes. Darith locks after no activity for that period.</p></div>
+                    <div><strong>Darith PIN</strong><p>Create a 4 to 8 digit PIN for unlocking. The saved value is securely hashed rather than stored as readable digits.</p></div>
+                    <div><strong>Passkey</strong><p>Add a passkey to unlock with your device's fingerprint, Face ID, screen lock, or security key. Passkeys require HTTPS and a supported browser.</p></div>
+                    <div><strong>Biometric privacy</strong><p>Your device performs the biometric check. Darith receives proof that it succeeded, not your fingerprint or face data.</p></div>
+                </div>
+                <p>Before enabling inactivity lock, add at least one unlock method. Keep a working PIN or passkey before removing your last available method.</p>
+            </section>
+
+            <section class="tutorial-section" id="privacy">
+                <div class="section-number">10</div>
+                <p class="section-kicker">Control and trust</p>
+                <h2>Privacy, data, and feedback</h2>
+                <div class="feature-list">
+                    <div><strong>No bank credentials</strong><p>Darith never asks for your online banking username, password, card number, or bank API access. You enter only the financial information you choose.</p></div>
+                    <div><strong>Private by user</strong><p>Accounts, transactions, categories, goals, settings, profile images, and GIFs are scoped to the signed-in user. Other users cannot view them.</p></div>
+                    <div><strong>Limited admin screens</strong><p>The normal admin interface manages usernames, email addresses, passwords, subscriptions, and submitted feedback without listing users' financial records.</p></div>
+                    <div><strong>Protected connection and backups</strong><p>darith.app uses HTTPS for data in transit and supports encrypted database and media backups. The server operator still has technical access for maintenance; Darith is not end-to-end encrypted.</p></div>
+                </div>
+                <p>Use <b>Export CSV</b> when you want a portable copy of your data. Use <b>Feedback</b> in the dashboard to send a comment to the operator; only the message, page context, and your account identity are sent.</p>
+            </section>
+
+            <section class="tutorial-section" id="subscription">
+                <div class="section-number">11</div>
+                <p class="section-kicker">Ways to use Darith</p>
+                <h2>Free locally or hosted online</h2>
+                <p>Individuals can run Darith on their own computer for free using the local setup instructions on GitHub. Hosted access at darith.app includes a 45-day trial with no card required.</p>
+                <p>Hosted payments are manual. Pay through the listed method, report the payment from Billing, and an administrator verifies it and sets your access date. Darith does not collect payment card or bank credentials.</p>
+                <div class="end-actions">
+                    <a class="primary-action" href="{% if request.user.is_authenticated %}{% url 'dashboard' %}{% else %}{% url 'create_account' %}{% endif %}">{% if request.user.is_authenticated %}Open dashboard{% else %}Try Darith free{% endif %}</a>
+                    <a class="secondary-action" href="https://github.com/bfarnaghi/darith" target="_blank" rel="noopener noreferrer">View local setup on GitHub</a>
+                </div>
+            </section>
+        </article>
+    </div>
+</main>
+
+<footer class="tutorial-footer"><div class="tutorial-inner"><span>&copy; 2026 Darith</span><span><a href="{% url 'home' %}">Home</a> &middot; <a href="https://github.com/bfarnaghi/darith" target="_blank" rel="noopener noreferrer">GitHub</a></span></div></footer>
+{% endblock %}
