@@ -3,7 +3,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Darith | Know what is safe to spend{% endblock %}
+{% block title %}Darith | Know what's safe to spend{% endblock %}
 {% block styles %}<link rel="stylesheet" href="{% static 'css/landing.css' %}">{% endblock %}
 
 {% block body %}
@@ -19,16 +19,16 @@
         <div class="product-hero-inner">
             <img class="hero-logo" src="{% static 'images/logo.png' %}" alt="">
             <p class="hero-kicker">Personal money, made clear</p>
-            <h1 id="hero-title">Darith</h1>
+            <h1 id="hero-title">Know what's safe to spend this month.</h1>
             <p class="hero-copy">Add your balances, income, bills, daily costs, and savings goals. Darith shows what is safe to spend now and warns when the month no longer fits.</p>
-            {% if request.user.is_authenticated %}<a class="hero-action" href="{% url 'dashboard' %}">Open Darith</a>{% else %}<a class="hero-action" href="{% url 'create_account' %}">Try Darith</a>{% endif %}
+            {% if request.user.is_authenticated %}<a class="hero-action" href="{% url 'dashboard' %}">Open dashboard</a>{% else %}<a class="hero-action" href="{% url 'create_account' %}">Start free</a>{% endif %}
         </div>
     </section>
 
     <section class="trust-strip" aria-label="Darith privacy summary">
         <div><strong>No bank credentials</strong><span>You enter only the money information you choose. Darith never asks for online banking login details.</span></div>
         <div><strong>Private by account</strong><span>Users cannot see each other's records. darith.app protects data in transit with HTTPS.</span></div>
-        <div><strong>Clear data storage</strong><span>Darith includes encrypted database and media backups. Encryption for stored data is configured by the person hosting the server.</span></div>
+        <div><strong>Protected data storage</strong><span>Darith includes encrypted database and media backups. Encryption for stored data is configured by the person hosting the server.</span></div>
         <div><strong>Limited admin view</strong><span>Admin screens show your username, email, subscription access, and feedback you send, but do not expose financial records.</span></div>
         <p>The person operating the hosting server can technically access saved data for maintenance. Darith is not end-to-end encrypted.</p>
     </section>
@@ -36,13 +36,7 @@
     <section class="screens-section" aria-labelledby="screens-title">
         <div class="section-inner">
             <div class="section-heading"><p>See it in use</p><h2 id="screens-title">One view for today and the month ahead.</h2></div>
-            <aside class="origin-note" aria-labelledby="origin-title">
-                <figure>
-                    <img src="{% static 'images/daric-coin.jpg' %}" alt="Ancient Persian gold Daric coin">
-                    <figcaption><a href="https://commons.wikimedia.org/wiki/File:Achaemenid_coin_daric_420BC_front.jpg" target="_blank" rel="noopener noreferrer">Public-domain image by Deflim</a></figcaption>
-                </figure>
-                <div><p>Name origin</p><h3 id="origin-title">From the Daric</h3><span>Darith takes its name from the Daric, a gold coin used in the ancient Persian Achaemenid Empire.</span></div>
-            </aside>
+            <p class="screens-caption">See your safe-to-spend amount instantly.</p>
             <div class="screens-layout">
                 <figure class="desktop-shot"><img src="{% static 'images/dashboard-preview.png' %}" alt="Darith desktop dashboard showing free-to-spend and monthly status"><figcaption>Desktop overview</figcaption></figure>
                 <figure class="workflow-shot"><img src="{% static 'images/darith-demo.gif' %}" alt="Darith workflow: add income, add an expense, and review free-to-spend"><figcaption>Add money, record spending, see what remains</figcaption></figure>
@@ -51,10 +45,31 @@
         </div>
     </section>
 
+    <section class="local-section" aria-labelledby="local-title">
+        <div class="section-inner local-inner">
+            <div>
+                <p>Use it your way</p>
+                <h2 id="local-title">Free for your own local setup.</h2>
+                <span>Darith is open source for individual use. You can run it on your own computer, keep the data under your control, and use the same budgeting workflow without a hosted subscription.</span>
+            </div>
+            <a href="https://github.com/bfarnaghi/darith" target="_blank" rel="noopener noreferrer">Get Darith on GitHub</a>
+        </div>
+    </section>
+
     <section class="try-section" aria-labelledby="try-title">
         <div class="section-inner try-inner">
             <div><p>Start with your current balance</p><h2 id="try-title">Make the next spending decision with the whole month in sight.</h2></div>
-            {% if request.user.is_authenticated %}<a href="{% url 'dashboard' %}">Open Darith</a>{% else %}<a href="{% url 'create_account' %}">Try Darith</a>{% endif %}
+            {% if request.user.is_authenticated %}<a href="{% url 'dashboard' %}">Open dashboard</a>{% else %}<a href="{% url 'create_account' %}">Start your 45-day trial</a>{% endif %}
+        </div>
+    </section>
+
+    <section class="origin-section" aria-labelledby="origin-title">
+        <div class="section-inner origin-note">
+            <figure>
+                <img src="{% static 'images/daric-coin.jpg' %}" alt="Ancient Persian gold Daric coin">
+                <figcaption><a href="https://commons.wikimedia.org/wiki/File:Achaemenid_coin_daric_420BC_front.jpg" target="_blank" rel="noopener noreferrer">Public-domain image by Deflim</a></figcaption>
+            </figure>
+            <div><p>Name origin</p><h2 id="origin-title">From the Daric</h2><span>Darith takes its name from the Daric, a gold coin used in the ancient Persian Achaemenid Empire. The name is a small nod to money with history: durable, counted carefully, and meant to make value clear.</span></div>
         </div>
     </section>
 </main>
