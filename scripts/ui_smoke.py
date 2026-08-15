@@ -64,6 +64,20 @@ def main():
         assert_no_horizontal_overflow(page)
         page.screenshot(path=OUTPUT_DIR / "tutorial-mobile.png", full_page=True)
 
+        page.set_viewport_size({"width": 1440, "height": 1000})
+        page.goto(f"{BASE_URL}/pricing/", wait_until="networkidle")
+        page.get_by_role("heading", name="Use Darith locally for free, or keep it available online.").wait_for()
+        page.get_by_role("heading", name="A simple manual process.").wait_for()
+        page.get_by_role("link", name="Open Buy Me a Coffee").wait_for()
+        assert_no_horizontal_overflow(page)
+        page.screenshot(path=OUTPUT_DIR / "pricing-desktop.png", full_page=True)
+
+        page.set_viewport_size({"width": 390, "height": 844})
+        page.reload(wait_until="networkidle")
+        page.get_by_role("heading", name="Use Darith locally for free, or keep it available online.").wait_for()
+        assert_no_horizontal_overflow(page)
+        page.screenshot(path=OUTPUT_DIR / "pricing-mobile.png", full_page=True)
+
         page.goto(f"{BASE_URL}/", wait_until="networkidle")
         page.get_by_role("link", name="Try Darith free").first.wait_for()
         assert_no_horizontal_overflow(page)

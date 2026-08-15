@@ -104,6 +104,40 @@ class TutorialPageTests(SimpleTestCase):
         self.assertContains(response, "images/dashboard-preview.png")
 
 
+class PricingPageTests(TestCase):
+    def setUp(self):
+        self.plan = SubscriptionPlan.objects.create(
+            name="Darith Monthly",
+            monthly_price=Decimal("8.00"),
+            currency="eur",
+            trial_days=45,
+            is_active=True,
+        )
+
+    @override_settings(SUBSCRIPTIONS_ENABLED=True)
+    def test_pricing_is_public_and_uses_the_active_admin_plan(self):
+        response = self.client.get(reverse("pricing"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Use Darith locally for free")
+        self.assertContains(response, "Free for individuals")
+        self.assertContains(response, "8.00")
+        self.assertContains(response, "45-day hosted trial")
+        self.assertContains(response, "A simple manual process.")
+        self.assertContains(response, "No automatic card charge")
+        self.assertContains(response, "https://buymeacoffee.com/darith")
+        self.assertContains(response, "https://github.com/bfarnaghi/darith")
+
+    @override_settings(SUBSCRIPTIONS_ENABLED=True)
+    def test_signed_in_user_can_open_pricing_without_active_access(self):
+        user = User.objects.create_user("pricing-user", password="good-password-123")
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("pricing"))
+
+        self.assertEqual(response.status_code, 200)
+
+
 class ProductionSettingsTests(SimpleTestCase):
     production_environment = {
         "DJANGO_DEBUG": "false",
@@ -289,6 +323,7 @@ class FinanceTestCase(TestCase):
         self.assertContains(response, "images/darith-demo.gif")
         self.assertContains(response, "images/dashboard-mobile.png")
         self.assertContains(response, reverse("tutorial"))
+        self.assertContains(response, reverse("pricing"))
 
         self.client.force_login(self.user)
         response = self.client.get(reverse("home"))

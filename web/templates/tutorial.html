@@ -13,6 +13,7 @@
         <nav class="tutorial-header-nav" aria-label="Public navigation">
             <a href="{% url 'home' %}">Home</a>
             <a class="active" href="{% url 'tutorial' %}" aria-current="page">Tutorial</a>
+            <a href="{% url 'pricing' %}">Pricing</a>
             {% if request.user.is_authenticated %}<a class="header-action" href="{% url 'dashboard' %}">Open dashboard</a>{% else %}<a class="header-action" href="{% url 'create_account' %}">Try Darith free</a>{% endif %}
         </nav>
     </div>
@@ -259,5 +260,5 @@
     </div>
 </main>
 
-<footer class="tutorial-footer"><div class="tutorial-inner"><span>&copy; 2026 Darith</span><span><a href="{% url 'home' %}">Home</a> &middot; <a href="https://github.com/bfarnaghi/darith" target="_blank" rel="noopener noreferrer">GitHub</a></span></div></footer>
+<footer class="tutorial-footer"><div class="tutorial-inner"><span>&copy; 2026 Darith</span><span><a href="{% url 'home' %}">Home</a> &middot; <a href="{% url 'pricing' %}">Pricing</a> &middot; <a href="https://github.com/bfarnaghi/darith" target="_blank" rel="noopener noreferrer">GitHub</a></span></div></footer>
 {% endblock %}

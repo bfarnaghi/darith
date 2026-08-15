@@ -102,6 +102,19 @@ def tutorial(request):
     return render(request, "tutorial.html")
 
 
+def pricing(request):
+    plan = get_active_plan()
+    return render(
+        request,
+        "pricing.html",
+        {
+            "plan": plan,
+            "trial_days": plan.trial_days if plan else 45,
+            "subscriptions_enabled": settings.SUBSCRIPTIONS_ENABLED,
+        },
+    )
+
+
 def _dashboard_redirect(tab="overview"):
     return redirect(f"{reverse('dashboard')}?tab={tab}")
 

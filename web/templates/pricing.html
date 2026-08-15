@@ -1,0 +1,137 @@
+{# Author: Behnam <b.farnaghi@gmail.com> #}
+{# AI-assisted implementation; manually reviewed and verified by the developer. #}
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Pricing | Darith{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{% static 'css/pricing.css' %}">{% endblock %}
+
+{% block body %}
+<header class="pricing-header">
+    <div class="pricing-header-inner">
+        <a class="pricing-brand" href="{% url 'home' %}" aria-label="Darith home"><img src="{% static 'images/logo.png' %}" alt=""><span>Darith</span></a>
+        <nav class="pricing-nav" aria-label="Public navigation">
+            <a href="{% url 'home' %}">Home</a>
+            <a href="{% url 'tutorial' %}">Tutorial</a>
+            <a class="active" href="{% url 'pricing' %}" aria-current="page">Pricing</a>
+            {% if request.user.is_authenticated %}<a class="nav-action" href="{% url 'dashboard' %}">Open dashboard</a>{% else %}<a class="nav-action" href="{% url 'create_account' %}">Try Darith free</a>{% endif %}
+        </nav>
+    </div>
+</header>
+
+<main>
+    <section class="pricing-hero" aria-labelledby="pricing-title">
+        <div class="pricing-inner pricing-hero-inner">
+            <img src="{% static 'images/logo.png' %}" alt="">
+            <p>Simple choices</p>
+            <h1 id="pricing-title">Use Darith locally for free, or keep it available online.</h1>
+            <span>The personal finance tools are the same. Choose whether you want to operate Darith yourself or let darith.app handle the server.</span>
+        </div>
+    </section>
+
+    <section class="plans-section" aria-labelledby="plans-title">
+        <div class="pricing-inner">
+            <div class="section-heading">
+                <p>Choose how to use it</p>
+                <h2 id="plans-title">Two ways to run your personal workspace.</h2>
+            </div>
+            <div class="plan-grid">
+                <article class="price-card local-card">
+                    <div class="plan-label"><span>Self-hosted</span><b>Free for individuals</b></div>
+                    <div class="price"><strong>&euro;0</strong><span>no monthly fee</span></div>
+                    <p>Run Darith on your own computer or private server using the repository and local setup guide.</p>
+                    <ul>
+                        <li>Complete accounts, plans, goals, and budgeting workflow</li>
+                        <li>Your Darith installation and database stay under your control</li>
+                        <li>No hosted subscription or Darith payment required</li>
+                        <li>You manage installation, updates, backups, and availability</li>
+                    </ul>
+                    <a class="secondary-action" href="https://github.com/bfarnaghi/darith" target="_blank" rel="noopener noreferrer">Set up Darith locally</a>
+                    <small>Available for individual use under the repository license.</small>
+                </article>
+
+                <article class="price-card hosted-card">
+                    <div class="plan-label"><span>darith.app</span><b>{% if plan %}{{ plan.name }}{% else %}Hosted monthly{% endif %}</b></div>
+                    <div class="price">
+                        {% if plan %}<strong>{% if plan.currency == 'eur' %}&euro;{% endif %}{{ plan.monthly_price|floatformat:2 }}</strong><span>{{ plan.currency|upper }} / month</span>{% else %}<strong>Monthly</strong><span>price shown when available</span>{% endif %}
+                    </div>
+                    <p>Use Darith online without operating the application or server yourself. The monthly contribution supports the service that keeps it available.</p>
+                    <ul>
+                        <li>{{ trial_days }}-day hosted trial with no card required</li>
+                        <li>Access from your phone or desktop wherever darith.app is available</li>
+                        <li>Server maintenance, application updates, and protected backups</li>
+                        <li>Manual payment verification without sharing bank credentials</li>
+                    </ul>
+                    {% if request.user.is_authenticated %}
+                        {% if subscriptions_enabled %}<a class="primary-action" href="{% url 'subscription_overview' %}">View billing and access</a>{% else %}<a class="primary-action" href="{% url 'dashboard' %}">Open dashboard</a>{% endif %}
+                    {% else %}
+                        <a class="primary-action" href="{% url 'create_account' %}">Try hosted Darith free</a>
+                    {% endif %}
+                    <small>No automatic card charge is collected by Darith.</small>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <section class="payment-section" aria-labelledby="payment-title">
+        <div class="pricing-inner payment-layout">
+            <div class="payment-copy">
+                <p>Hosted payment</p>
+                <h2 id="payment-title">A simple manual process.</h2>
+                <span>You pay through Buy Me a Coffee or another method listed in your Billing page. Darith does not collect card details or online banking credentials.</span>
+                <ol>
+                    <li><b>Pay outside Darith.</b> Use Buy Me a Coffee, bank transfer, PayPal, Revolut, Wise, or the payment method currently listed in Billing.</li>
+                    <li><b>Use your reference.</b> Include the personal Darith payment reference when the payment service allows it.</li>
+                    <li><b>Report the payment.</b> Select I have paid in Billing. An administrator verifies it and updates your access date.</li>
+                </ol>
+                <p class="recurring-note">Buy Me a Coffee can also create a recurring monthly contribution. Hosted access is still matched and verified manually by the Darith administrator.</p>
+            </div>
+            <aside class="coffee-panel">
+                <img src="{% static 'images/buy-me-a-coffee-qr.png' %}" alt="QR code for Darith on Buy Me a Coffee">
+                <strong>Pay or support Darith</strong>
+                <span>Local users can also make an optional one-time or monthly contribution to support development.</span>
+                <a href="https://buymeacoffee.com/darith" target="_blank" rel="noopener noreferrer">Open Buy Me a Coffee</a>
+            </aside>
+        </div>
+    </section>
+
+    <section class="included-section" aria-labelledby="included-title">
+        <div class="pricing-inner">
+            <div class="section-heading">
+                <p>Included either way</p>
+                <h2 id="included-title">The same core money tools.</h2>
+            </div>
+            <div class="included-grid">
+                <div><strong>Accounts and transfers</strong><span>Track included or tracking-only accounts and move money between banks and saving goals.</span></div>
+                <div><strong>Monthly planning</strong><span>Schedule recurring income, bills, daily costs, and automatic saving contributions.</span></div>
+                <div><strong>Free-to-spend guidance</strong><span>See what remains this month, the month-end outlook, and an early next-month status.</span></div>
+                <div><strong>Personal controls</strong><span>Use themes, currencies, CSV export, private media, passkeys, a Darith PIN, and inactivity lock.</span></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="questions-section" aria-labelledby="questions-title">
+        <div class="pricing-inner questions-layout">
+            <div><p>Clear answers</p><h2 id="questions-title">Before you choose.</h2></div>
+            <div class="questions-list">
+                <details open><summary>Does the free version have fewer budgeting features?</summary><p>No. The self-hosted repository provides the same core personal finance workflow. The difference is who operates and maintains the server.</p></details>
+                <details><summary>Will Darith ask for my card or bank login?</summary><p>No. Darith does not connect to your bank and does not collect card details. Hosted payment happens through the separate method shown in Billing.</p></details>
+                <details><summary>What does the monthly contribution pay for?</summary><p>It supports online availability, server costs, application maintenance, updates, and backups for the hosted service.</p></details>
+                <details><summary>How does the free trial work?</summary><p>A new hosted account receives {{ trial_days }} days of access without entering a card. After the trial, hosted access requires a manually verified payment or administrator-granted access.</p></details>
+            </div>
+        </div>
+    </section>
+
+    <section class="pricing-cta">
+        <div class="pricing-inner">
+            <div><p>No card required</p><h2>Start with the hosted trial, or run Darith yourself.</h2></div>
+            <div class="cta-actions">
+                {% if request.user.is_authenticated %}<a class="primary-action" href="{% url 'dashboard' %}">Open dashboard</a>{% else %}<a class="primary-action" href="{% url 'create_account' %}">Try Darith free</a>{% endif %}
+                <a class="secondary-action" href="https://github.com/bfarnaghi/darith" target="_blank" rel="noopener noreferrer">View on GitHub</a>
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer class="pricing-footer"><div class="pricing-inner"><span>&copy; 2026 Darith</span><span><a href="{% url 'tutorial' %}">Tutorial</a> &middot; <a href="https://github.com/bfarnaghi/darith" target="_blank" rel="noopener noreferrer">GitHub</a></span></div></footer>
+{% endblock %}
