@@ -25,6 +25,7 @@ CSV_COLUMNS = [
     "name",
     "amount",
     "balance",
+    "included_in_budget",
     "currency",
     "category",
     "account",
@@ -85,6 +86,7 @@ def build_user_csv_response(user):
             record_id=account.pk,
             name=account.name,
             balance=account.balance,
+            included_in_budget="yes" if account.include_in_budget else "no",
             currency=currency_code,
         )
 

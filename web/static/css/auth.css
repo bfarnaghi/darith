@@ -33,6 +33,12 @@ button, input { font: inherit; letter-spacing: 0; }
 .auth-form input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(11,85,213,.13); }
 .auth-submit { display: grid; min-height: 47px; place-items: center; margin-top: 4px; border: 0; border-radius: 6px; color: #fff; background: var(--primary); cursor: pointer; font-weight: 750; text-decoration: none; }
 .auth-submit:hover { background: #073a9b; }
+.auth-divider { display: flex; align-items: center; gap: 10px; margin: 18px 0; color: #8996a8; font-size: 11px; }
+.auth-divider::before, .auth-divider::after { height: 1px; flex: 1; background: var(--line); content: ""; }
+.auth-passkey { display: grid; width: 100%; min-height: 46px; place-items: center; border: 1px solid #b9c8db; border-radius: 6px; color: var(--ink); background: #fff; cursor: pointer; font-weight: 750; }
+.auth-passkey:hover { background: #f2f6fb; }
+.auth-passkey:disabled { cursor: wait; opacity: .65; }
+.auth-passkey-message { min-height: 17px; margin: 9px 0 0; color: var(--muted); font-size: 11px; text-align: center; }
 .auth-switch { margin: 24px 0 0; color: var(--muted); font-size: 12px; text-align: center; }
 .field-help { color: var(--muted); font-size: 10px; line-height: 1.4; }
 .field-help ul { margin: 3px 0 0; padding-left: 16px; }
@@ -46,6 +52,19 @@ button, input { font: inherit; letter-spacing: 0; }
 .result .auth-submit { width: 100%; }
 .result-mark { display: grid; width: 48px; height: 48px; margin-bottom: 18px; place-items: center; border-radius: 50%; color: #087552; background: #e2f7ef; font-size: 22px; font-weight: 800; }
 .result-mark.error { color: #8c342d; background: #f7e7e4; }
+.lock-screen { display: grid; min-height: 100vh; place-items: center; padding: 28px 18px; background: #071a3a; }
+.lock-panel { width: min(420px, 100%); padding: 32px; border-radius: 8px; background: var(--paper); box-shadow: 0 24px 70px rgba(0, 0, 0, .28); }
+.lock-brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); font-size: 17px; font-weight: 800; text-decoration: none; }
+.lock-brand img { width: 34px; height: 34px; border-radius: 6px; object-fit: contain; }
+.lock-symbol { display: grid; width: 46px; height: 46px; margin: 34px 0 18px; place-items: center; border-radius: 50%; color: var(--primary); background: #e7f0ff; font-size: 21px; }
+.lock-panel h1 { margin: 0; font-size: 28px; }
+.lock-panel > p { margin: 10px 0 24px; color: var(--muted); font-size: 13px; line-height: 1.55; }
+.lock-passkey { margin-bottom: 16px; }
+.pin-unlock-form { display: grid; gap: 8px; padding-top: 16px; border-top: 1px solid var(--line); }
+.pin-unlock-form label { color: #46556d; font-size: 12px; font-weight: 750; }
+.pin-unlock-form input { width: 100%; min-height: 46px; padding: 10px 12px; border: 1px solid #c8d5e5; border-radius: 5px; font-size: 20px; letter-spacing: 0; }
+.lock-logout { margin-top: 20px; text-align: center; }
+.lock-logout button { border: 0; color: var(--muted); background: none; cursor: pointer; font-size: 12px; text-decoration: underline; }
 @media (max-width: 760px) {
     .auth-shell { grid-template-columns: 1fr; }
     .auth-intro { min-height: 230px; padding: 26px 24px; }

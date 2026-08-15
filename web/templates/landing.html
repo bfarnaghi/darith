@@ -3,65 +3,53 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Darith | Personal money, made clear{% endblock %}
+{% block title %}Darith | Know what is safe to spend{% endblock %}
 {% block styles %}<link rel="stylesheet" href="{% static 'css/landing.css' %}">{% endblock %}
 
 {% block body %}
 <header class="site-header">
     <div class="site-header-inner">
         <a class="site-brand" href="{% url 'home' %}" aria-label="Darith home"><img src="{% static 'images/logo.png' %}" alt=""><span>Darith</span></a>
-        <nav class="site-nav" aria-label="Website navigation"><a href="#how-it-works">How it works</a><a href="#security">Security</a></nav>
-        <div class="site-actions">
-            {% if request.user.is_authenticated %}<a class="header-primary" href="{% url 'dashboard' %}">Open dashboard</a>{% else %}<a class="header-link" href="{% url 'login' %}">Sign in</a><a class="header-primary" href="{% url 'create_account' %}">Create account</a>{% endif %}
-        </div>
+        {% if request.user.is_authenticated %}<a class="header-link" href="{% url 'dashboard' %}">Open dashboard</a>{% else %}<a class="header-link" href="{% url 'login' %}">Sign in</a>{% endif %}
     </div>
 </header>
 
 <main>
     <section class="product-hero" aria-labelledby="hero-title">
-        <img class="hero-logo" src="{% static 'images/logo.png' %}" alt="" aria-hidden="true">
+        <img class="hero-product" src="{% static 'images/dashboard-preview.png' %}" alt="" aria-hidden="true">
+        <div class="hero-shade" aria-hidden="true"></div>
         <div class="product-hero-inner">
+            <img class="hero-logo" src="{% static 'images/logo.png' %}" alt="">
             <p class="hero-kicker">Personal money, made clear</p>
             <h1 id="hero-title">Darith</h1>
-            <p class="hero-copy">Know what is safe to spend after bills, daily costs, and savings are accounted for.</p>
-            <div class="hero-actions">
-                {% if request.user.is_authenticated %}<a class="hero-primary" href="{% url 'dashboard' %}">Open dashboard</a>{% else %}<a class="hero-primary" href="{% url 'create_account' %}">Get started</a><a class="hero-secondary" href="{% url 'login' %}">Sign in</a>{% endif %}
-            </div>
-            <p class="hero-detail">Accounts · recurring plans · savings goals · clear monthly outlook</p>
+            <p class="hero-copy">Add your balances, income, bills, daily costs, and savings goals. Darith shows what is safe to spend now and warns when the month no longer fits.</p>
+            {% if request.user.is_authenticated %}<a class="hero-action" href="{% url 'dashboard' %}">Open Darith</a>{% else %}<a class="hero-action" href="{% url 'create_account' %}">Try Darith</a>{% endif %}
+        </div>
+        <div class="trust-strip" aria-label="Darith privacy summary">
+            <div><strong>No bank credentials</strong><span>You enter only the money information you choose. Darith never asks for online banking login details.</span></div>
+            <div><strong>Private by account</strong><span>Users cannot see each other's records. darith.app protects data in transit with HTTPS.</span></div>
+            <div><strong>Clear data storage</strong><span>Darith stores your balances, transactions, plans, goals, settings, profile image, and feedback you submit.</span></div>
         </div>
     </section>
 
-    <section class="how-section" id="how-it-works" aria-labelledby="how-title">
+    <section class="screens-section" aria-labelledby="screens-title">
         <div class="section-inner">
-            <div class="section-intro"><p class="section-kicker">How it works</p><h2 id="how-title">Your month, reduced to one useful number.</h2></div>
-            <div class="process-grid">
-                <article><span>01</span><h3>Bring it together</h3><p>Accounts, income, expenses, transfers, and goals live in one ledger.</p></article>
-                <article><span>02</span><h3>Plan what repeats</h3><p>Regular income, bills, daily costs, and savings are carried into each month.</p></article>
-                <article><span>03</span><h3>Spend with context</h3><p>Darith shows what remains and warns when the plan no longer fits the balance.</p></article>
+            <div class="section-heading"><p>See it in use</p><h2 id="screens-title">One view for today and the month ahead.</h2></div>
+            <div class="screens-layout">
+                <figure class="desktop-shot"><img src="{% static 'images/dashboard-preview.png' %}" alt="Darith desktop dashboard showing free-to-spend and monthly status"><figcaption>Desktop overview</figcaption></figure>
+                <figure class="workflow-shot"><img src="{% static 'images/darith-demo.gif' %}" alt="Darith workflow: add income, add an expense, and review free-to-spend"><figcaption>Add money, record spending, see what remains</figcaption></figure>
+                <figure class="mobile-shot"><img src="{% static 'images/dashboard-mobile.png' %}" alt="Darith dashboard on a mobile screen"><figcaption>Mobile overview</figcaption></figure>
             </div>
         </div>
     </section>
 
-    <section class="decision-band">
-        <div class="section-inner decision-inner"><p class="section-kicker">Built for real life</p><h2>Plan ahead without turning money into a second job.</h2><p>Automatic monthly movements, goal funding, and daily expense reserves keep your dashboard personal and current.</p></div>
-    </section>
-
-    <section class="security-section" id="security" aria-labelledby="security-title">
-        <div class="section-inner">
-            <div class="security-heading"><p class="section-kicker">Your privacy</p><h2 id="security-title">Your information stays private.</h2><p>Your balances, spending, and plans are available only after you sign in to your own account.</p></div>
-            <div class="security-grid">
-                <article><h3>Your own private space</h3><p>Darith keeps each person's records separate, so other users cannot see your money information.</p></article>
-                <article><h3>A protected sign-in</h3><p>Your password is protected when it is saved and is never displayed when Darith checks it.</p></article>
-                <article><h3>Careful storage</h3><p>When Darith is hosted correctly, your information and its backups are kept with standard security protections.</p></article>
-            </div>
-            <p class="security-note">Like other hosted services, the trusted person who operates the website may access information when necessary for maintenance or support.</p>
+    <section class="try-section" aria-labelledby="try-title">
+        <div class="section-inner try-inner">
+            <div><p>Start with your current balance</p><h2 id="try-title">Make the next spending decision with the whole month in sight.</h2></div>
+            {% if request.user.is_authenticated %}<a href="{% url 'dashboard' %}">Open Darith</a>{% else %}<a href="{% url 'create_account' %}">Try Darith</a>{% endif %}
         </div>
-    </section>
-
-    <section class="closing-section">
-        <div class="section-inner closing-inner"><p class="section-kicker">A calmer monthly view</p><h2>Make the next spending decision with the whole month in sight.</h2>{% if request.user.is_authenticated %}<a href="{% url 'dashboard' %}">Open Darith</a>{% else %}<a href="{% url 'create_account' %}">Create your account</a>{% endif %}</div>
     </section>
 </main>
 
-<footer class="site-footer"><div class="section-inner"><span>© 2026 Darith</span><span>darith.app</span></div></footer>
+<footer class="site-footer"><div class="section-inner"><span>© 2026 Darith</span><span><a href="https://github.com/bfarnaghi/darith" target="_blank" rel="noopener noreferrer">Free local version on GitHub</a> · darith.app</span></div></footer>
 {% endblock %}

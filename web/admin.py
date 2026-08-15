@@ -7,6 +7,7 @@ from django.utils import timezone
 
 from .models import (
     SubscriptionPlan,
+    UserFeedback,
     UserSubscription,
 )
 
@@ -94,3 +95,16 @@ class UserSubscriptionAdmin(admin.ModelAdmin):
             access_until=timezone.localdate() - timedelta(days=1),
             updated_at=timezone.now(),
         )
+
+
+@admin.register(UserFeedback)
+class UserFeedbackAdmin(admin.ModelAdmin):
+    list_display = ("user", "created_at", "status", "message_preview")
+    list_filter = ("status", "created_at")
+    list_editable = ("status",)
+    search_fields = ("user__username", "user__email", "message")
+    readonly_fields = ("user", "message", "page", "created_at")
+
+    @admin.display(description="Feedback")
+    def message_preview(self, obj):
+        return obj.message[:100]

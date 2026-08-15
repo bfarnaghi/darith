@@ -68,6 +68,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "web.middleware.SessionLockMiddleware",
     "web.middleware.SubscriptionAccessMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -198,6 +199,9 @@ EMAIL_HOST_PASSWORD = os.environ.get("DJANGO_EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = env_bool("DJANGO_EMAIL_USE_TLS", False)
 
 SUBSCRIPTIONS_ENABLED = env_bool("DARITH_SUBSCRIPTIONS_ENABLED", False)
+WEBAUTHN_RP_ID = os.environ.get("DARITH_WEBAUTHN_RP_ID", "").strip()
+WEBAUTHN_RP_NAME = os.environ.get("DARITH_WEBAUTHN_RP_NAME", "Darith").strip()
+WEBAUTHN_ORIGIN = os.environ.get("DARITH_WEBAUTHN_ORIGIN", "").strip()
 
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"

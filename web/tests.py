@@ -7,12 +7,14 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 from datetime import date, timedelta
 from decimal import Decimal
 from pathlib import Path
 from unittest.mock import patch
 
 from django.contrib import admin
+from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import SimpleTestCase, TestCase, override_settings
@@ -28,15 +30,18 @@ from .models import (
     Income,
     IncomeCategory,
     MonthlyExpense,
+    PasskeyCredential,
     RecurringIncome,
     SavingsGoal,
     SubscriptionPlan,
     Transfer,
     Token,
     UserSubscription,
+    UserFeedback,
 )
 from .services import (
     build_monthly_budget,
+    build_next_month_forecast,
     fund_due_savings_goals,
     goal_funding_reminders,
     post_due_recurring,
@@ -154,6 +159,7 @@ class AdminPrivacyTests(TestCase):
         SavingsGoal,
         Transfer,
         Token,
+        PasskeyCredential,
     )
 
     def test_private_finance_models_are_not_registered_in_admin(self):
@@ -163,6 +169,7 @@ class AdminPrivacyTests(TestCase):
         self.assertIn(User, admin.site._registry)
         self.assertIn(SubscriptionPlan, admin.site._registry)
         self.assertIn(UserSubscription, admin.site._registry)
+        self.assertIn(UserFeedback, admin.site._registry)
 
     def test_admin_index_only_shows_identity_and_subscription_management(self):
         administrator = User.objects.create_superuser(
@@ -179,6 +186,17 @@ class AdminPrivacyTests(TestCase):
         self.assertNotContains(response, "Bank accounts")
         self.assertNotContains(response, "Expenses")
         self.assertNotContains(response, "Income categories")
+
+
+class DocumentationTests(SimpleTestCase):
+    def test_deployment_guide_is_local_and_minimal(self):
+        guide = (BASE_DIR / "DEPLOYMENT.md").read_text()
+
+        self.assertIn("# Local Setup", guide)
+        self.assertIn("python manage.py runserver", guide)
+        self.assertIn("db.sqlite3", guide)
+        self.assertNotIn("Nginx", guide)
+        self.assertNotIn("systemd", guide)
 
 
 class FinanceTestCase(TestCase):
@@ -207,14 +225,146 @@ class FinanceTestCase(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Personal money, made clear")
-        self.assertContains(response, "Your information stays private")
+        self.assertContains(response, "No bank credentials")
+        self.assertContains(response, "Private by account")
+        self.assertContains(response, "Clear data storage")
         self.assertNotContains(response, "animations")
         self.assertContains(response, reverse("create_account"))
+        self.assertContains(response, "Try Darith")
+        self.assertContains(response, "https://github.com/bfarnaghi/darith")
+        self.assertContains(response, "images/darith-demo.gif")
+        self.assertContains(response, "images/dashboard-mobile.png")
 
         self.client.force_login(self.user)
         response = self.client.get(reverse("home"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Open dashboard")
+
+    def test_next_month_forecast_uses_estimated_closing_balance(self):
+        self.account.balance = Decimal("200.00")
+        self.account.save(update_fields=["balance"])
+        BudgetPreference.objects.create(
+            user=self.user,
+            expected_daily_expense=Decimal("10.00"),
+        )
+        RecurringIncome.objects.create(
+            user=self.user,
+            name="Salary",
+            amount=Decimal("1300.00"),
+            start_date=date(2026, 8, 28),
+            category=self.income_category,
+            bank_account=self.account,
+        )
+        MonthlyExpense.objects.create(
+            user=self.user,
+            name="Rent",
+            amount=Decimal("550.00"),
+            start_date=date(2026, 8, 28),
+            category=self.expense_category,
+            bank_account=self.account,
+        )
+
+        current = build_monthly_budget(self.user, date(2026, 8, 14))
+        forecast = build_next_month_forecast(
+            self.user, date(2026, 8, 14), current
+        )
+
+        self.assertEqual(forecast["month_start"], date(2026, 9, 1))
+        self.assertEqual(forecast["opening_balance"], Decimal("770.00"))
+        self.assertEqual(forecast["expected_income"], Decimal("1300.00"))
+        self.assertEqual(forecast["expected_expenses"], Decimal("550.00"))
+        self.assertEqual(forecast["daily_expenses"], Decimal("300.00"))
+        self.assertEqual(forecast["free_to_spend"], Decimal("470.00"))
+        self.assertEqual(forecast["projected_balance"], Decimal("1220.00"))
+        self.assertEqual(forecast["status"], "healthy")
+
+    def test_security_settings_hash_pin_and_require_unlock_method(self):
+        response = self.client.post(
+            reverse("update_security_settings"),
+            {"lock_timeout_minutes": "5", "new_pin": "4286", "confirm_pin": "4286"},
+        )
+        self.assertRedirects(response, f"{reverse('dashboard')}?tab=overview")
+        preference = BudgetPreference.objects.get(user=self.user)
+        self.assertEqual(preference.lock_timeout_minutes, 5)
+        self.assertNotEqual(preference.darith_pin_hash, "4286")
+        self.assertTrue(check_password("4286", preference.darith_pin_hash))
+
+        preference.darith_pin_hash = ""
+        preference.lock_timeout_minutes = 0
+        preference.save(update_fields=["darith_pin_hash", "lock_timeout_minutes"])
+        self.client.post(
+            reverse("update_security_settings"),
+            {"lock_timeout_minutes": "1", "new_pin": "", "confirm_pin": ""},
+        )
+        preference.refresh_from_db()
+        self.assertEqual(preference.lock_timeout_minutes, 0)
+
+    def test_inactivity_lock_redirects_and_pin_unlocks(self):
+        preference = BudgetPreference.objects.create(
+            user=self.user,
+            lock_timeout_minutes=1,
+            darith_pin_hash=make_password("4286"),
+        )
+        self.client.get(reverse("dashboard"))
+        session = self.client.session
+        session["darith_last_activity"] = time.time() - 61
+        session.save()
+
+        response = self.client.get(reverse("dashboard"))
+        self.assertRedirects(response, reverse("session_locked"), fetch_redirect_response=False)
+        self.assertTrue(self.client.session["darith_locked"])
+        self.assertEqual(self.client.get(reverse("session_locked")).status_code, 200)
+
+        response = self.client.post(reverse("security_unlock"), {"pin": "4286"})
+        self.assertRedirects(response, reverse("dashboard"), fetch_redirect_response=False)
+        self.assertFalse(self.client.session["darith_locked"])
+        preference.refresh_from_db()
+        self.assertEqual(preference.lock_timeout_minutes, 1)
+
+    def test_passkey_options_are_scoped_to_current_user(self):
+        credential = PasskeyCredential.objects.create(
+            user=self.user,
+            name="Laptop",
+            credential_id=b"credential-one",
+            public_key=b"public-key",
+            transports=["internal"],
+        )
+        PasskeyCredential.objects.create(
+            user=self.other_user,
+            name="Other device",
+            credential_id=b"credential-two",
+            public_key=b"other-public-key",
+        )
+
+        response = self.client.post(reverse("passkey_unlock_options"))
+        self.assertEqual(response.status_code, 200)
+        options = response.json()
+        self.assertEqual(len(options["allowCredentials"]), 1)
+        self.assertEqual(options["allowCredentials"][0]["transports"], ["internal"])
+        self.assertIsNotNone(options["challenge"])
+        self.assertEqual(credential.user, self.user)
+
+        registration_response = self.client.post(
+            reverse("passkey_registration_options")
+        )
+        self.assertEqual(registration_response.status_code, 200)
+        registration_options = registration_response.json()
+        self.assertEqual(registration_options["rp"]["id"], "testserver")
+        self.assertEqual(registration_options["user"]["name"], self.user.username)
+        self.assertEqual(
+            registration_options["authenticatorSelection"]["userVerification"],
+            "required",
+        )
+
+    def test_feedback_is_saved_for_signed_in_user(self):
+        response = self.client.post(
+            reverse("submit_feedback"),
+            {"message": "The monthly view is useful.", "page": "dashboard", "tab": "overview"},
+        )
+        self.assertRedirects(response, f"{reverse('dashboard')}?tab=overview")
+        feedback = UserFeedback.objects.get()
+        self.assertEqual(feedback.user, self.user)
+        self.assertEqual(feedback.message, "The monthly view is useful.")
 
     def test_dashboard_gif_is_validated_and_private_to_its_owner(self):
         with tempfile.TemporaryDirectory() as media_root, self.settings(
@@ -434,6 +584,23 @@ class FinanceTestCase(TestCase):
         self.assertEqual(preference.currency, BudgetPreference.CURRENCY_IRT)
         self.assertContains(self.client.get(reverse("dashboard")), "Toman 1,000.00")
 
+    def test_financial_visibility_is_saved_per_user_and_masks_dashboard_amounts(self):
+        response = self.client.post(reverse("toggle_financial_visibility"))
+
+        self.assertRedirects(response, f"{reverse('dashboard')}?tab=overview")
+        preference = BudgetPreference.objects.get(user=self.user)
+        self.assertTrue(preference.hide_financial_values)
+        response = self.client.get(reverse("dashboard"))
+        self.assertContains(response, 'data-values-hidden="true"')
+        self.assertContains(response, "******")
+        self.assertGreaterEqual(response.content.count(b"******"), 10)
+        self.assertContains(response, 'aria-label="Show amounts"')
+
+        self.client.force_login(self.other_user)
+        response = self.client.get(reverse("dashboard"))
+        self.assertContains(response, 'data-values-hidden="false"')
+        self.assertContains(response, 'aria-label="Hide amounts"')
+
     def test_csv_export_contains_only_the_signed_in_users_data(self):
         Expense.objects.create(
             user=self.user,
@@ -467,6 +634,7 @@ class FinanceTestCase(TestCase):
                 row["record_type"] == "bank_account"
                 and row["name"] == "Main"
                 and row["currency"] == "EUR"
+                and row["included_in_budget"] == "yes"
                 for row in rows
             )
         )
@@ -800,6 +968,64 @@ class FinanceTestCase(TestCase):
         self.assertEqual(budget["free_to_spend"], Decimal("600.00"))
         self.assertEqual(budget["status"], "healthy")
 
+    def test_tracking_only_account_is_excluded_from_monthly_budget(self):
+        tracking_account = BankAccount.objects.create(
+            user=self.user,
+            name="Cash reserve",
+            balance=Decimal("500.00"),
+            include_in_budget=False,
+        )
+        Income.objects.create(
+            user=self.user,
+            text="Tracked income",
+            amount=Decimal("200.00"),
+            date=date(2026, 8, 10),
+            category=self.income_category,
+            bank_account=tracking_account,
+        )
+        Expense.objects.create(
+            user=self.user,
+            text="Tracked expense",
+            amount=Decimal("50.00"),
+            date=date(2026, 8, 11),
+            category=self.expense_category,
+            bank_account=tracking_account,
+        )
+        RecurringIncome.objects.create(
+            user=self.user,
+            name="Tracked future income",
+            amount=Decimal("300.00"),
+            start_date=date(2026, 8, 20),
+            category=self.income_category,
+            bank_account=tracking_account,
+        )
+        MonthlyExpense.objects.create(
+            user=self.user,
+            name="Tracked future expense",
+            amount=Decimal("75.00"),
+            start_date=date(2026, 8, 22),
+            category=self.expense_category,
+            bank_account=tracking_account,
+        )
+        SavingsGoal.objects.create(
+            user=self.user,
+            name="Tracked saving",
+            monthly_amount=Decimal("100.00"),
+            start_date=date(2026, 1, 1),
+            bank_account=tracking_account,
+        )
+
+        budget = build_monthly_budget(self.user, date(2026, 8, 14))
+
+        self.assertEqual(budget["current_balance"], Decimal("1000.00"))
+        self.assertEqual(budget["included_account_count"], 1)
+        self.assertEqual(budget["actual_income"], Decimal("0.00"))
+        self.assertEqual(budget["actual_expenses"], Decimal("0.00"))
+        self.assertEqual(budget["expected_income"], Decimal("0.00"))
+        self.assertEqual(budget["expected_expenses"], Decimal("0.00"))
+        self.assertEqual(budget["savings_target"], Decimal("0.00"))
+        self.assertEqual(budget["upcoming"], [])
+
     def test_future_surplus_changes_outlook_without_becoming_spendable_early(self):
         self.account.balance = Decimal("200.00")
         self.account.save()
@@ -875,9 +1101,14 @@ class FinanceTestCase(TestCase):
     def test_bank_account_crud(self):
         self.client.post(
             reverse("create_bank_account"),
-            {"name": "Travel", "balance": "300.00"},
+            {
+                "name": "Travel",
+                "balance": "300.00",
+                "include_in_budget": "on",
+            },
         )
         account = BankAccount.objects.get(user=self.user, name="Travel")
+        self.assertTrue(account.include_in_budget)
         self.client.post(
             reverse("update_bank_account", args=[account.id]),
             {"name": "Holiday", "balance": "450.00"},
@@ -885,6 +1116,8 @@ class FinanceTestCase(TestCase):
         account.refresh_from_db()
         self.assertEqual(account.name, "Holiday")
         self.assertEqual(account.balance, Decimal("450.00"))
+        self.assertFalse(account.include_in_budget)
+        self.assertContains(self.client.get(reverse("dashboard")), "Tracking only")
         self.client.post(reverse("delete_bank_account", args=[account.id]))
         self.assertFalse(BankAccount.objects.filter(pk=account.id).exists())
 
@@ -1314,6 +1547,10 @@ class ManualSubscriptionTests(TestCase):
         self.assertContains(response, self.plan.payment_instructions)
         self.assertContains(response, subscription.payment_reference)
         self.assertContains(response, "Payment awaiting verification")
+        self.assertContains(response, "free for individuals")
+        self.assertContains(response, "https://github.com/bfarnaghi/darith")
+        self.assertContains(response, "https://buymeacoffee.com/darith")
+        self.assertContains(response, "automatically recurring monthly contributions")
 
         subscription.status = UserSubscription.STATUS_ACTIVE
         subscription.access_until = timezone.localdate() + timedelta(days=30)

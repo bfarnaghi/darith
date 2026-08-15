@@ -20,6 +20,13 @@
             <p class="billing-kicker">Account access</p>
             <h1>{% if plan %}{{ plan.name }}{% else %}Darith subscription{% endif %}</h1>
 
+            <section class="access-explainer" aria-labelledby="access-explainer-title">
+                <h2 id="access-explainer-title">Free locally, convenient online</h2>
+                <p>Darith is free for individuals to run on their own computer using the setup instructions on GitHub. Hosted access is for people who want to reach Darith online at any time; the monthly contribution helps cover the server, backups, maintenance, and updates.</p>
+                <div class="billing-actions"><a class="secondary-button" href="https://github.com/bfarnaghi/darith" target="_blank" rel="noopener noreferrer">Local setup on GitHub</a><a class="coffee-button" href="https://buymeacoffee.com/darith" target="_blank" rel="noopener noreferrer">Buy Me a Coffee</a></div>
+                <small>Buy Me a Coffee supports one-time help and automatically recurring monthly contributions. Darith account access is still verified manually after you report the payment.</small>
+            </section>
+
             {% if subscription.has_access %}
                 {% if subscription.status == 'pending' %}
                     <div class="access-state pending"><strong>Payment awaiting verification</strong><span>Your existing access remains available through {{ subscription.access_until|date:"j M Y" }}.</span></div>
@@ -37,7 +44,8 @@
 
             {% if plan %}
                 <div class="plan-price"><strong>{% if plan.currency == 'eur' %}€{% endif %}{{ plan.monthly_price|floatformat:2 }}</strong><span>{{ plan.currency|upper }} / month</span></div>
-                <ol class="payment-steps"><li>Pay using one of the methods below.</li><li>Include your Darith reference with the payment.</li><li>Report the payment here for administrator verification.</li></ol>
+                <p class="hosted-purpose">A small monthly price, like buying a coffee, keeps the hosted service available and maintained.</p>
+                <ol class="payment-steps"><li>Pay through Buy Me a Coffee or one of the methods below.</li><li>Include your Darith reference when the payment method allows it.</li><li>Report the payment here for administrator verification.</li></ol>
 
                 <section class="payment-details" aria-labelledby="payment-details-title">
                     <h2 id="payment-details-title">Payment instructions</h2>
@@ -51,6 +59,7 @@
                     <form method="post" action="{% url 'report_subscription_payment' %}">{% csrf_token %}<button class="primary-button" type="submit">I have paid</button></form>
                 {% endif %}
                 <p class="secure-copy">Darith does not collect card or bank credentials. Payment is completed directly with the method listed above.</p>
+                <p class="support-copy">Using Darith from GitHub without hosted access? You can still support its development through <a href="https://buymeacoffee.com/darith" target="_blank" rel="noopener noreferrer">Buy Me a Coffee</a>.</p>
             {% else %}
                 <div class="access-state warning"><strong>Subscriptions are not configured</strong><span>An administrator must create and activate a subscription plan.</span></div>
             {% endif %}

@@ -6,7 +6,7 @@ from decimal import Decimal, ROUND_UP
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import Sum
+from django.db.models import Q, Sum
 
 from .models import (
     BankAccount,
@@ -305,14 +305,157 @@ def _sum(queryset, field):
     return queryset.aggregate(total=Sum(field))["total"] or ZERO
 
 
+def _status_for_commitments(
+    available_before_daily_costs,
+    daily_expenses,
+    savings_target,
+    savings_balance,
+    currency_symbol,
+    period_label="this month",
+):
+    free_to_spend = available_before_daily_costs - daily_expenses - savings_target
+    if available_before_daily_costs < daily_expenses:
+        status = "danger"
+        shortfall = daily_expenses - available_before_daily_costs
+        if savings_balance >= shortfall:
+            warning = (
+                f"Your spendable accounts are {currency_symbol}{shortfall:,.2f} "
+                "short of expected daily costs. You may need to move money from savings."
+            )
+        else:
+            warning = (
+                f"Your spendable accounts are {currency_symbol}{shortfall:,.2f} "
+                f"short of expected daily costs, even before {period_label}'s saving goals."
+            )
+    elif free_to_spend < ZERO:
+        status = "warning"
+        shortfall = abs(free_to_spend)
+        warning = (
+            f"Daily costs are covered, but {currency_symbol}{shortfall:,.2f} "
+            f"is still needed for {period_label}'s saving goals."
+        )
+    else:
+        status = "healthy"
+        warning = f"Expected bills, daily costs, and saving goals are covered {period_label}."
+    return status, warning, free_to_spend
+
+
+def _goal_target_for_period(user, period_start, period_end):
+    goals = SavingsGoal.objects.filter(
+        user=user,
+        start_date__lte=period_end,
+        is_archived=False,
+    ).select_related("bank_account")
+    funded_goal_ids = set(
+        Transfer.objects.filter(
+            user=user,
+            destination_goal__isnull=False,
+            goal_period=period_start,
+        ).values_list("destination_goal_id", flat=True)
+    )
+    target = ZERO
+    for goal in goals:
+        if goal.pk in funded_goal_ids:
+            continue
+        if not occurrence_dates(goal, period_start, period_end):
+            continue
+        if goal.bank_account and not goal.bank_account.include_in_budget:
+            continue
+        target += goal_monthly_contribution(goal, period_start)
+    return target
+
+
+def build_next_month_forecast(user, today, current_budget=None):
+    current_budget = current_budget or build_monthly_budget(user, today)
+    period_start = add_month(today.replace(day=1))
+    _, period_end = month_bounds(period_start)
+    accounts = BankAccount.objects.filter(user=user, include_in_budget=True)
+    incomes = RecurringIncome.objects.filter(
+        user=user,
+        bank_account__include_in_budget=True,
+        start_date__lte=period_end,
+    )
+    expenses = MonthlyExpense.objects.filter(
+        user=user,
+        bank_account__include_in_budget=True,
+        start_date__lte=period_end,
+    )
+    expected_income = sum(
+        (
+            plan.amount * len(occurrence_dates(plan, period_start, period_end))
+            for plan in incomes
+        ),
+        ZERO,
+    )
+    expected_expenses = sum(
+        (
+            plan.amount * len(occurrence_dates(plan, period_start, period_end))
+            for plan in expenses
+        ),
+        ZERO,
+    )
+    preference = BudgetPreference.objects.filter(user=user).first()
+    daily_expense = preference.expected_daily_expense if preference else ZERO
+    currency_symbol = (
+        preference.currency_symbol
+        if preference
+        else BudgetPreference.CURRENCY_SYMBOLS[BudgetPreference.CURRENCY_EUR]
+    )
+    days_in_month = period_end.day
+    daily_expenses = daily_expense * days_in_month
+    savings_target = _goal_target_for_period(user, period_start, period_end)
+    opening_balance = (
+        current_budget["projected_balance"]
+        - current_budget["remaining_daily_expenses"]
+        - current_budget["savings_target"]
+    )
+    uncovered_expenses = max(expected_expenses - expected_income, ZERO)
+    available_before_daily_costs = opening_balance - uncovered_expenses
+    savings_balance = _sum(
+        SavingsGoal.objects.filter(user=user, is_archived=False), "current_balance"
+    )
+    status, warning, free_to_spend = _status_for_commitments(
+        available_before_daily_costs,
+        daily_expenses,
+        savings_target,
+        savings_balance,
+        currency_symbol,
+        period_label="next month",
+    )
+    return {
+        "month_start": period_start,
+        "month_end": period_end,
+        "opening_balance": opening_balance,
+        "expected_income": expected_income,
+        "expected_expenses": expected_expenses,
+        "daily_expenses": daily_expenses,
+        "savings_target": savings_target,
+        "projected_balance": (
+            opening_balance
+            + expected_income
+            - expected_expenses
+            - daily_expenses
+            - savings_target
+        ),
+        "free_to_spend": free_to_spend,
+        "status": status,
+        "warning": warning,
+        "included_account_count": accounts.count(),
+    }
+
+
 def build_monthly_budget(user, today):
     month_start, month_end = month_bounds(today)
-    accounts = BankAccount.objects.filter(user=user)
+    accounts = BankAccount.objects.filter(user=user, include_in_budget=True)
     recurring_incomes = RecurringIncome.objects.filter(
-        user=user, start_date__lte=month_end
+        user=user,
+        bank_account__include_in_budget=True,
+        start_date__lte=month_end,
     ).select_related("bank_account", "category")
     recurring_expenses = MonthlyExpense.objects.filter(
-        user=user, start_date__lte=month_end
+        user=user,
+        bank_account__include_in_budget=True,
+        start_date__lte=month_end,
     ).select_related("bank_account", "category")
 
     expected_income = ZERO
@@ -336,8 +479,14 @@ def build_monthly_budget(user, today):
                 )
 
     reminders = goal_funding_reminders(user, today)
-    savings_target = sum((item["amount"] for item in reminders), ZERO)
+    budget_reminders = [
+        item
+        for item in reminders
+        if not item["source_account"] or item["source_account"].include_in_budget
+    ]
+    savings_target = sum((item["amount"] for item in budget_reminders), ZERO)
     current_balance = _sum(accounts, "balance")
+    included_account_count = accounts.count()
     savings_balance = _sum(
         SavingsGoal.objects.filter(user=user, is_archived=False), "current_balance"
     )
@@ -353,40 +502,18 @@ def build_monthly_budget(user, today):
     remaining_daily_expenses = daily_expense * days_remaining
     uncovered_future_expenses = max(expected_expenses - expected_income, ZERO)
     available_before_daily_costs = current_balance - uncovered_future_expenses
-    free_to_spend = (
-        available_before_daily_costs - remaining_daily_expenses - savings_target
+    status, warning, free_to_spend = _status_for_commitments(
+        available_before_daily_costs,
+        remaining_daily_expenses,
+        savings_target,
+        savings_balance,
+        currency_symbol,
     )
     daily_allowance = free_to_spend / days_remaining
 
-    if available_before_daily_costs < remaining_daily_expenses:
-        status = "danger"
-        shortfall = remaining_daily_expenses - available_before_daily_costs
-        if savings_balance >= shortfall:
-            warning = (
-                f"Your spendable accounts are {currency_symbol}{shortfall:,.2f} "
-                "short of expected "
-                "daily costs. You may need to move money from savings."
-            )
-        else:
-            warning = (
-                f"Your spendable accounts are {currency_symbol}{shortfall:,.2f} "
-                "short of expected "
-                "daily costs, even before this month's saving goals."
-            )
-    elif free_to_spend < ZERO:
-        status = "warning"
-        shortfall = abs(free_to_spend)
-        warning = (
-            f"Daily costs are covered, but {currency_symbol}{shortfall:,.2f} "
-            "is still needed "
-            "for this month's saving goals."
-        )
-    else:
-        status = "healthy"
-        warning = "Expected bills, daily costs, and saving goals are covered this month."
-
     actual_income = _sum(
         Income.objects.filter(
+            Q(bank_account__include_in_budget=True) | Q(bank_account__isnull=True),
             user=user,
             date__range=(month_start, today),
             is_skipped=False,
@@ -395,6 +522,7 @@ def build_monthly_budget(user, today):
     )
     actual_expenses = _sum(
         Expense.objects.filter(
+            Q(bank_account__include_in_budget=True) | Q(bank_account__isnull=True),
             user=user,
             date__range=(month_start, today),
             is_skipped=False,
@@ -408,6 +536,7 @@ def build_monthly_budget(user, today):
         "month_start": month_start,
         "month_end": month_end,
         "current_balance": current_balance,
+        "included_account_count": included_account_count,
         "savings_balance": savings_balance,
         "expected_income": expected_income,
         "expected_expenses": expected_expenses,

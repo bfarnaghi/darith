@@ -28,23 +28,31 @@ button { font: inherit; letter-spacing: 0; }
 .billing-copy { width: min(620px, 100%); }
 .billing-kicker { margin: 0 0 8px; color: var(--primary); font-size: 11px; font-weight: 800; text-transform: uppercase; }
 .billing-copy h1 { margin: 0 0 30px; font-size: 34px; line-height: 1.15; }
+.access-explainer { margin-bottom: 28px; padding: 20px 0 24px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.access-explainer h2 { margin: 0 0 9px; font-size: 18px; }
+.access-explainer p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.access-explainer small { display: block; margin-top: 13px; color: #74839a; font-size: 11px; line-height: 1.5; }
+.access-explainer .billing-actions { margin-top: 16px; }
 .plan-price { display: flex; align-items: baseline; gap: 11px; margin-bottom: 12px; }
 .plan-price strong { font-size: 42px; line-height: 1; }
 .plan-price span, .trial-copy, .secure-copy { color: var(--muted); }
 .trial-copy { margin: 0 0 25px; line-height: 1.55; }
 .secure-copy { margin: 15px 0 0; font-size: 12px; }
 .billing-actions { display: flex; flex-wrap: wrap; gap: 10px; }
-.primary-button, .secondary-button { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; padding: 0 17px; border: 1px solid transparent; border-radius: 6px; cursor: pointer; font-weight: 750; text-decoration: none; }
+.primary-button, .secondary-button, .coffee-button { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; padding: 0 17px; border: 1px solid transparent; border-radius: 6px; cursor: pointer; font-weight: 750; text-decoration: none; }
 .primary-button { color: #fff; background: var(--primary); }
 .primary-button:hover { background: #073a9b; }
 .secondary-button { border-color: #cbd7e6; color: var(--ink); background: var(--paper); }
 .secondary-button:hover { background: #edf4fb; }
+.coffee-button { color: #17233a; border-color: #d8b334; background: #ffdd62; }
+.coffee-button:hover { background: #f5cf45; }
 .access-state { display: grid; gap: 4px; margin-bottom: 24px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 7px; }
 .access-state span { font-size: 13px; line-height: 1.45; }
 .access-state.success { color: var(--mint); border-color: #b7e3d3; background: var(--mint-light); }
 .access-state.pending { color: #084a94; border-color: #b9d3f6; background: #e7f0ff; }
 .access-state.warning { color: var(--gold); border-color: #e6d194; background: var(--gold-light); }
 .payment-steps { display: grid; gap: 8px; margin: 0 0 24px; padding-left: 22px; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.hosted-purpose { margin: -2px 0 18px; color: var(--muted); font-size: 13px; line-height: 1.55; }
 .payment-details { margin-bottom: 20px; padding: 18px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--paper); }
 .payment-details h2 { margin: 0 0 9px; font-size: 16px; }
 .payment-details > p { margin: 0; color: #46556d; font-size: 13px; line-height: 1.6; }
@@ -52,6 +60,8 @@ button { font: inherit; letter-spacing: 0; }
 .payment-reference span { color: var(--muted); font-size: 12px; font-weight: 700; }
 .payment-reference code { padding: 7px 9px; border-radius: 5px; color: #073a9b; background: #e7f0ff; font-size: 13px; font-weight: 800; }
 .reported-copy { margin: 0 0 14px; color: #084a94; font-size: 13px; }
+.support-copy { margin: 18px 0 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.support-copy a { color: #073a9b; font-weight: 750; }
 .billing-messages { width: min(620px, 100%); margin: 0 auto 18px; }
 .billing-message { padding: 12px 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); }
 .billing-message.error { color: #7f2c3c; border-color: #e7bcc5; background: #fae8ec; }

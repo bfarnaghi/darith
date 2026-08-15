@@ -1,19 +1,22 @@
 # Author: Behnam <b.farnaghi@gmail.com>
 # AI-assisted implementation; manually reviewed and verified by the developer.
+import json
 import mimetypes
+import time
 
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import SetPasswordForm
+from django.contrib.auth.hashers import check_password
 from django.contrib.auth.models import User
 from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.db.models.deletion import ProtectedError
-from django.http import FileResponse, Http404
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -21,6 +24,7 @@ from django.utils import timezone
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.views.decorators.http import require_POST
+from webauthn.helpers.exceptions import WebAuthnException
 
 from .forms import (
     BankAccountForm,
@@ -28,11 +32,13 @@ from .forms import (
     CategoryForm,
     DashboardAnimationForm,
     ExpenseForm,
+    FeedbackForm,
     IncomeForm,
     MonthlyExpenseForm,
     RecurringIncomeForm,
     RegistrationForm,
     SavingsGoalForm,
+    SecuritySettingsForm,
     TransferForm,
 )
 from .exports import build_user_csv_response
@@ -44,13 +50,23 @@ from .models import (
     Income,
     IncomeCategory,
     MonthlyExpense,
+    PasskeyCredential,
     RecurringIncome,
     SavingsGoal,
     Transfer,
 )
+from .security import (
+    LOCKED_SESSION_KEY,
+    PIN_ATTEMPTS_SESSION_KEY,
+    PIN_BLOCKED_UNTIL_SESSION_KEY,
+    mark_session_locked,
+    mark_session_unlocked,
+    touch_session,
+)
 from .services import (
     InsufficientFunds,
     build_monthly_budget,
+    build_next_month_forecast,
     delete_transaction,
     delete_transfer,
     fund_due_savings_goals,
@@ -64,6 +80,13 @@ from .subscriptions import (
     get_active_plan,
     get_user_subscription,
     report_manual_payment,
+)
+from .webauthn_service import (
+    authentication_options,
+    credential_from_response,
+    registration_options,
+    verify_authentication,
+    verify_registration,
 )
 
 
@@ -90,6 +113,194 @@ def _adjust_balances_when_deleting(user):
         preference.transaction_deletion_mode
         == BudgetPreference.DELETE_BALANCE_AUTOMATIC
     )
+
+
+@require_POST
+@login_required
+def toggle_financial_visibility(request):
+    preference, _ = BudgetPreference.objects.get_or_create(user=request.user)
+    preference.hide_financial_values = not preference.hide_financial_values
+    preference.save(update_fields=["hide_financial_values"])
+    return _dashboard_redirect("overview")
+
+
+def _request_json(request):
+    try:
+        return json.loads(request.body.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError("The browser sent an invalid security response.") from error
+
+
+@require_POST
+@login_required
+def passkey_registration_options(request):
+    return HttpResponse(registration_options(request), content_type="application/json")
+
+
+@require_POST
+@login_required
+def passkey_registration_verify(request):
+    try:
+        payload = _request_json(request)
+        verification = verify_registration(request, payload["credential"])
+        name = str(payload.get("name") or "My passkey").strip()[:80]
+        PasskeyCredential.objects.create(
+            user=request.user,
+            name=name or "My passkey",
+            credential_id=verification.credential_id,
+            public_key=verification.credential_public_key,
+            sign_count=verification.sign_count,
+            transports=payload["credential"].get("response", {}).get("transports", []),
+        )
+    except (KeyError, ValueError, IntegrityError, WebAuthnException) as error:
+        return JsonResponse({"ok": False, "error": str(error)}, status=400)
+    return JsonResponse({"ok": True})
+
+
+@require_POST
+@login_required
+def delete_passkey(request, item_id):
+    credential = get_object_or_404(
+        PasskeyCredential, pk=item_id, user=request.user
+    )
+    preference, _ = BudgetPreference.objects.get_or_create(user=request.user)
+    is_last_passkey = not request.user.passkey_credentials.exclude(pk=item_id).exists()
+    if preference.lock_timeout_minutes and is_last_passkey and not preference.darith_pin_hash:
+        messages.error(
+            request,
+            "Add a Darith PIN or turn off inactivity lock before removing your last passkey.",
+        )
+    else:
+        credential.delete()
+        messages.success(request, "Passkey removed.")
+    return _dashboard_redirect("overview")
+
+
+@require_POST
+def passkey_login_options(request):
+    if request.user.is_authenticated:
+        return JsonResponse({"ok": False, "error": "You are already signed in."}, status=400)
+    return HttpResponse(authentication_options(request), content_type="application/json")
+
+
+@require_POST
+def passkey_login_verify(request):
+    if request.user.is_authenticated:
+        return JsonResponse({"ok": False, "error": "You are already signed in."}, status=400)
+    try:
+        payload = _request_json(request)
+        with transaction.atomic():
+            credential = credential_from_response(payload)
+            verification = verify_authentication(request, payload, credential)
+            credential.sign_count = verification.new_sign_count
+            credential.last_used_at = timezone.now()
+            credential.save(update_fields=["sign_count", "last_used_at"])
+        login(
+            request,
+            credential.user,
+            backend="django.contrib.auth.backends.ModelBackend",
+        )
+        mark_session_unlocked(request)
+    except (ValueError, PasskeyCredential.DoesNotExist, WebAuthnException):
+        return JsonResponse(
+            {"ok": False, "error": "That passkey could not be verified."},
+            status=400,
+        )
+    return JsonResponse({"ok": True, "redirect": reverse("dashboard")})
+
+
+@login_required
+def session_locked(request):
+    preference, _ = BudgetPreference.objects.get_or_create(user=request.user)
+    if not preference.lock_timeout_minutes:
+        mark_session_unlocked(request)
+        return redirect("dashboard")
+    if not request.session.get(LOCKED_SESSION_KEY):
+        return redirect("dashboard")
+    return render(
+        request,
+        "locked.html",
+        {
+            "has_pin": preference.has_darith_pin,
+            "has_passkey": request.user.passkey_credentials.exists(),
+        },
+    )
+
+
+@require_POST
+@login_required
+def security_unlock(request):
+    preference, _ = BudgetPreference.objects.get_or_create(user=request.user)
+    now = time.time()
+    blocked_until = float(request.session.get(PIN_BLOCKED_UNTIL_SESSION_KEY, 0))
+    if blocked_until > now:
+        messages.error(request, "Too many attempts. Try again in a few minutes.")
+        return redirect("session_locked")
+    if not preference.darith_pin_hash:
+        messages.error(request, "A Darith PIN has not been configured.")
+        return redirect("session_locked")
+    if check_password(request.POST.get("pin", ""), preference.darith_pin_hash):
+        mark_session_unlocked(request)
+        return redirect("dashboard")
+
+    attempts = int(request.session.get(PIN_ATTEMPTS_SESSION_KEY, 0)) + 1
+    if attempts >= 5:
+        request.session[PIN_ATTEMPTS_SESSION_KEY] = 0
+        request.session[PIN_BLOCKED_UNTIL_SESSION_KEY] = now + 300
+        messages.error(request, "Too many attempts. PIN unlock is paused for 5 minutes.")
+    else:
+        request.session[PIN_ATTEMPTS_SESSION_KEY] = attempts
+        messages.error(request, "Incorrect Darith PIN.")
+    return redirect("session_locked")
+
+
+@require_POST
+@login_required
+def passkey_unlock_options(request):
+    if not request.user.passkey_credentials.exists():
+        return JsonResponse({"ok": False, "error": "No passkey is configured."}, status=400)
+    return HttpResponse(
+        authentication_options(request, request.user),
+        content_type="application/json",
+    )
+
+
+@require_POST
+@login_required
+def passkey_unlock_verify(request):
+    try:
+        payload = _request_json(request)
+        with transaction.atomic():
+            credential = credential_from_response(payload, request.user)
+            verification = verify_authentication(request, payload, credential)
+            credential.sign_count = verification.new_sign_count
+            credential.last_used_at = timezone.now()
+            credential.save(update_fields=["sign_count", "last_used_at"])
+        mark_session_unlocked(request)
+    except (ValueError, PasskeyCredential.DoesNotExist, WebAuthnException):
+        return JsonResponse(
+            {"ok": False, "error": "That passkey could not be verified."},
+            status=400,
+        )
+    return JsonResponse({"ok": True, "redirect": reverse("dashboard")})
+
+
+@require_POST
+@login_required
+def security_lock(request):
+    preference, _ = BudgetPreference.objects.get_or_create(user=request.user)
+    if preference.lock_timeout_minutes:
+        mark_session_locked(request)
+    return JsonResponse({"ok": True, "redirect": reverse("session_locked")})
+
+
+@require_POST
+@login_required
+def security_activity(request):
+    if request.session.get(LOCKED_SESSION_KEY):
+        return JsonResponse({"ok": False}, status=423)
+    touch_session(request)
+    return HttpResponse(status=204)
 
 
 def _seed_categories(user):
@@ -181,6 +392,7 @@ def dashboard(request):
     )
     goal_reminders = goal_funding_reminders(request.user, today)
     budget = build_monthly_budget(request.user, today)
+    next_budget = build_next_month_forecast(request.user, today, budget)
     active_animation = getattr(preference, f"{budget['status']}_gif")
 
     context = {
@@ -202,13 +414,17 @@ def dashboard(request):
         "expense_categories": ExpenseCategory.objects.filter(user=request.user),
         "income_categories": IncomeCategory.objects.filter(user=request.user),
         "budget": budget,
+        "next_budget": next_budget,
         "budget_preference": preference,
+        "passkeys": request.user.passkey_credentials.all(),
         "currency_symbol": preference.currency_symbol,
         "currency_code": preference.currency,
         "active_budget_animation": bool(active_animation),
         "account_form": BankAccountForm(),
         "budget_preference_form": BudgetPreferenceForm(instance=preference),
         "dashboard_animation_form": DashboardAnimationForm(instance=preference),
+        "security_settings_form": SecuritySettingsForm(instance=preference),
+        "feedback_form": FeedbackForm(),
         "transfer_form": TransferForm(user=request.user, initial={"date": today}),
         "expense_form": ExpenseForm(user=request.user, initial={"date": today}),
         "income_form": IncomeForm(user=request.user, initial={"date": today}),
@@ -682,6 +898,56 @@ def update_dashboard_animations(request):
 
 @require_POST
 @login_required
+def update_security_settings(request):
+    preference, _ = BudgetPreference.objects.get_or_create(user=request.user)
+    form = SecuritySettingsForm(request.POST, instance=preference)
+    if form.is_valid():
+        form.save()
+        mark_session_unlocked(request)
+        messages.success(request, "Security settings updated.")
+    else:
+        _show_form_errors(request, form)
+    return _dashboard_redirect("overview")
+
+
+@require_POST
+@login_required
+def remove_darith_pin(request):
+    preference, _ = BudgetPreference.objects.get_or_create(user=request.user)
+    if preference.lock_timeout_minutes and not request.user.passkey_credentials.exists():
+        messages.error(
+            request,
+            "Add a passkey or turn off inactivity lock before removing your PIN.",
+        )
+    elif preference.darith_pin_hash:
+        preference.darith_pin_hash = ""
+        preference.save(update_fields=["darith_pin_hash"])
+        messages.success(request, "Darith PIN removed.")
+    else:
+        messages.info(request, "There is no Darith PIN to remove.")
+    return _dashboard_redirect("overview")
+
+
+@require_POST
+@login_required
+def submit_feedback(request):
+    form = FeedbackForm(request.POST)
+    if form.is_valid():
+        feedback = form.save(commit=False)
+        feedback.user = request.user
+        feedback.page = request.POST.get("page", "dashboard")[:80]
+        feedback.save()
+        messages.success(request, "Thank you. Your feedback was sent.")
+    else:
+        _show_form_errors(request, form)
+    tab = request.POST.get("tab", "overview")
+    if tab not in {"overview", "accounts", "transactions", "plans", "categories"}:
+        tab = "overview"
+    return _dashboard_redirect(tab)
+
+
+@require_POST
+@login_required
 def remove_dashboard_gif(request, status):
     status_labels = {
         "healthy": "on-track",
@@ -812,6 +1078,7 @@ def user_login(request):
         )
         if user is not None:
             login(request, user)
+            mark_session_unlocked(request)
             return redirect("dashboard")
         messages.error(request, "Invalid username or password.")
     return render(request, "login.html")
@@ -824,6 +1091,7 @@ def create_account(request):
     if request.method == "POST" and form.is_valid():
         user = form.save()
         login(request, user)
+        mark_session_unlocked(request)
         messages.success(request, "Your account is ready.")
         return redirect("dashboard")
     return render(request, "create_account.html", {"form": form})
@@ -867,5 +1135,6 @@ def reset_password(request, uidb64, token):
     if request.method == "POST" and form.is_valid():
         form.save()
         login(request, user)
+        mark_session_unlocked(request)
         return render(request, "password_reset_done.html")
     return render(request, "reset_password.html", {"form": form})

@@ -1,13 +1,13 @@
 {# Author: Behnam <b.farnaghi@gmail.com> #}
 {# AI-assisted implementation; manually reviewed and verified by the developer. #}
 {% extends "base.html" %}
-{% load static humanize %}
+{% load static humanize money %}
 
 {% block title %}My money | Darith{% endblock %}
 {% block styles %}<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">{% endblock %}
 
 {% block body %}
-<div class="app-shell" data-active-tab="{{ active_tab }}" data-theme="{{ budget_preference.theme }}">
+<div class="app-shell" data-active-tab="{{ active_tab }}" data-theme="{{ budget_preference.theme }}" data-values-hidden="{{ budget_preference.hide_financial_values|yesno:'true,false' }}" data-lock-timeout-seconds="{% widthratio budget_preference.lock_timeout_minutes 1 60 %}" data-lock-url="{% url 'security_lock' %}" data-activity-url="{% url 'security_activity' %}" data-locked-url="{% url 'session_locked' %}" data-passkey-options-url="{% url 'passkey_registration_options' %}" data-passkey-verify-url="{% url 'passkey_registration_verify' %}">
     <aside class="sidebar">
         <a class="brand" href="{% url 'dashboard' %}" aria-label="Darith dashboard">
             <img class="brand-logo" src="{% static 'images/logo.png' %}" alt="">
@@ -26,6 +26,7 @@
                 <span><strong>{{ request.user.username }}</strong><small>Personal workspace</small></span>
             </div>
             <div class="sidebar-actions">
+                <button class="icon-button" type="button" data-dialog-open="feedback-dialog" title="Feedback" aria-label="Send feedback">?</button>
                 {% if subscriptions_enabled %}<a class="icon-button" href="{% url 'subscription_overview' %}" title="Billing" aria-label="Billing">€</a>{% endif %}
                 <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="icon-button" type="submit" title="Log out" aria-label="Log out">→</button></form>
             </div>
@@ -49,6 +50,7 @@
                     <strong>{{ request.user.username }}</strong>
                     <button type="button" data-tab-target="categories">Categories</button>
                     <button type="button" data-dialog-open="dashboard-animation-edit">Settings</button>
+                    <button type="button" data-dialog-open="feedback-dialog">Feedback</button>
                     <a href="{% url 'export_data_csv' %}">Export CSV</a>
                     {% if subscriptions_enabled %}<a href="{% url 'subscription_overview' %}">Billing</a>{% endif %}
                     <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit">Log out</button></form>
@@ -64,25 +66,29 @@
 
         <section class="panel" data-tab-panel="overview">
             <div class="budget-hero">
-                <button class="budget-settings" type="button" data-dialog-open="dashboard-animation-edit" aria-label="Settings" title="Settings">⚙</button>
+                <div class="budget-tools">
+                    <form method="post" action="{% url 'toggle_financial_visibility' %}">{% csrf_token %}<button class="budget-settings visibility-toggle{% if budget_preference.hide_financial_values %} values-hidden{% endif %}" type="submit" aria-label="{% if budget_preference.hide_financial_values %}Show amounts{% else %}Hide amounts{% endif %}" title="{% if budget_preference.hide_financial_values %}Show amounts{% else %}Hide amounts{% endif %}"><span aria-hidden="true">&#128065;</span></button></form>
+                    <button class="budget-settings" type="button" data-dialog-open="dashboard-animation-edit" aria-label="Settings" title="Settings">⚙</button>
+                </div>
                 <div class="budget-main">
                     <p>Free to spend this month</p>
-                    <strong>{% if budget.free_to_spend < 0 %}−{{ currency_symbol }}{{ budget.free_to_spend_abs|floatformat:2|intcomma }}{% else %}{{ currency_symbol }}{{ budget.free_to_spend|floatformat:2|intcomma }}{% endif %}</strong>
-                    <span>{% if budget.daily_allowance < 0 %}−{{ currency_symbol }}{{ budget.daily_allowance_abs|floatformat:2|intcomma }}{% else %}{{ currency_symbol }}{{ budget.daily_allowance|floatformat:2|intcomma }}{% endif %} extra per day for {{ budget.days_remaining }} day{{ budget.days_remaining|pluralize }}</span>
+                    <strong>{{ budget.free_to_spend|money:budget_preference }}</strong>
+                    <span>{{ budget.daily_allowance|money:budget_preference }} extra per day for {{ budget.days_remaining }} day{{ budget.days_remaining|pluralize }}</span>
                 </div>
                 {% if active_budget_animation %}<div class="budget-animation" aria-hidden="true"><img src="{% url 'dashboard_animation' budget.status %}" alt=""></div>{% endif %}
                 <div class="budget-meter" aria-label="Current balance and monthly outlook">
                     <span class="status-dot status-{{ budget.status }}"></span>
                     <div class="budget-summary">
-                        <span><small>Current bank balance</small><strong>{{ currency_symbol }}{{ budget.current_balance|floatformat:2|intcomma }}</strong></span>
-                        <span><small>Month-end outlook</small><strong>{{ currency_symbol }}{{ budget.projected_balance|floatformat:2|intcomma }}</strong></span>
+                        <span><small>Current bank balance</small><strong>{{ budget.current_balance|money:budget_preference }}</strong></span>
+                        <span><small>Month-end outlook</small><strong>{{ budget.projected_balance|money:budget_preference }}</strong></span>
+                        <span class="next-month-summary"><small>{{ next_budget.month_start|date:"F" }} status</small><strong><i class="status-dot status-{{ next_budget.status }}"></i>{% if next_budget.status == 'healthy' %}On track{% elif next_budget.status == 'warning' %}Warning{% else %}Out of budget{% endif %}</strong><em>{{ next_budget.free_to_spend|money:budget_preference }} forecast free</em></span>
                     </div>
                 </div>
             </div>
 
             <div class="notice notice-{{ budget.status }}">
                 <span class="notice-symbol" aria-hidden="true">{% if budget.status == 'healthy' %}✓{% else %}!{% endif %}</span>
-                <div><strong>{% if budget.status == 'healthy' %}On track{% else %}Budget warning{% endif %}</strong><p>{{ budget.warning }}</p></div>
+                <div><strong>{% if budget.status == 'healthy' %}On track{% else %}Budget warning{% endif %}</strong><p>{% if budget_preference.hide_financial_values and budget.status != 'healthy' %}Your budget needs attention. Show amounts for the detailed shortfall.{% else %}{{ budget.warning }}{% endif %}</p></div>
             </div>
 
             {% if goal_reminders %}
@@ -93,7 +99,7 @@
                     <article class="funding-reminder">
                         <span class="saving-icon">◎</span>
                         <div><strong>{{ reminder.goal.name }}</strong><small>{% if reminder.source_account %}From {{ reminder.source_account.name }}{% else %}Choose a funding account in the goal{% endif %}</small></div>
-                        <b>{{ currency_symbol }}{{ reminder.amount|floatformat:2|intcomma }}</b>
+                        <b>{{ reminder.amount|money:budget_preference }}</b>
                         <form method="post" action="{% url 'fund_savings_goal' reminder.goal.id %}">{% csrf_token %}<button class="button button-primary button-small" type="submit" {% if not reminder.can_fund %}disabled title="The funding account has insufficient money or is missing"{% endif %}>Mark saved</button></form>
                     </article>
                     {% endfor %}
@@ -102,12 +108,12 @@
             {% endif %}
 
             <div class="metric-grid">
-                <article class="metric"><span>Current bank balance</span><strong>{{ currency_symbol }}{{ budget.current_balance|floatformat:2|intcomma }}</strong><small>Across {{ accounts|length }} bank account{{ accounts|length|pluralize }}</small></article>
-                <article class="metric"><span>Income this month</span><strong class="positive">+{{ currency_symbol }}{{ budget.income_month_total|floatformat:2|intcomma }}</strong><small>{{ currency_symbol }}{{ budget.actual_income|floatformat:2|intcomma }} received so far · {{ currency_symbol }}{{ budget.expected_income|floatformat:2|intcomma }} still due</small></article>
-                <article class="metric"><span>Expenses this month</span><strong class="negative">−{{ currency_symbol }}{{ budget.expense_month_total|floatformat:2|intcomma }}</strong><small>{{ currency_symbol }}{{ budget.actual_expenses|floatformat:2|intcomma }} paid so far · {{ currency_symbol }}{{ budget.expected_expenses|floatformat:2|intcomma }} still due</small></article>
-                <article class="metric metric-action"><span>Expected daily costs</span><strong>{{ currency_symbol }}{{ budget.expected_daily_expense|floatformat:2|intcomma }} / day</strong><small>{{ currency_symbol }}{{ budget.remaining_daily_expenses|floatformat:2|intcomma }} for remaining days</small><button class="text-button" type="button" data-dialog-open="daily-spending-edit">Edit</button></article>
-                <article class="metric"><span>Saving due</span><strong>{{ currency_symbol }}{{ budget.savings_target|floatformat:2|intcomma }}</strong><small>Not yet funded this month</small></article>
-                <article class="metric"><span>Saved in goals</span><strong>{{ currency_symbol }}{{ budget.savings_balance|floatformat:2|intcomma }}</strong><small>Separate from spendable money</small></article>
+                <article class="metric"><span>Current bank balance</span><strong>{{ budget.current_balance|money:budget_preference }}</strong><small>Across {{ budget.included_account_count }} included account{{ budget.included_account_count|pluralize }}</small></article>
+                <article class="metric"><span>Income this month</span><strong class="positive">{{ budget.income_month_total|money_plus:budget_preference }}</strong><small>{{ budget.actual_income|money:budget_preference }} received so far · {{ budget.expected_income|money:budget_preference }} still due</small></article>
+                <article class="metric"><span>Expenses this month</span><strong class="negative">{{ budget.expense_month_total|money_minus:budget_preference }}</strong><small>{{ budget.actual_expenses|money:budget_preference }} paid so far · {{ budget.expected_expenses|money:budget_preference }} still due</small></article>
+                <article class="metric metric-action"><span>Expected daily costs</span><strong>{{ budget.expected_daily_expense|money:budget_preference }} / day</strong><small>{{ budget.remaining_daily_expenses|money:budget_preference }} for remaining days</small><button class="text-button" type="button" data-dialog-open="daily-spending-edit">Edit</button></article>
+                <article class="metric"><span>Saving due</span><strong>{{ budget.savings_target|money:budget_preference }}</strong><small>Not yet funded this month</small></article>
+                <article class="metric"><span>Saved in goals</span><strong>{{ budget.savings_balance|money:budget_preference }}</strong><small>Separate from spendable money</small></article>
             </div>
 
             <div class="overview-grid">
@@ -119,7 +125,7 @@
                     <div class="section-heading"><div><p class="eyebrow">This month</p><h2>Coming up</h2></div><button class="text-button" type="button" data-tab-target="plans">Manage</button></div>
                     <div class="upcoming-list">
                         {% for item in budget.upcoming %}
-                        <div class="upcoming-item"><span class="transaction-mark {{ item.kind }}">{% if item.kind == 'income' %}+{% else %}−{% endif %}</span><div><strong>{{ item.name }}</strong><small>{{ item.date|date:"D, j M" }}</small></div><b class="{% if item.kind == 'income' %}positive{% else %}negative{% endif %}">{% if item.kind == 'income' %}+{% else %}−{% endif %}{{ currency_symbol }}{{ item.amount|floatformat:2|intcomma }}</b></div>
+                        <div class="upcoming-item"><span class="transaction-mark {{ item.kind }}">{% if item.kind == 'income' %}+{% else %}−{% endif %}</span><div><strong>{{ item.name }}</strong><small>{{ item.date|date:"D, j M" }}</small></div><b class="{% if item.kind == 'income' %}positive{% else %}negative{% endif %}">{% if item.kind == 'income' %}{{ item.amount|money_plus:budget_preference }}{% else %}{{ item.amount|money_minus:budget_preference }}{% endif %}</b></div>
                         {% empty %}<div class="empty-state"><strong>No more planned items</strong><span>Your remaining month is clear.</span></div>{% endfor %}
                     </div>
                 </section>
@@ -132,13 +138,13 @@
                 {% for account, form in account_edit_forms %}
                 <article class="account-card">
                     <div class="account-card-top"><span class="account-icon">{{ account.name|first|upper }}</span><button class="icon-button" type="button" data-dialog-open="account-edit-{{ account.id }}" aria-label="Edit {{ account.name }}" title="Edit account">•••</button></div>
-                    <p>{{ account.name }}</p><strong>{{ currency_symbol }}{{ account.balance|floatformat:2|intcomma }}</strong><small>Current balance</small>
+                    <p>{{ account.name }}</p><strong>{{ account.balance|money:budget_preference }}</strong><small>Current balance · {% if account.include_in_budget %}Included in monthly budget{% else %}Tracking only{% endif %}</small>
                 </article>
                 {% empty %}<button class="empty-account" type="button" data-dialog-open="account-create"><span>+</span><strong>Add your first bank account</strong></button>{% endfor %}
                 {% for goal, form in savings_goal_edit_forms %}
                 <article class="account-card goal-account-card">
                     <div class="account-card-top"><span class="account-icon">◎</span><button class="icon-button" type="button" data-dialog-open="saving-edit-{{ goal.id }}" aria-label="Edit {{ goal.name }}" title="Edit goal account">•••</button></div>
-                    <p>{{ goal.name }}</p><strong>{{ currency_symbol }}{{ goal.current_balance|floatformat:2|intcomma }}</strong><small>Savings goal account</small>
+                    <p>{{ goal.name }}</p><strong>{{ goal.current_balance|money:budget_preference }}</strong><small>Savings goal account</small>
                 </article>
                 {% endfor %}
             </div>
@@ -158,7 +164,7 @@
                     <div class="section-heading"><h3>Recurring income</h3><span class="count-badge">{{ recurring_incomes|length }}</span></div>
                     <div class="plan-list">
                         {% for item, form in recurring_income_edit_forms %}
-                        <button class="plan-row" type="button" data-dialog-open="recurring-income-edit-{{ item.id }}"><span class="transaction-mark income">+</span><span><strong>{{ item.name }}</strong><small>Monthly on day {{ item.day_of_month }} · {{ item.bank_account.name }}</small></span><b class="positive">{{ currency_symbol }}{{ item.amount|floatformat:2|intcomma }}</b></button>
+                        <button class="plan-row" type="button" data-dialog-open="recurring-income-edit-{{ item.id }}"><span class="transaction-mark income">+</span><span><strong>{{ item.name }}</strong><small>Monthly on day {{ item.day_of_month }} · {{ item.bank_account.name }}</small></span><b class="positive">{{ item.amount|money:budget_preference }}</b></button>
                         {% empty %}<div class="empty-state"><strong>No recurring income</strong><span>Add salary or other regular income.</span></div>{% endfor %}
                     </div>
                 </section>
@@ -166,7 +172,7 @@
                     <div class="section-heading"><h3>Recurring expenses</h3><span class="count-badge">{{ recurring_expenses|length }}</span></div>
                     <div class="plan-list">
                         {% for item, form in monthly_expense_edit_forms %}
-                        <button class="plan-row" type="button" data-dialog-open="monthly-expense-edit-{{ item.id }}"><span class="transaction-mark expense">−</span><span><strong>{{ item.name }}</strong><small>Monthly on day {{ item.day_of_month }} · {{ item.bank_account.name }}</small></span><b class="negative">{{ currency_symbol }}{{ item.amount|floatformat:2|intcomma }}</b></button>
+                        <button class="plan-row" type="button" data-dialog-open="monthly-expense-edit-{{ item.id }}"><span class="transaction-mark expense">−</span><span><strong>{{ item.name }}</strong><small>Monthly on day {{ item.day_of_month }} · {{ item.bank_account.name }}</small></span><b class="negative">{{ item.amount|money:budget_preference }}</b></button>
                         {% empty %}<div class="empty-state"><strong>No recurring expenses</strong><span>Add rent, subscriptions, or bills.</span></div>{% endfor %}
                     </div>
                 </section>
@@ -179,10 +185,10 @@
                         <button class="saving-card-main" type="button" data-dialog-open="saving-edit-{{ item.id }}">
                             <span class="saving-icon">◎</span>
                             <span><strong>{{ item.name }}</strong><small>Monthly on day {{ item.day_of_month }}{% if item.bank_account %} · from {{ item.bank_account.name }}{% endif %}{% if item.target_date %} · by {{ item.target_date|date:"j M Y" }}{% endif %}</small></span>
-                            <b>{{ currency_symbol }}{{ item.current_balance|floatformat:2|intcomma }}</b>
+                            <b>{{ item.current_balance|money:budget_preference }}</b>
                         </button>
                         {% if item.target_amount %}<div class="saving-progress"><span style="width: {{ item.progress_percent }}%"></span></div>{% endif %}
-                        <small>{{ currency_symbol }}{{ item.current_balance|floatformat:2|intcomma }} saved{% if item.target_amount %} of {{ currency_symbol }}{{ item.target_amount|floatformat:2|intcomma }}{% else %} · {{ currency_symbol }}{{ item.monthly_amount|floatformat:2|intcomma }} monthly{% endif %}</small>
+                        <small>{{ item.current_balance|money:budget_preference }} saved{% if item.target_amount %} of {{ item.target_amount|money:budget_preference }}{% else %} · {{ item.monthly_amount|money:budget_preference }} monthly{% endif %}</small>
                     </article>
                     {% empty %}<div class="empty-state"><strong>No savings goal yet</strong><span>Create a target and Darith will calculate each monthly contribution.</span></div>{% endfor %}
                 </div>
@@ -261,6 +267,31 @@
         </section>
         <div class="dialog-actions"><button class="button button-secondary" type="button" data-dialog-close>Cancel</button><button class="button button-primary" type="submit">Save settings</button></div>
     </form>
+    <section class="security-settings" aria-labelledby="security-settings-title">
+        <div class="settings-section-heading"><h3 id="security-settings-title">App lock</h3><p>Lock Darith after inactivity. Your device checks Face ID, fingerprint, or screen lock; Darith never receives biometric data.</p></div>
+        <form method="post" action="{% url 'update_security_settings' %}" class="security-form">
+            {% csrf_token %}
+            <div class="appearance-setting"><label for="{{ security_settings_form.lock_timeout_minutes.id_for_label }}">Lock after</label>{{ security_settings_form.lock_timeout_minutes }}</div>
+            <div class="pin-fields"><p><label for="{{ security_settings_form.new_pin.id_for_label }}">Darith PIN</label>{{ security_settings_form.new_pin }}<small>Use 4 to 8 digits. Leave blank to keep the current PIN.</small></p><p><label for="{{ security_settings_form.confirm_pin.id_for_label }}">Confirm PIN</label>{{ security_settings_form.confirm_pin }}</p></div>
+            <div class="security-actions"><span>{% if budget_preference.has_darith_pin %}PIN enabled{% else %}No PIN yet{% endif %}</span>{% if budget_preference.has_darith_pin %}<button class="text-button danger-text" type="submit" formaction="{% url 'remove_darith_pin' %}" formnovalidate>Remove PIN</button>{% endif %}<button class="button button-primary button-small" type="submit">Save lock settings</button></div>
+        </form>
+        <div class="passkey-setting">
+            <div><strong>Passkey / fingerprint / Face ID</strong><small>Available on HTTPS and supported browsers.</small></div>
+            <div class="passkey-create"><input class="form-control" id="passkey-name" maxlength="80" value="My device" aria-label="Passkey name"><button class="button button-secondary button-small" type="button" data-passkey-register>Add passkey</button></div>
+            <p class="passkey-message" data-passkey-message role="status"></p>
+            {% if passkeys %}<div class="passkey-list">{% for passkey in passkeys %}<div><span><strong>{{ passkey.name }}</strong><small>Added {{ passkey.created_at|date:"j M Y" }}</small></span><form method="post" action="{% url 'delete_passkey' passkey.id %}" data-confirm="Remove this passkey?">{% csrf_token %}<button class="icon-button danger-button" type="submit" aria-label="Remove {{ passkey.name }}">×</button></form></div>{% endfor %}</div>{% endif %}
+        </div>
+    </section>
+</dialog>
+<dialog class="form-dialog feedback-dialog" id="feedback-dialog">
+    <div class="dialog-head"><h2>Send feedback</h2><button class="icon-button" type="button" data-dialog-close aria-label="Close">×</button></div>
+    <form method="post" action="{% url 'submit_feedback' %}" class="dialog-form">
+        {% csrf_token %}
+        {{ feedback_form.as_p }}
+        <input type="hidden" name="page" value="dashboard">
+        <input type="hidden" name="tab" value="{{ active_tab }}">
+        <div class="dialog-actions"><button class="button button-secondary" type="button" data-dialog-close>Cancel</button><button class="button button-primary" type="submit">Send feedback</button></div>
+    </form>
 </dialog>
 {% include "partials/form_dialog.html" with dialog_id="expense-create" title="Add expense" form=expense_form action_url="create_expense" submit_label="Add expense" %}
 {% include "partials/form_dialog.html" with dialog_id="income-create" title="Add income" form=income_form action_url="create_income" submit_label="Add income" %}
@@ -283,4 +314,4 @@
 </div>
 {% endblock %}
 
-{% block scripts %}<script src="{% static 'js/dashboard.js' %}"></script>{% endblock %}
+{% block scripts %}<script src="{% static 'js/passkeys.js' %}"></script><script src="{% static 'js/dashboard.js' %}"></script>{% endblock %}

@@ -4,6 +4,7 @@ from decimal import Decimal, ROUND_UP
 
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User
 from django.utils import timezone
 
@@ -18,6 +19,7 @@ from .models import (
     RecurringIncome,
     SavingsGoal,
     Transfer,
+    UserFeedback,
 )
 
 
@@ -27,6 +29,8 @@ class StyledFormMixin:
         for field in self.fields.values():
             if isinstance(field.widget, forms.Select):
                 field.widget.attrs["class"] = "form-select"
+            elif isinstance(field.widget, forms.CheckboxInput):
+                field.widget.attrs["class"] = "form-check-input"
             else:
                 field.widget.attrs["class"] = "form-control"
             if field.required:
@@ -47,8 +51,11 @@ class UserScopedFormMixin:
 class BankAccountForm(StyledFormMixin, forms.ModelForm):
     class Meta:
         model = BankAccount
-        fields = ["name", "balance"]
-        labels = {"balance": "Current balance"}
+        fields = ["name", "balance", "include_in_budget"]
+        labels = {
+            "balance": "Current balance",
+            "include_in_budget": "Include in monthly budget",
+        }
         widgets = {
             "balance": forms.NumberInput(attrs={"step": "0.01"}),
         }
@@ -122,6 +129,69 @@ class DashboardAnimationForm(StyledFormMixin, forms.ModelForm):
             or self.instance.transaction_deletion_mode
             or BudgetPreference.DELETE_BALANCE_AUTOMATIC
         )
+
+
+class SecuritySettingsForm(StyledFormMixin, forms.ModelForm):
+    new_pin = forms.RegexField(
+        regex=r"^\d{4,8}$",
+        required=False,
+        label="New Darith PIN",
+        error_messages={"invalid": "Use 4 to 8 digits."},
+        widget=forms.PasswordInput(
+            attrs={"inputmode": "numeric", "autocomplete": "new-password"}
+        ),
+    )
+    confirm_pin = forms.CharField(
+        required=False,
+        label="Confirm PIN",
+        widget=forms.PasswordInput(
+            attrs={"inputmode": "numeric", "autocomplete": "new-password"}
+        ),
+    )
+
+    class Meta:
+        model = BudgetPreference
+        fields = ["lock_timeout_minutes"]
+        labels = {"lock_timeout_minutes": "Lock after"}
+
+    def clean(self):
+        cleaned_data = super().clean()
+        new_pin = cleaned_data.get("new_pin")
+        confirm_pin = cleaned_data.get("confirm_pin")
+        if new_pin != confirm_pin:
+            self.add_error("confirm_pin", "The PINs do not match.")
+        lock_minutes = cleaned_data.get("lock_timeout_minutes") or 0
+        has_unlock_method = bool(
+            new_pin
+            or self.instance.darith_pin_hash
+            or self.instance.user.passkey_credentials.exists()
+        )
+        if lock_minutes and not has_unlock_method:
+            self.add_error(
+                "lock_timeout_minutes",
+                "Add a Darith PIN or passkey before enabling inactivity lock.",
+            )
+        return cleaned_data
+
+    def save(self, commit=True):
+        preference = super().save(commit=False)
+        if self.cleaned_data.get("new_pin"):
+            preference.darith_pin_hash = make_password(self.cleaned_data["new_pin"])
+        if commit:
+            preference.save()
+        return preference
+
+
+class FeedbackForm(StyledFormMixin, forms.ModelForm):
+    class Meta:
+        model = UserFeedback
+        fields = ["message"]
+        labels = {"message": "Your feedback"}
+        widgets = {
+            "message": forms.Textarea(
+                attrs={"rows": 5, "placeholder": "Tell us what worked or what needs attention."}
+            )
+        }
 
 
 class TransactionForm(UserScopedFormMixin, StyledFormMixin, forms.ModelForm):

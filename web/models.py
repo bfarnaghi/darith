@@ -78,6 +78,12 @@ class Token(models.Model):
 class BankAccount(models.Model):
     name = models.CharField(max_length=100)
     balance = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    include_in_budget = models.BooleanField(
+        default=True,
+        help_text=(
+            "Include this account in free-to-spend and monthly dashboard totals."
+        ),
+    )
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="bank_accounts")
 
     class Meta:
@@ -134,6 +140,13 @@ class BudgetPreference(models.Model):
         (DELETE_BALANCE_AUTOMATIC, "Update balances automatically"),
         (DELETE_BALANCE_MANUAL, "Leave balances unchanged"),
     ]
+    LOCK_TIMEOUT_CHOICES = [
+        (0, "Off"),
+        (1, "1 minute"),
+        (5, "5 minutes"),
+        (15, "15 minutes"),
+        (30, "30 minutes"),
+    ]
 
     user = models.OneToOneField(
         User, on_delete=models.CASCADE, related_name="budget_preference"
@@ -154,6 +167,12 @@ class BudgetPreference(models.Model):
         choices=CURRENCY_CHOICES,
         default=CURRENCY_EUR,
     )
+    hide_financial_values = models.BooleanField(default=False)
+    lock_timeout_minutes = models.PositiveSmallIntegerField(
+        choices=LOCK_TIMEOUT_CHOICES,
+        default=0,
+    )
+    darith_pin_hash = models.CharField(max_length=128, blank=True, editable=False)
     transaction_deletion_mode = models.CharField(
         max_length=16,
         choices=DELETE_BALANCE_CHOICES,
@@ -204,6 +223,52 @@ class BudgetPreference(models.Model):
     @property
     def currency_symbol(self):
         return self.CURRENCY_SYMBOLS.get(self.currency, self.currency)
+
+    @property
+    def has_darith_pin(self):
+        return bool(self.darith_pin_hash)
+
+
+class PasskeyCredential(models.Model):
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="passkey_credentials"
+    )
+    name = models.CharField(max_length=80, default="My passkey")
+    credential_id = models.BinaryField(unique=True)
+    public_key = models.BinaryField()
+    sign_count = models.PositiveBigIntegerField(default=0)
+    transports = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user} - {self.name}"
+
+
+class UserFeedback(models.Model):
+    STATUS_NEW = "new"
+    STATUS_REVIEWED = "reviewed"
+    STATUS_CHOICES = [
+        (STATUS_NEW, "New"),
+        (STATUS_REVIEWED, "Reviewed"),
+    ]
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="darith_feedback"
+    )
+    message = models.TextField(max_length=2000)
+    page = models.CharField(max_length=80, blank=True)
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_NEW)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Feedback from {self.user} on {self.created_at:%Y-%m-%d}"
 
 
 @receiver(post_delete, sender=BudgetPreference)

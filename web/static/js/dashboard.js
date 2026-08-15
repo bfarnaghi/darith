@@ -49,3 +49,61 @@ document.querySelectorAll("[data-confirm-submit]").forEach((button) => {
         if (!window.confirm(button.dataset.confirmSubmit)) event.preventDefault();
     });
 });
+
+const lockTimeoutSeconds = Number(app.dataset.lockTimeoutSeconds || 0);
+if (lockTimeoutSeconds > 0) {
+    let idleTimer;
+    let locking = false;
+    let lastInteraction = Date.now();
+    let lastHeartbeat = 0;
+    const csrf = document.querySelector("input[name='csrfmiddlewaretoken']")?.value || "";
+
+    async function lockDarith() {
+        if (locking) return;
+        locking = true;
+        app.classList.add("client-locked");
+        try {
+            const response = await fetch(app.dataset.lockUrl, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: {"X-CSRFToken": csrf},
+                keepalive: true,
+            });
+            const payload = await response.json();
+            window.location.assign(payload.redirect || app.dataset.lockedUrl);
+        } catch (error) {
+            locking = false;
+            window.setTimeout(lockDarith, 5000);
+        }
+    }
+
+    async function heartbeat() {
+        const now = Date.now();
+        if (now - lastHeartbeat < 30000 || locking) return;
+        lastHeartbeat = now;
+        const response = await fetch(app.dataset.activityUrl, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {"X-CSRFToken": csrf},
+            keepalive: true,
+        });
+        if (response.status === 423) window.location.assign(app.dataset.lockedUrl);
+    }
+
+    function scheduleLock() {
+        if (locking) return;
+        lastInteraction = Date.now();
+        window.clearTimeout(idleTimer);
+        idleTimer = window.setTimeout(lockDarith, lockTimeoutSeconds * 1000);
+        heartbeat().catch(() => {});
+    }
+
+    ["pointerdown", "keydown", "touchstart", "scroll"].forEach((eventName) => {
+        document.addEventListener(eventName, scheduleLock, {passive: true});
+    });
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState !== "visible") return;
+        if (Date.now() - lastInteraction >= lockTimeoutSeconds * 1000) lockDarith();
+    });
+    idleTimer = window.setTimeout(lockDarith, lockTimeoutSeconds * 1000);
+}
