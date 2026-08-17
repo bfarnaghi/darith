@@ -229,6 +229,7 @@
         <button class="settings-tab" id="settings-tab-appearance" type="button" role="tab" data-settings-tab="appearance" aria-controls="settings-panel-appearance" aria-selected="true">Appearance</button>
         <button class="settings-tab" id="settings-tab-behavior" type="button" role="tab" data-settings-tab="behavior" aria-controls="settings-panel-behavior" aria-selected="false" tabindex="-1">Behavior</button>
         <button class="settings-tab" id="settings-tab-security" type="button" role="tab" data-settings-tab="security" aria-controls="settings-panel-security" aria-selected="false" tabindex="-1">Security</button>
+        <button class="settings-tab" id="settings-tab-account" type="button" role="tab" data-settings-tab="account" aria-controls="settings-panel-account" aria-selected="false" tabindex="-1">Account</button>
     </div>
     <section class="settings-panel" id="settings-panel-appearance" role="tabpanel" data-settings-panel="appearance" aria-labelledby="settings-tab-appearance">
         <form method="post" action="{% url 'update_dashboard_animations' %}" enctype="multipart/form-data" class="animation-form">
@@ -296,6 +297,19 @@
             <div class="passkey-create"><input class="form-control" id="passkey-name" maxlength="80" value="My device" aria-label="Passkey name"><button class="button button-secondary button-small" type="button" data-passkey-register>Add passkey</button></div>
             <p class="passkey-message" data-passkey-message role="status"></p>
             {% if passkeys %}<div class="passkey-list">{% for passkey in passkeys %}<div><span><strong>{{ passkey.name }}</strong><small>Added {{ passkey.created_at|date:"j M Y" }}</small></span><form method="post" action="{% url 'delete_passkey' passkey.id %}" data-confirm="Remove this passkey?">{% csrf_token %}<button class="icon-button danger-button" type="submit" aria-label="Remove {{ passkey.name }}">×</button></form></div>{% endfor %}</div>{% endif %}
+        </div>
+    </section>
+    <section class="settings-panel account-settings" id="settings-panel-account" role="tabpanel" data-settings-panel="account" aria-labelledby="settings-tab-account" hidden>
+        <div class="settings-section-heading"><h3>Darith account</h3><p>Signed in as <strong>{{ request.user.username }}</strong>{% if request.user.email %} with {{ request.user.email }}{% endif %}.</p></div>
+        <div class="account-danger-zone">
+            <div><p class="eyebrow">Permanent action</p><h3>Delete your account</h3><p>This removes your accounts, balances, transactions, plans, goals, categories, settings, passkeys, subscription record, feedback, profile picture, and private GIFs from the live Darith system. This cannot be undone.</p><small>Encrypted historical backups may retain a copy until they are removed through the server's normal backup rotation.</small></div>
+            <form method="post" action="{% url 'delete_user_account' %}" class="account-delete-form" data-confirm="This is the final confirmation. Permanently delete your Darith account and live data?">
+                {% csrf_token %}
+                <label class="account-delete-check" for="{{ account_deletion_form.confirm_deletion.id_for_label }}">{{ account_deletion_form.confirm_deletion }}<span>{{ account_deletion_form.confirm_deletion.label }}</span></label>
+                <p><label for="{{ account_deletion_form.signature.id_for_label }}">{{ account_deletion_form.signature.label }}</label>{{ account_deletion_form.signature }}<small>Type <code>DELETE {{ request.user.username }}</code> exactly.</small></p>
+                <p><label for="{{ account_deletion_form.current_password.id_for_label }}">{{ account_deletion_form.current_password.label }}</label>{{ account_deletion_form.current_password }}</p>
+                <button class="account-delete-button" type="submit">Permanently delete account</button>
+            </form>
         </div>
     </section>
 </dialog>

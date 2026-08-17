@@ -13,7 +13,9 @@ from .security import LAST_ACTIVITY_SESSION_KEY, LOCKED_SESSION_KEY
 
 
 EXEMPT_URL_NAMES = {
+    "account_settings",
     "create_account",
+    "delete_user_account",
     "forgot_password",
     "home",
     "login",

@@ -182,6 +182,40 @@ class SecuritySettingsForm(StyledFormMixin, forms.ModelForm):
         return preference
 
 
+class AccountDeletionForm(StyledFormMixin, forms.Form):
+    confirm_deletion = forms.BooleanField(
+        label="I understand that this permanently deletes my Darith account and live data."
+    )
+    signature = forms.CharField(
+        max_length=170,
+        label="Deletion signature",
+        widget=forms.TextInput(attrs={"autocomplete": "off", "spellcheck": "false"}),
+    )
+    current_password = forms.CharField(
+        label="Current password",
+        widget=forms.PasswordInput(attrs={"autocomplete": "current-password"}),
+    )
+
+    def __init__(self, *args, user, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+        self.expected_signature = f"DELETE {user.username}"
+
+    def clean_signature(self):
+        signature = self.cleaned_data["signature"]
+        if signature != self.expected_signature:
+            raise forms.ValidationError(
+                f"Type {self.expected_signature} exactly to confirm deletion."
+            )
+        return signature
+
+    def clean_current_password(self):
+        password = self.cleaned_data["current_password"]
+        if not self.user.check_password(password):
+            raise forms.ValidationError("Your current password is incorrect.")
+        return password
+
+
 class FeedbackForm(StyledFormMixin, forms.ModelForm):
     class Meta:
         model = UserFeedback

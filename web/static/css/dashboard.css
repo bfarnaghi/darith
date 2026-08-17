@@ -429,12 +429,12 @@ button { color: inherit; }
 .remove-gif-button { grid-column: 3; min-height: 32px; justify-self: start; padding: 0 10px; border: 1px solid #e2b5b0; border-radius: 5px; color: #8b352d; background: var(--coral-light); cursor: pointer; font-size: 11px; font-weight: 750; }
 .remove-gif-button:hover { border-color: #cf8e86; background: #f8ddd9; }
 .animation-form .dialog-actions { margin-top: 0; }
-.settings-tabs { position: sticky; top: 66px; z-index: 2; display: grid; grid-template-columns: repeat(3, 1fr); padding: 0 20px; border-bottom: 1px solid var(--line); background: var(--paper); }
+.settings-tabs { position: sticky; top: 66px; z-index: 2; display: grid; grid-template-columns: repeat(4, 1fr); padding: 0 20px; border-bottom: 1px solid var(--line); background: var(--paper); }
 .settings-tab { min-height: 48px; border: 0; border-bottom: 3px solid transparent; color: var(--muted); background: transparent; cursor: pointer; font-size: 12px; font-weight: 750; }
 .settings-tab:hover { color: var(--ink); }
 .settings-tab[aria-selected="true"] { border-bottom-color: var(--primary); color: var(--primary); }
 .settings-panel[hidden] { display: none; }
-.behavior-settings, .security-settings { padding: 20px; }
+.behavior-settings, .security-settings, .account-settings { padding: 20px; }
 .behavior-form { display: grid; }
 .settings-section-heading { display: grid; gap: 5px; margin-bottom: 14px; }
 .settings-section-heading h3 { margin: 0; font-size: 16px; }
@@ -448,6 +448,19 @@ button { color: inherit; }
 .security-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 14px 0 18px; }
 .security-actions > span { margin-right: auto; color: var(--muted); font-size: 11px; }
 .danger-text { color: var(--coral); }
+.account-danger-zone { display: grid; gap: 22px; margin-top: 18px; padding: 22px; border: 1px solid #e3b9c1; border-radius: 6px; background: #fffafb; }
+.account-danger-zone h3 { margin: 3px 0 7px; font-size: 18px; }
+.account-danger-zone p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+.account-danger-zone > div > small { display: block; margin-top: 10px; color: #87535d; font-size: 11px; line-height: 1.5; }
+.account-delete-form { display: grid; gap: 14px; padding-top: 20px; border-top: 1px solid #edd3d8; }
+.account-delete-form > p { display: grid; gap: 6px; }
+.account-delete-form label { color: var(--ink); font-size: 12px; font-weight: 750; }
+.account-delete-form small { color: var(--muted); font-size: 11px; }
+.account-delete-form code { padding: 2px 4px; border-radius: 3px; color: #762d3c; background: var(--coral-light); font-weight: 800; }
+.account-delete-check { display: flex; align-items: flex-start; gap: 9px; line-height: 1.45; }
+.account-delete-check input { margin-top: 2px; }
+.account-delete-button { min-height: 42px; justify-self: start; padding: 0 16px; border: 0; border-radius: 6px; color: #fff; background: var(--coral); font-size: 13px; font-weight: 800; cursor: pointer; }
+.account-delete-button:hover { background: #952f42; }
 .passkey-setting { display: grid; gap: 11px; padding-top: 17px; border-top: 1px solid var(--line); }
 .passkey-setting > div:first-child { display: grid; gap: 3px; }
 .passkey-create { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 9px; }

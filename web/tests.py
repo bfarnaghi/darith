@@ -161,6 +161,85 @@ class TelegramNotificationTests(SimpleTestCase):
         urlopen_mock.assert_called_once()
 
 
+class AccountDeletionTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "delete-me",
+            "delete-me@example.com",
+            "good-password-123",
+        )
+        self.other_user = User.objects.create_user(
+            "keep-me",
+            "keep-me@example.com",
+            "good-password-123",
+        )
+        self.account = BankAccount.objects.create(
+            user=self.user,
+            name="Main",
+            balance=Decimal("125.00"),
+        )
+        UserFeedback.objects.create(
+            user=self.user,
+            message="Please remove this with my account.",
+            page="dashboard",
+        )
+        self.client.force_login(self.user)
+
+    def deletion_payload(self, **overrides):
+        payload = {
+            "confirm_deletion": "on",
+            "signature": "DELETE delete-me",
+            "current_password": "good-password-123",
+        }
+        payload.update(overrides)
+        return payload
+
+    @override_settings(SUBSCRIPTIONS_ENABLED=True)
+    def test_account_page_is_available_without_subscription_access(self):
+        response = self.client.get(reverse("account_settings"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "DELETE delete-me")
+        self.assertContains(response, "Permanently delete account")
+
+    def test_dashboard_settings_include_the_account_tab(self):
+        response = self.client.get(reverse("dashboard"))
+
+        self.assertContains(response, 'data-settings-tab="account"')
+        self.assertContains(response, "DELETE delete-me")
+
+    def test_every_server_side_confirmation_is_required(self):
+        invalid_payloads = (
+            self.deletion_payload(confirm_deletion=""),
+            self.deletion_payload(signature="DELETE someone-else"),
+            self.deletion_payload(current_password="wrong-password"),
+        )
+        for payload in invalid_payloads:
+            with self.subTest(payload=payload):
+                response = self.client.post(reverse("delete_user_account"), payload)
+
+                self.assertEqual(response.status_code, 400)
+                self.assertTrue(User.objects.filter(pk=self.user.pk).exists())
+                self.assertContains(
+                    response,
+                    "Account not deleted",
+                    status_code=400,
+                )
+
+    def test_confirmed_deletion_removes_user_data_and_logs_out(self):
+        response = self.client.post(
+            reverse("delete_user_account"),
+            self.deletion_payload(),
+        )
+
+        self.assertRedirects(response, reverse("login"))
+        self.assertFalse(User.objects.filter(pk=self.user.pk).exists())
+        self.assertFalse(BankAccount.objects.filter(pk=self.account.pk).exists())
+        self.assertFalse(UserFeedback.objects.filter(user_id=self.user.pk).exists())
+        self.assertTrue(User.objects.filter(pk=self.other_user.pk).exists())
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+
 class PricingPageTests(TestCase):
     def setUp(self):
         self.plan = SubscriptionPlan.objects.create(

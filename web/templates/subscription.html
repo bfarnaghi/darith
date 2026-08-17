@@ -10,7 +10,7 @@
 <div class="billing-shell">
     <header class="billing-header">
         <a class="billing-brand" href="{% url 'home' %}"><img src="{% static 'images/logo.png' %}" alt=""><span>Darith</span></a>
-        <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="quiet-button" type="submit">Log out</button></form>
+        <div class="billing-header-actions"><a class="quiet-button" href="{% url 'account_settings' %}">Account</a><form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="quiet-button" type="submit">Log out</button></form></div>
     </header>
 
     <main class="billing-main">

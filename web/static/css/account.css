@@ -1,0 +1,46 @@
+/*
+ * Author: Behnam <b.farnaghi@gmail.com>
+ * AI-assisted implementation; manually reviewed and verified by the developer.
+ */
+:root { color-scheme: light; --ink: #0b1730; --muted: #62718a; --line: #d9e3f0; --canvas: #f4f8fc; --paper: #fff; --navy: #071a3a; --coral: #b33d52; --coral-light: #fae8ec; }
+* { box-sizing: border-box; }
+body { margin: 0; color: var(--ink); background: var(--canvas); font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: 0; }
+button, input { font: inherit; letter-spacing: 0; }
+.account-shell { min-height: 100vh; }
+.account-header { display: flex; min-height: 74px; align-items: center; justify-content: space-between; padding: 0 clamp(20px, 5vw, 68px); color: #fff; background: var(--navy); }
+.account-brand { display: inline-flex; align-items: center; gap: 10px; color: inherit; font-size: 18px; font-weight: 800; text-decoration: none; }
+.account-brand img { display: block; width: 36px; height: 36px; border-radius: 7px; object-fit: contain; }
+.quiet-link { display: inline-flex; min-height: 38px; align-items: center; padding: 0 12px; border: 1px solid #31537c; border-radius: 6px; color: #d9e7f7; font-size: 13px; font-weight: 700; text-decoration: none; }
+.quiet-link:hover { background: #12376a; }
+.account-main { padding: 58px 20px 80px; }
+.account-content { width: min(660px, 100%); margin: 0 auto; }
+.account-kicker, .danger-kicker { margin: 0 0 8px; color: #0b55d5; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+.account-content h1 { margin: 0; font-size: 36px; line-height: 1.15; }
+.account-identity { margin: 12px 0 34px; color: var(--muted); font-size: 14px; }
+.account-messages { display: grid; gap: 8px; margin-bottom: 18px; }
+.account-message { padding: 12px 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); font-size: 13px; }
+.account-message.error { color: #7f2c3c; border-color: #e7bcc5; background: var(--coral-light); }
+.delete-section { padding: 26px; border: 1px solid #e3b9c1; border-radius: 7px; background: #fffafb; }
+.danger-kicker { color: var(--coral); }
+.delete-section h2 { margin: 0 0 10px; font-size: 23px; }
+.delete-section > p:not(.danger-kicker) { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.65; }
+.delete-section > small { display: block; margin-top: 11px; color: #87535d; font-size: 11px; line-height: 1.55; }
+.delete-form { display: grid; gap: 15px; margin-top: 25px; padding-top: 23px; border-top: 1px solid #edd3d8; }
+.delete-form > p { display: grid; gap: 7px; margin: 0; }
+.delete-form label { font-size: 12px; font-weight: 750; }
+.delete-form input[type="text"], .delete-form input[type="password"] { width: 100%; min-height: 43px; padding: 0 11px; border: 1px solid #c8d5e5; border-radius: 5px; color: var(--ink); background: #fff; }
+.delete-form input:focus { border-color: #0b55d5; outline: 2px solid #dbe9ff; }
+.delete-form small { color: var(--muted); font-size: 11px; }
+.delete-form code { padding: 2px 4px; border-radius: 3px; color: #762d3c; background: var(--coral-light); font-weight: 800; }
+.delete-check { display: flex; align-items: flex-start; gap: 9px; line-height: 1.45; }
+.delete-check input { margin-top: 2px; }
+.delete-form button { min-height: 44px; justify-self: start; padding: 0 17px; border: 0; border-radius: 6px; color: #fff; background: var(--coral); font-size: 13px; font-weight: 800; cursor: pointer; }
+.delete-form button:hover { background: #952f42; }
+.errorlist { margin: -3px 0 0; padding: 0; color: #9b3045; font-size: 11px; list-style: none; }
+@media (max-width: 560px) {
+    .account-header { min-height: 66px; padding-inline: 16px; }
+    .account-main { padding: 42px 16px 64px; }
+    .account-content h1 { font-size: 30px; }
+    .delete-section { padding: 21px 18px; }
+    .delete-form button { width: 100%; }
+}

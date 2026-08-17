@@ -27,6 +27,7 @@ from django.views.decorators.http import require_POST
 from webauthn.helpers.exceptions import WebAuthnException
 
 from .forms import (
+    AccountDeletionForm,
     BankAccountForm,
     BudgetPreferenceForm,
     CategoryForm,
@@ -115,6 +116,18 @@ def pricing(request):
         {
             "plan": plan,
             "trial_days": plan.trial_days if plan else 45,
+            "subscriptions_enabled": settings.SUBSCRIPTIONS_ENABLED,
+        },
+    )
+
+
+@login_required
+def account_settings(request):
+    return render(
+        request,
+        "account.html",
+        {
+            "form": AccountDeletionForm(user=request.user),
             "subscriptions_enabled": settings.SUBSCRIPTIONS_ENABLED,
         },
     )
@@ -446,6 +459,7 @@ def dashboard(request):
         "budget_preference_form": BudgetPreferenceForm(instance=preference),
         "dashboard_animation_form": DashboardAnimationForm(instance=preference),
         "security_settings_form": SecuritySettingsForm(instance=preference),
+        "account_deletion_form": AccountDeletionForm(user=request.user),
         "feedback_form": FeedbackForm(),
         "transfer_form": TransferForm(user=request.user, initial={"date": today}),
         "expense_form": ExpenseForm(user=request.user, initial={"date": today}),
@@ -949,6 +963,32 @@ def remove_darith_pin(request):
     else:
         messages.info(request, "There is no Darith PIN to remove.")
     return _dashboard_redirect("overview")
+
+
+@require_POST
+@login_required
+def delete_user_account(request):
+    form = AccountDeletionForm(request.POST, user=request.user)
+    if not form.is_valid():
+        messages.error(request, "Account not deleted. Check every confirmation field.")
+        return render(
+            request,
+            "account.html",
+            {
+                "form": form,
+                "subscriptions_enabled": settings.SUBSCRIPTIONS_ENABLED,
+            },
+            status=400,
+        )
+
+    user = request.user
+    user.delete()
+    logout(request)
+    messages.success(
+        request,
+        "Your Darith account and live data were permanently deleted.",
+    )
+    return redirect("login")
 
 
 @require_POST

@@ -121,6 +121,10 @@ def main():
         settings_dialog.get_by_role("tab", name="Security").click()
         settings_dialog.locator('select[name="lock_timeout_minutes"]').wait_for()
         settings_dialog.get_by_role("button", name="Add passkey").wait_for()
+        settings_dialog.get_by_role("tab", name="Account").click()
+        settings_dialog.locator('input[name="signature"]').wait_for()
+        settings_dialog.locator('input[name="current_password"]').wait_for()
+        settings_dialog.get_by_role("button", name="Permanently delete account").wait_for()
         assert_no_horizontal_overflow(page)
         page.screenshot(path=OUTPUT_DIR / "settings-desktop.png", full_page=True)
         settings_dialog.get_by_role("button", name="Close").click()
@@ -150,6 +154,10 @@ def main():
         settings_dialog.wait_for()
         assert_no_horizontal_overflow(page)
         page.screenshot(path=OUTPUT_DIR / "settings-mobile.png", full_page=True)
+        settings_dialog.get_by_role("tab", name="Account").click()
+        settings_dialog.locator('input[name="signature"]').wait_for()
+        assert_no_horizontal_overflow(page)
+        page.screenshot(path=OUTPUT_DIR / "account-delete-mobile.png", full_page=True)
         settings_dialog.get_by_role("button", name="Close").click()
         page.locator(".mobile-overflow").evaluate("element => element.open = false")
 
@@ -162,6 +170,11 @@ def main():
         ).click()
         page.locator('[data-tab-panel="categories"] h2', has_text="Custom categories").wait_for()
         assert_no_horizontal_overflow(page)
+        page.goto(f"{BASE_URL}/account/", wait_until="networkidle")
+        page.get_by_role("heading", name="Your Darith account").wait_for()
+        page.get_by_role("button", name="Permanently delete account").wait_for()
+        assert_no_horizontal_overflow(page)
+        page.screenshot(path=OUTPUT_DIR / "account-page-mobile.png", full_page=True)
         browser.close()
 
     if console_errors:

@@ -36,6 +36,7 @@ Open `http://127.0.0.1:8000`, create a user account, and sign in.
 12. In Settings, you can upload and remove a GIF for each budget state. Profile pictures and GIFs are limited to 2 MB and 1200 x 1200 pixels; GIFs are also limited to 300 frames.
 13. Under **Settings → Security**, add a passkey or Darith PIN and choose an inactivity timeout. Passkeys use the security built into your phone or computer; Darith does not receive your fingerprint or face data.
 14. Use **Feedback** in the account menu to send a comment to the Darith administrator.
+15. Use **Settings → Account** to permanently delete your user account and live data. Darith requires your current password, an acknowledgement, an exact typed signature, and a final confirmation.
 
 Editing a transaction always updates its account balance. Deleting a transaction or transfer reverses its previous balance change by default; choose **Leave balances unchanged** under **Settings → Behavior** when you prefer to correct balances manually. A bank or goal with transfer history is kept to protect the ledger.
 
