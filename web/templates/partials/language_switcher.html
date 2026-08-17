@@ -1,0 +1,14 @@
+{# Author: Behnam <b.farnaghi@gmail.com> #}
+{# AI-assisted implementation; manually reviewed and verified by the developer. #}
+{% load i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+{% get_available_languages as LANGUAGES %}
+<form class="language-switcher" method="post" action="{% url 'set_language_preference' %}">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <label for="language-select">{% translate "Language" %}</label>
+    <select id="language-select" name="language" aria-label="{% translate 'Language' %}" onchange="this.form.submit()">
+        {% for code, name in LANGUAGES %}<option value="{{ code }}" {% if code == LANGUAGE_CODE %}selected{% endif %}>{{ name }}</option>{% endfor %}
+    </select>
+    <noscript><button type="submit">{% translate "Apply" %}</button></noscript>
+</form>

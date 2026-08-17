@@ -149,6 +149,23 @@ def main():
         page.locator(".mobile-nav").wait_for()
         assert_no_horizontal_overflow(page)
         page.screenshot(path=OUTPUT_DIR / "dashboard-mobile.png", full_page=True)
+
+        page.locator(".mobile-overflow summary").click()
+        page.locator('.mobile-menu [data-dialog-open="dashboard-animation-edit"]').click()
+        settings_dialog.locator('select[name="language"]').select_option("fa")
+        settings_dialog.locator(".animation-form .dialog-actions button[type=submit]").click()
+        page.wait_for_load_state("networkidle")
+        if page.locator("html").get_attribute("dir") != "rtl":
+            raise AssertionError("Persian did not enable the RTL document direction.")
+        page.get_by_text("نمای کلی", exact=True).first.wait_for()
+        assert_no_horizontal_overflow(page)
+        page.screenshot(path=OUTPUT_DIR / "dashboard-persian-mobile.png", full_page=True)
+        page.locator(".mobile-overflow summary").click()
+        page.locator('.mobile-menu [data-dialog-open="dashboard-animation-edit"]').click()
+        settings_dialog.locator('select[name="language"]').select_option("en")
+        settings_dialog.locator(".animation-form .dialog-actions button[type=submit]").click()
+        page.wait_for_load_state("networkidle")
+
         page.locator(".mobile-overflow summary").click()
         page.locator(".mobile-menu").get_by_role("button", name="Settings").click()
         settings_dialog.wait_for()

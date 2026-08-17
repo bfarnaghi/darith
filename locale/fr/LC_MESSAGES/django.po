@@ -1,0 +1,565 @@
+# French translations for Darith.
+# Copyright (C) 2026 ORGANIZATION
+# This file is distributed under the same license as the Darith project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: Darith VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2026-08-17 10:16+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: fr\n"
+"Language-Team: fr <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.10.3\n"
+
+msgid "Language"
+msgstr "Langue"
+
+msgid "Apply"
+msgstr "Appliquer"
+
+msgid "English"
+msgstr "Anglais"
+
+msgid "Persian"
+msgstr "Persan"
+
+msgid "Italian"
+msgstr "Italien"
+
+msgid "French"
+msgstr "Français"
+
+msgid "Spanish"
+msgstr "Espagnol"
+
+msgid "Dutch"
+msgstr "Néerlandais"
+
+msgid "Home"
+msgstr "Accueil"
+
+msgid "Tutorial"
+msgstr "Tutoriel"
+
+msgid "Pricing"
+msgstr "Tarifs"
+
+msgid "Open dashboard"
+msgstr "Ouvrir le tableau de bord"
+
+msgid "Try Darith free"
+msgstr "Essayer Darith gratuitement"
+
+msgid "Sign in"
+msgstr "Se connecter"
+
+msgid "Create account"
+msgstr "Créer un compte"
+
+msgid "Username"
+msgstr "Nom d’utilisateur"
+
+msgid "Password"
+msgstr "Mot de passe"
+
+msgid "Email"
+msgstr "E-mail"
+
+msgid "Email address"
+msgstr "Adresse e-mail"
+
+msgid "Forgot password?"
+msgstr "Mot de passe oublié ?"
+
+msgid "Reset password"
+msgstr "Réinitialiser le mot de passe"
+
+msgid "Welcome back"
+msgstr "Bon retour"
+
+msgid "Sign in to your account"
+msgstr "Connectez-vous à votre compte"
+
+msgid "Use a passkey"
+msgstr "Utiliser une clé d’accès"
+
+msgid "or"
+msgstr "ou"
+
+msgid "New to Darith?"
+msgstr "Nouveau sur Darith ?"
+
+msgid "Already registered?"
+msgstr "Déjà inscrit ?"
+
+msgid "Overview"
+msgstr "Vue d’ensemble"
+
+msgid "Accounts"
+msgstr "Comptes"
+
+msgid "Transactions"
+msgstr "Transactions"
+
+msgid "Monthly plans"
+msgstr "Plans mensuels"
+
+msgid "Categories"
+msgstr "Catégories"
+
+msgid "Personal workspace"
+msgstr "Espace personnel"
+
+msgid "Feedback"
+msgstr "Commentaires"
+
+msgid "Send feedback"
+msgstr "Envoyer un commentaire"
+
+msgid "Billing"
+msgstr "Facturation"
+
+msgid "Log out"
+msgstr "Se déconnecter"
+
+msgid "Transfer"
+msgstr "Virement"
+
+msgid "Income"
+msgstr "Revenu"
+
+msgid "Expense"
+msgstr "Dépense"
+
+msgid "Settings"
+msgstr "Paramètres"
+
+msgid "Export CSV"
+msgstr "Exporter CSV"
+
+msgid "Free to spend this month"
+msgstr "Disponible à dépenser ce mois-ci"
+
+msgid "Current bank balance"
+msgstr "Solde bancaire actuel"
+
+msgid "Month-end outlook"
+msgstr "Prévision de fin de mois"
+
+msgid "On track"
+msgstr "Sur la bonne voie"
+
+msgid "Warning"
+msgstr "Avertissement"
+
+msgid "Out of budget"
+msgstr "Hors budget"
+
+msgid "Budget warning"
+msgstr "Alerte budget"
+
+msgid "Income this month"
+msgstr "Revenus ce mois-ci"
+
+msgid "Expenses this month"
+msgstr "Dépenses ce mois-ci"
+
+msgid "Expected daily costs"
+msgstr "Dépenses quotidiennes prévues"
+
+msgid "Saving due"
+msgstr "Épargne à verser"
+
+msgid "Saved in goals"
+msgstr "Épargné dans les objectifs"
+
+msgid "Current balance"
+msgstr "Solde actuel"
+
+msgid "Not yet funded this month"
+msgstr "Pas encore financé ce mois-ci"
+
+msgid "Separate from spendable money"
+msgstr "Séparé de l’argent disponible"
+
+msgid "Latest activity"
+msgstr "Activité récente"
+
+msgid "View all"
+msgstr "Tout voir"
+
+msgid "No transactions yet"
+msgstr "Aucune transaction"
+
+msgid "Add income, an expense, or a transfer to begin."
+msgstr "Ajoutez un revenu, une dépense ou un virement pour commencer."
+
+msgid "This month"
+msgstr "Ce mois-ci"
+
+msgid "this month"
+msgstr "ce mois-ci"
+
+msgid "next month"
+msgstr "le mois prochain"
+
+#, python-format
+msgid "Expected bills, daily costs, and saving goals are covered %(period)s."
+msgstr "Les factures, dépenses quotidiennes et objectifs d’épargne sont couverts pour %(period)s."
+
+#, python-format
+msgid "%(received)s received so far · %(due)s still due"
+msgstr "%(received)s reçus · %(due)s encore attendus"
+
+#, python-format
+msgid "%(paid)s paid so far · %(due)s still due"
+msgstr "%(paid)s payés · %(due)s encore dus"
+
+#, python-format
+msgid "%(amount)s / day"
+msgstr "%(amount)s / jour"
+
+#, python-format
+msgid "%(amount)s for remaining days"
+msgstr "%(amount)s pour les jours restants"
+
+#, python-format
+msgid "%(month)s status"
+msgstr "État de %(month)s"
+
+#, python-format
+msgid "%(amount)s forecast free"
+msgstr "%(amount)s disponibles prévus"
+
+msgid "Edit"
+msgstr "Modifier"
+
+msgid "Manage"
+msgstr "Gérer"
+
+msgid "Recent transactions"
+msgstr "Transactions récentes"
+
+msgid "Coming up"
+msgstr "À venir"
+
+msgid "Add account"
+msgstr "Ajouter un compte"
+
+msgid "Add expense"
+msgstr "Ajouter une dépense"
+
+msgid "Add income"
+msgstr "Ajouter un revenu"
+
+msgid "Add goal"
+msgstr "Ajouter un objectif"
+
+msgid "Activity"
+msgstr "Activité"
+
+msgid "Plans"
+msgstr "Plans"
+
+msgid "Name"
+msgstr "Nom"
+
+msgid "Description"
+msgstr "Description"
+
+msgid "Amount"
+msgstr "Montant"
+
+msgid "Date"
+msgstr "Date"
+
+msgid "Category"
+msgstr "Catégorie"
+
+msgid "Bank account"
+msgstr "Compte bancaire"
+
+msgid "Source"
+msgstr "Source"
+
+msgid "Destination"
+msgstr "Destination"
+
+msgid "Save changes"
+msgstr "Enregistrer"
+
+msgid "Delete"
+msgstr "Supprimer"
+
+msgid "Cancel"
+msgstr "Annuler"
+
+msgid "Close"
+msgstr "Fermer"
+
+msgid "Appearance"
+msgstr "Apparence"
+
+msgid "Behavior"
+msgstr "Comportement"
+
+msgid "Security"
+msgstr "Sécurité"
+
+msgid "Account"
+msgstr "Compte"
+
+msgid "Color theme"
+msgstr "Thème de couleur"
+
+msgid "Display currency"
+msgstr "Devise affichée"
+
+msgid "Profile picture"
+msgstr "Photo de profil"
+
+msgid "Ocean"
+msgstr "Océan"
+
+msgid "Forest"
+msgstr "Forêt"
+
+msgid "Graphite"
+msgstr "Graphite"
+
+msgid "Purple"
+msgstr "Violet"
+
+msgid "Save appearance"
+msgstr "Enregistrer l’apparence"
+
+msgid "App lock"
+msgstr "Verrouillage"
+
+msgid "Lock after"
+msgstr "Verrouiller après"
+
+msgid "Darith PIN"
+msgstr "Code PIN Darith"
+
+msgid "Confirm PIN"
+msgstr "Confirmer le code PIN"
+
+msgid "Add passkey"
+msgstr "Ajouter une clé d’accès"
+
+msgid "Delete your account"
+msgstr "Supprimer votre compte"
+
+msgid "Permanently delete account"
+msgstr "Supprimer définitivement"
+
+msgid "Current password"
+msgstr "Mot de passe actuel"
+
+msgid "Deletion signature"
+msgstr "Signature de suppression"
+
+msgid "Account settings"
+msgstr "Paramètres du compte"
+
+msgid "Back to dashboard"
+msgstr "Retour au tableau de bord"
+
+msgid "Personal money, made clear"
+msgstr "L’argent personnel, en toute clarté"
+
+msgid "Know what's safe to spend this month."
+msgstr "Sachez combien vous pouvez dépenser sans risque ce mois-ci."
+
+msgid "Try Darith free for 45 days"
+msgstr "Essayez Darith gratuitement pendant 45 jours"
+
+msgid "No bank credentials"
+msgstr "Aucun identifiant bancaire"
+
+msgid "Private by account"
+msgstr "Privé par compte"
+
+msgid "Protected data storage"
+msgstr "Stockage protégé"
+
+msgid "Limited admin view"
+msgstr "Vue administrateur limitée"
+
+msgid "Settings updated."
+msgstr "Paramètres mis à jour."
+
+msgid "Security settings updated."
+msgstr "Paramètres de sécurité mis à jour."
+
+msgid "Daily spending expectation updated."
+msgstr "Dépense quotidienne prévue mise à jour."
+
+msgid "Bank account added."
+msgstr "Compte bancaire ajouté."
+
+msgid "Bank account updated."
+msgstr "Compte bancaire mis à jour."
+
+msgid "Transfer completed."
+msgstr "Virement effectué."
+
+msgid "Transfer updated."
+msgstr "Virement mis à jour."
+
+msgid "Monthly plan added."
+msgstr "Plan mensuel ajouté."
+
+msgid "Monthly plan updated. Future postings use the new values."
+msgstr "Plan mensuel mis à jour. Les écritures futures utiliseront les nouvelles valeurs."
+
+msgid "Category added."
+msgstr "Catégorie ajoutée."
+
+msgid "Category updated."
+msgstr "Catégorie mise à jour."
+
+msgid "Thank you. Your feedback was sent."
+msgstr "Merci. Votre commentaire a été envoyé."
+
+msgid "Invalid username or password."
+msgstr "Nom d’utilisateur ou mot de passe incorrect."
+
+msgid "Your account is ready."
+msgstr "Votre compte est prêt."
+
+msgid "The source account does not have enough money."
+msgstr "Le compte source n’a pas assez d’argent."
+
+msgid "Add bank account"
+msgstr "Ajouter un compte bancaire"
+
+msgid "Move money"
+msgstr "Déplacer de l’argent"
+
+msgid "Transfer money"
+msgstr "Virer de l’argent"
+
+msgid "Expected daily spending"
+msgstr "Dépense quotidienne prévue"
+
+msgid "Save daily amount"
+msgstr "Enregistrer le montant quotidien"
+
+msgid "Add recurring income"
+msgstr "Ajouter un revenu récurrent"
+
+msgid "Add recurring expense"
+msgstr "Ajouter une dépense récurrente"
+
+msgid "Add savings goal"
+msgstr "Ajouter un objectif d’épargne"
+
+msgid "Income plan"
+msgstr "Plan de revenus"
+
+msgid "Expense plan"
+msgstr "Plan de dépenses"
+
+msgid "Add income plan"
+msgstr "Ajouter un plan de revenus"
+
+msgid "Add expense plan"
+msgstr "Ajouter un plan de dépenses"
+
+msgid "Recurring income"
+msgstr "Revenus récurrents"
+
+msgid "Recurring expenses"
+msgstr "Dépenses récurrentes"
+
+msgid "Savings goals"
+msgstr "Objectifs d’épargne"
+
+msgid "Your accounts"
+msgstr "Vos comptes"
+
+msgid "Live balances"
+msgstr "Soldes actuels"
+
+msgid "Included in monthly budget"
+msgstr "Inclus dans le budget mensuel"
+
+msgid "Tracking only"
+msgstr "Suivi uniquement"
+
+msgid "Savings goal account"
+msgstr "Compte d’objectif d’épargne"
+
+msgid "All activity"
+msgstr "Toute l’activité"
+
+msgid "Money movements"
+msgstr "Mouvements d’argent"
+
+msgid "Automatic monthly entries"
+msgstr "Écritures mensuelles automatiques"
+
+msgid "Income, expenses and savings"
+msgstr "Revenus, dépenses et épargne"
+
+msgid "Custom categories"
+msgstr "Catégories personnalisées"
+
+msgid "Expense categories"
+msgstr "Catégories de dépenses"
+
+msgid "Income categories"
+msgstr "Catégories de revenus"
+
+msgid "Add category"
+msgstr "Ajouter une catégorie"
+
+msgid "Edit category"
+msgstr "Modifier la catégorie"
+
+msgid "Add"
+msgstr "Ajouter"
+
+msgid "Edit bank account"
+msgstr "Modifier le compte bancaire"
+
+msgid "Edit expense"
+msgstr "Modifier la dépense"
+
+msgid "Edit income"
+msgstr "Modifier le revenu"
+
+msgid "Edit recurring income"
+msgstr "Modifier le revenu récurrent"
+
+msgid "Edit recurring expense"
+msgstr "Modifier la dépense récurrente"
+
+msgid "Edit savings goal"
+msgstr "Modifier l’objectif d’épargne"
+
+msgid "Edit transfer"
+msgstr "Modifier le virement"
+
+#, python-format
+msgid "%(amount)s extra per day for %(days)s day"
+msgid_plural "%(amount)s extra per day for %(days)s days"
+msgstr[0] "%(amount)s de plus par jour pendant %(days)s jour"
+msgstr[1] "%(amount)s de plus par jour pendant %(days)s jours"
+
+#, python-format
+msgid "Across %(count)s included account"
+msgid_plural "Across %(count)s included accounts"
+msgstr[0] "Sur %(count)s compte inclus"
+msgstr[1] "Sur %(count)s comptes inclus"
+

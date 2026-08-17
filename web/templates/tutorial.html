@@ -1,20 +1,20 @@
 {# Author: Behnam <b.farnaghi@gmail.com> #}
 {# AI-assisted implementation; manually reviewed and verified by the developer. #}
 {% extends "base.html" %}
-{% load static %}
+{% load static i18n %}
 
-{% block title %}Tutorial | Darith{% endblock %}
+{% block title %}{% translate "Tutorial" %} | Darith{% endblock %}
 {% block styles %}<link rel="stylesheet" href="{% static 'css/tutorial.css' %}">{% endblock %}
 
 {% block body %}
 <header class="tutorial-header">
     <div class="tutorial-header-inner">
-        <a class="tutorial-brand" href="{% url 'home' %}" aria-label="Darith home"><img src="{% static 'images/logo.png' %}" alt=""><span>Darith</span></a>
-        <nav class="tutorial-header-nav" aria-label="Public navigation">
-            <a href="{% url 'home' %}">Home</a>
-            <a class="active" href="{% url 'tutorial' %}" aria-current="page">Tutorial</a>
-            <a href="{% url 'pricing' %}">Pricing</a>
-            {% if request.user.is_authenticated %}<a class="header-action" href="{% url 'dashboard' %}">Open dashboard</a>{% else %}<a class="header-action" href="{% url 'create_account' %}">Try Darith free</a>{% endif %}
+        <a class="tutorial-brand" href="{% url 'home' %}" aria-label="{% translate 'Darith home' %}"><img src="{% static 'images/logo.png' %}" alt=""><span>Darith</span></a>
+        <nav class="tutorial-header-nav" aria-label="{% translate 'Public navigation' %}">
+            <a href="{% url 'home' %}">{% translate "Home" %}</a>
+            <a class="active" href="{% url 'tutorial' %}" aria-current="page">{% translate "Tutorial" %}</a>
+            <a href="{% url 'pricing' %}">{% translate "Pricing" %}</a>
+            {% if request.user.is_authenticated %}<a class="header-action" href="{% url 'dashboard' %}">{% translate "Open dashboard" %}</a>{% else %}<a class="header-action" href="{% url 'create_account' %}">{% translate "Try Darith free" %}</a>{% endif %}
         </nav>
     </div>
 </header>
@@ -216,6 +216,7 @@
                     <div><strong>Profile picture</strong><p>JPEG, PNG, or WebP up to 2 MB and 1200 by 1200 pixels.</p></div>
                     <div><strong>Theme</strong><p>Ocean, Forest, Graphite, or Purple. The choice is saved only for your user.</p></div>
                     <div><strong>Currency</strong><p>EUR, USD, GBP, CHF, CAD, AUD, or Iranian Toman (IRT). This is display formatting, not currency conversion.</p></div>
+                    <div><strong>Language</strong><p>Choose English, Persian, Italian, French, Spanish, or Dutch. Darith saves the choice to your account, and Persian uses a right-to-left layout.</p></div>
                     <div><strong>Status GIFs</strong><p>Optionally upload one private GIF for On track, Warning, and Out of budget. Each is limited to 2 MB, 1200 by 1200 pixels, and 300 frames. A new upload replaces the previous file, and Remove GIF clears it.</p></div>
                 </div>
 

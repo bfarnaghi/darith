@@ -13,7 +13,7 @@
     if (!supported) {
         if (registerButton) registerButton.hidden = true;
         if (authenticateButton) authenticateButton.hidden = true;
-        if (message) message.textContent = "Passkeys need HTTPS and a supported browser.";
+        if (message) message.textContent = root.dataset.passkeyUnsupported;
         return;
     }
 
@@ -80,13 +80,13 @@
             body: JSON.stringify(body),
         });
         const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error || "The security request failed.");
+        if (!response.ok) throw new Error(payload.error || root.dataset.securityError);
         return payload;
     }
 
     async function run(button, mode) {
         button.disabled = true;
-        if (message) message.textContent = mode === "register" ? "Waiting for your device..." : "Choose your passkey...";
+        if (message) message.textContent = mode === "register" ? root.dataset.passkeyWaiting : root.dataset.passkeyChoose;
         try {
             const options = browserOptions(await post(root.dataset.passkeyOptionsUrl));
             const credential = mode === "register"
@@ -95,15 +95,15 @@
             const responseBody = mode === "register"
                 ? {
                     credential: credentialPayload(credential),
-                    name: document.getElementById("passkey-name")?.value || "My passkey",
+                    name: document.getElementById("passkey-name")?.value || root.dataset.defaultPasskeyName,
                 }
                 : credentialPayload(credential);
             const result = await post(root.dataset.passkeyVerifyUrl, responseBody);
-            if (message) message.textContent = mode === "register" ? "Passkey added." : "Unlocked.";
+            if (message) message.textContent = mode === "register" ? root.dataset.passkeyAdded : root.dataset.passkeyUnlocked;
             window.location.assign(result.redirect || window.location.href);
         } catch (error) {
             if (message) message.textContent = error.name === "NotAllowedError"
-                ? "Passkey request canceled."
+                ? root.dataset.passkeyCanceled
                 : error.message;
             button.disabled = false;
         }

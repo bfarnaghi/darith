@@ -1,13 +1,14 @@
 {# Author: Behnam <b.farnaghi@gmail.com> #}
 {# AI-assisted implementation; manually reviewed and verified by the developer. #}
+{% load i18n %}
 <dialog class="form-dialog" id="{% if dialog_prefix %}{{ dialog_prefix }}{{ dialog_object_id }}{% else %}{{ dialog_id }}{% endif %}">
-    <div class="dialog-head"><h2>{{ title }}</h2><button class="icon-button" type="button" data-dialog-close aria-label="Close">×</button></div>
+    <div class="dialog-head"><h2>{% translate title %}</h2><button class="icon-button" type="button" data-dialog-close aria-label="{% translate 'Close' %}">×</button></div>
     {% if direct_action %}<form method="post" action="{{ direct_action }}" class="dialog-form">{% else %}<form method="post" action="{% url action_url %}" class="dialog-form">{% endif %}
         {% csrf_token %}
         {{ form.as_p }}
         <div class="dialog-actions">
-            {% if delete_action %}<button class="button button-danger" type="submit" formaction="{{ delete_action }}" data-confirm-submit="Delete this item?">Delete</button>{% endif %}
-            <button class="button button-primary" type="submit">{{ submit_label }}</button>
+            {% if delete_action %}<button class="button button-danger" type="submit" formaction="{{ delete_action }}" data-confirm-submit="{% translate 'Delete this item?' %}">{% translate "Delete" %}</button>{% endif %}
+            <button class="button button-primary" type="submit">{% translate submit_label %}</button>
         </div>
     </form>
 </dialog>

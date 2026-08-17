@@ -1,0 +1,34 @@
+/*
+ * Author: Behnam <b.farnaghi@gmail.com>
+ * AI-assisted implementation; manually reviewed and verified by the developer.
+ */
+.language-switcher {
+    position: fixed;
+    right: 14px;
+    bottom: 14px;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 9px;
+    border: 1px solid rgba(86, 105, 133, .28);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, .96);
+    box-shadow: 0 4px 18px rgba(8, 25, 49, .12);
+    color: #24344e;
+    font: 700 12px/1.2 system-ui, sans-serif;
+}
+.language-switcher select {
+    max-width: 112px;
+    border: 0;
+    outline: 0;
+    color: inherit;
+    background: transparent;
+    font: inherit;
+}
+[dir="rtl"] .language-switcher { right: auto; left: 14px; }
+[dir="rtl"] input,
+[dir="rtl"] textarea { text-align: right; }
+@media (max-width: 720px) {
+    .language-switcher { bottom: 76px; }
+}

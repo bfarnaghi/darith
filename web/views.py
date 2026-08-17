@@ -21,8 +21,11 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.translation import gettext as _, ngettext
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from django.utils import translation
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 from webauthn.helpers.exceptions import WebAuthnException
 
@@ -121,6 +124,42 @@ def pricing(request):
     )
 
 
+@require_POST
+def set_language_preference(request):
+    language = request.POST.get("language", "")
+    supported_languages = {code for code, _name in settings.LANGUAGES}
+    if language not in supported_languages:
+        language = settings.LANGUAGE_CODE
+
+    if request.user.is_authenticated:
+        preference, _created = BudgetPreference.objects.get_or_create(user=request.user)
+        if preference.language != language:
+            preference.language = language
+            preference.save(update_fields=["language"])
+
+    translation.activate(language)
+    request.LANGUAGE_CODE = language
+    redirect_to = request.POST.get("next") or request.META.get("HTTP_REFERER") or reverse("home")
+    if not url_has_allowed_host_and_scheme(
+        redirect_to,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        redirect_to = reverse("home")
+    response = redirect(redirect_to)
+    response.set_cookie(
+        settings.LANGUAGE_COOKIE_NAME,
+        language,
+        max_age=settings.LANGUAGE_COOKIE_AGE,
+        path=settings.LANGUAGE_COOKIE_PATH,
+        domain=settings.LANGUAGE_COOKIE_DOMAIN,
+        secure=settings.LANGUAGE_COOKIE_SECURE,
+        httponly=settings.LANGUAGE_COOKIE_HTTPONLY,
+        samesite=settings.LANGUAGE_COOKIE_SAMESITE,
+    )
+    return response
+
+
 @login_required
 def account_settings(request):
     return render(
@@ -139,11 +178,11 @@ def _dashboard_redirect(tab="overview"):
 
 def _show_form_errors(request, form):
     errors = [str(error) for field_errors in form.errors.values() for error in field_errors]
-    messages.error(request, " ".join(errors) or "Please check the form and try again.")
+    messages.error(request, " ".join(errors) or _("Please check the form and try again."))
 
 
 def _adjust_balances_when_deleting(user):
-    preference, _ = BudgetPreference.objects.get_or_create(user=user)
+    preference, _created = BudgetPreference.objects.get_or_create(user=user)
     return (
         preference.transaction_deletion_mode
         == BudgetPreference.DELETE_BALANCE_AUTOMATIC
@@ -153,7 +192,7 @@ def _adjust_balances_when_deleting(user):
 @require_POST
 @login_required
 def toggle_financial_visibility(request):
-    preference, _ = BudgetPreference.objects.get_or_create(user=request.user)
+    preference, _created = BudgetPreference.objects.get_or_create(user=request.user)
     preference.hide_financial_values = not preference.hide_financial_values
     preference.save(update_fields=["hide_financial_values"])
     return _dashboard_redirect("overview")
@@ -163,7 +202,7 @@ def _request_json(request):
     try:
         return json.loads(request.body.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
-        raise ValueError("The browser sent an invalid security response.") from error
+        raise ValueError(_("The browser sent an invalid security response.")) from error
 
 
 @require_POST
@@ -178,7 +217,7 @@ def passkey_registration_verify(request):
     try:
         payload = _request_json(request)
         verification = verify_registration(request, payload["credential"])
-        name = str(payload.get("name") or "My passkey").strip()[:80]
+        name = str(payload.get("name") or _("My passkey")).strip()[:80]
         PasskeyCredential.objects.create(
             user=request.user,
             name=name or "My passkey",
@@ -198,30 +237,30 @@ def delete_passkey(request, item_id):
     credential = get_object_or_404(
         PasskeyCredential, pk=item_id, user=request.user
     )
-    preference, _ = BudgetPreference.objects.get_or_create(user=request.user)
+    preference, _created = BudgetPreference.objects.get_or_create(user=request.user)
     is_last_passkey = not request.user.passkey_credentials.exclude(pk=item_id).exists()
     if preference.lock_timeout_minutes and is_last_passkey and not preference.darith_pin_hash:
         messages.error(
             request,
-            "Add a Darith PIN or turn off inactivity lock before removing your last passkey.",
+            _("Add a Darith PIN or turn off inactivity lock before removing your last passkey."),
         )
     else:
         credential.delete()
-        messages.success(request, "Passkey removed.")
+        messages.success(request, _("Passkey removed."))
     return _dashboard_redirect("overview")
 
 
 @require_POST
 def passkey_login_options(request):
     if request.user.is_authenticated:
-        return JsonResponse({"ok": False, "error": "You are already signed in."}, status=400)
+        return JsonResponse({"ok": False, "error": _("You are already signed in.")}, status=400)
     return HttpResponse(authentication_options(request), content_type="application/json")
 
 
 @require_POST
 def passkey_login_verify(request):
     if request.user.is_authenticated:
-        return JsonResponse({"ok": False, "error": "You are already signed in."}, status=400)
+        return JsonResponse({"ok": False, "error": _("You are already signed in.")}, status=400)
     try:
         payload = _request_json(request)
         with transaction.atomic():
@@ -246,7 +285,7 @@ def passkey_login_verify(request):
 
 @login_required
 def session_locked(request):
-    preference, _ = BudgetPreference.objects.get_or_create(user=request.user)
+    preference, _created = BudgetPreference.objects.get_or_create(user=request.user)
     if not preference.lock_timeout_minutes:
         mark_session_unlocked(request)
         return redirect("dashboard")
@@ -265,14 +304,14 @@ def session_locked(request):
 @require_POST
 @login_required
 def security_unlock(request):
-    preference, _ = BudgetPreference.objects.get_or_create(user=request.user)
+    preference, _created = BudgetPreference.objects.get_or_create(user=request.user)
     now = time.time()
     blocked_until = float(request.session.get(PIN_BLOCKED_UNTIL_SESSION_KEY, 0))
     if blocked_until > now:
-        messages.error(request, "Too many attempts. Try again in a few minutes.")
+        messages.error(request, _("Too many attempts. Try again in a few minutes."))
         return redirect("session_locked")
     if not preference.darith_pin_hash:
-        messages.error(request, "A Darith PIN has not been configured.")
+        messages.error(request, _("A Darith PIN has not been configured."))
         return redirect("session_locked")
     if check_password(request.POST.get("pin", ""), preference.darith_pin_hash):
         mark_session_unlocked(request)
@@ -282,10 +321,10 @@ def security_unlock(request):
     if attempts >= 5:
         request.session[PIN_ATTEMPTS_SESSION_KEY] = 0
         request.session[PIN_BLOCKED_UNTIL_SESSION_KEY] = now + 300
-        messages.error(request, "Too many attempts. PIN unlock is paused for 5 minutes.")
+        messages.error(request, _("Too many attempts. PIN unlock is paused for 5 minutes."))
     else:
         request.session[PIN_ATTEMPTS_SESSION_KEY] = attempts
-        messages.error(request, "Incorrect Darith PIN.")
+        messages.error(request, _("Incorrect Darith PIN."))
     return redirect("session_locked")
 
 
@@ -323,7 +362,7 @@ def passkey_unlock_verify(request):
 @require_POST
 @login_required
 def security_lock(request):
-    preference, _ = BudgetPreference.objects.get_or_create(user=request.user)
+    preference, _created = BudgetPreference.objects.get_or_create(user=request.user)
     if preference.lock_timeout_minutes:
         mark_session_locked(request)
     return JsonResponse({"ok": True, "redirect": reverse("session_locked")})
@@ -353,13 +392,27 @@ def dashboard(request):
     _seed_categories(request.user)
     posted_count = post_due_recurring(request.user, today)
     if posted_count:
-        messages.info(request, f"Posted {posted_count} scheduled transaction(s).")
+        messages.info(
+            request,
+            ngettext(
+                "Posted %(count)d scheduled transaction.",
+                "Posted %(count)d scheduled transactions.",
+                posted_count,
+            ) % {"count": posted_count},
+        )
     funded_goal_count = fund_due_savings_goals(request.user, today)
     if funded_goal_count:
-        messages.info(request, f"Funded {funded_goal_count} saving goal(s).")
+        messages.info(
+            request,
+            ngettext(
+                "Funded %(count)d saving goal.",
+                "Funded %(count)d saving goals.",
+                funded_goal_count,
+            ) % {"count": funded_goal_count},
+        )
 
     accounts = list(BankAccount.objects.filter(user=request.user))
-    preference, _ = BudgetPreference.objects.get_or_create(user=request.user)
+    preference, _created = BudgetPreference.objects.get_or_create(user=request.user)
     transfers = list(
         Transfer.objects.filter(user=request.user).select_related(
             "source_bank", "source_goal", "destination_bank", "destination_goal"
@@ -555,7 +608,7 @@ def report_subscription_payment(request):
     _require_subscriptions_enabled()
     plan = get_active_plan()
     if plan is None:
-        messages.error(request, "A subscription plan is not available yet.")
+        messages.error(request, _("A subscription plan is not available yet."))
         return redirect("subscription_overview")
 
     subscription = get_user_subscription(request.user, create=True)
@@ -563,13 +616,13 @@ def report_subscription_payment(request):
         subscription.status == subscription.STATUS_PENDING
         and subscription.payment_reported_at
     ):
-        messages.info(request, "Your payment is already waiting for verification.")
+        messages.info(request, _("Your payment is already waiting for verification."))
     else:
         subscription = report_manual_payment(request.user)
         notify_subscription_payment(subscription)
         messages.success(
             request,
-            "Payment reported. An administrator will verify it and update your access.",
+            _("Payment reported. An administrator will verify it and update your access."),
         )
     return redirect("subscription_overview")
 
@@ -583,9 +636,9 @@ def create_bank_account(request):
         account.user = request.user
         try:
             account.save()
-            messages.success(request, "Bank account added.")
+            messages.success(request, _("Bank account added."))
         except IntegrityError:
-            messages.error(request, "You already have an account with that name.")
+            messages.error(request, _("You already have an account with that name."))
     else:
         _show_form_errors(request, form)
     return _dashboard_redirect("accounts")
@@ -599,9 +652,9 @@ def update_bank_account(request, account_id):
     if form.is_valid():
         try:
             form.save()
-            messages.success(request, "Bank account updated.")
+            messages.success(request, _("Bank account updated."))
         except IntegrityError:
-            messages.error(request, "You already have an account with that name.")
+            messages.error(request, _("You already have an account with that name."))
     else:
         _show_form_errors(request, form)
     return _dashboard_redirect("accounts")
@@ -613,11 +666,11 @@ def delete_bank_account(request, account_id):
     account = get_object_or_404(BankAccount, pk=account_id, user=request.user)
     try:
         account.delete()
-        messages.success(request, "Bank account removed. Its transaction history was kept.")
+        messages.success(request, _("Bank account removed. Its transaction history was kept."))
     except ProtectedError:
         messages.error(
             request,
-            "This account is used by a transfer. Delete that transfer or change the goal account first.",
+            _("This account is used by a transfer. Delete that transfer or change the goal account first."),
         )
     return _dashboard_redirect("accounts")
 
@@ -626,7 +679,11 @@ def _create_transaction(request, form_class, tab):
     form = form_class(request.POST, user=request.user)
     if form.is_valid():
         save_transaction(form, request.user)
-        messages.success(request, f"{form._meta.model.__name__} added and balance updated.")
+        kind = _("Expense") if form._meta.model is Expense else _("Income")
+        messages.success(
+            request,
+            _("%(kind)s added and balance updated.") % {"kind": kind},
+        )
     else:
         _show_form_errors(request, form)
     return _dashboard_redirect(tab)
@@ -637,7 +694,8 @@ def _update_transaction(request, form_class, model, item_id):
     form = form_class(request.POST, instance=item, user=request.user)
     if form.is_valid():
         save_transaction(form, request.user, item)
-        messages.success(request, f"{model.__name__} updated.")
+        kind = _("Expense") if model is Expense else _("Income")
+        messages.success(request, _("%(kind)s updated.") % {"kind": kind})
     else:
         _show_form_errors(request, form)
     return _dashboard_redirect("transactions")
@@ -665,16 +723,18 @@ def delete_expense(request, expense_id):
     if not adjust_balance:
         messages.success(
             request,
-            "Expense removed. The bank balance was left unchanged by your setting.",
+            _("Expense removed. The bank balance was left unchanged by your setting."),
         )
     elif is_recurring_occurrence:
         messages.success(
             request,
-            "This monthly expense was removed and its balance restored. "
-            "Future months remain scheduled.",
+            _(
+                "This monthly expense was removed and its balance restored. "
+                "Future months remain scheduled."
+            ),
         )
     else:
-        messages.success(request, "Expense removed and balance restored.")
+        messages.success(request, _("Expense removed and balance restored."))
     return _dashboard_redirect("transactions")
 
 
@@ -700,16 +760,18 @@ def delete_income(request, income_id):
     if not adjust_balance:
         messages.success(
             request,
-            "Income removed. The bank balance was left unchanged by your setting.",
+            _("Income removed. The bank balance was left unchanged by your setting."),
         )
     elif is_recurring_occurrence:
         messages.success(
             request,
-            "This monthly income was removed and its balance updated. "
-            "Future months remain scheduled.",
+            _(
+                "This monthly income was removed and its balance updated. "
+                "Future months remain scheduled."
+            ),
         )
     else:
-        messages.success(request, "Income removed and balance updated.")
+        messages.success(request, _("Income removed and balance updated."))
     return _dashboard_redirect("transactions")
 
 
@@ -720,7 +782,7 @@ def create_transfer(request):
     if form.is_valid():
         try:
             save_transfer(form, request.user)
-            messages.success(request, "Transfer completed.")
+            messages.success(request, _("Transfer completed."))
         except (InsufficientFunds, ValidationError) as error:
             messages.error(request, " ".join(error.messages))
     else:
@@ -736,7 +798,7 @@ def update_transfer(request, item_id):
     if form.is_valid():
         try:
             save_transfer(form, request.user, item)
-            messages.success(request, "Transfer updated.")
+            messages.success(request, _("Transfer updated."))
         except (InsufficientFunds, ValidationError) as error:
             messages.error(request, " ".join(error.messages))
     else:
@@ -751,11 +813,11 @@ def remove_transfer(request, item_id):
     adjust_balance = _adjust_balances_when_deleting(request.user)
     delete_transfer(item, adjust_balance=adjust_balance)
     if adjust_balance:
-        messages.success(request, "Transfer removed and balances restored.")
+        messages.success(request, _("Transfer removed and balances restored."))
     else:
         messages.success(
             request,
-            "Transfer removed. Account balances were left unchanged by your setting.",
+            _("Transfer removed. Account balances were left unchanged by your setting."),
         )
     return _dashboard_redirect("transactions")
 
@@ -771,7 +833,7 @@ def _create_plan(request, form_class, tab="plans"):
         item = form.save(commit=False)
         item.user = request.user
         item.save()
-        messages.success(request, "Monthly plan added.")
+        messages.success(request, _("Monthly plan added."))
     else:
         _show_form_errors(request, form)
     return _dashboard_redirect(tab)
@@ -785,7 +847,7 @@ def _update_plan(request, form_class, model, item_id):
     form = form_class(request.POST, **kwargs)
     if form.is_valid():
         form.save()
-        messages.success(request, "Monthly plan updated. Future postings use the new values.")
+        messages.success(request, _("Monthly plan updated. Future postings use the new values."))
     else:
         _show_form_errors(request, form)
     return _dashboard_redirect("plans")
@@ -811,7 +873,7 @@ def delete_recurring_income(request, item_id):
     item.delete()
     messages.success(
         request,
-        "Recurring income plan removed. Existing posted income remains in Activity.",
+        _("Recurring income plan removed. Existing posted income remains in Activity."),
     )
     return _dashboard_redirect("plans")
 
@@ -836,7 +898,7 @@ def delete_monthly_expense(request, item_id):
     item.delete()
     messages.success(
         request,
-        "Monthly expense plan removed. Existing posted expenses remain in Activity.",
+        _("Monthly expense plan removed. Existing posted expenses remain in Activity."),
     )
     return _dashboard_redirect("plans")
 
@@ -857,7 +919,7 @@ def update_savings_goal(request, item_id):
     if form.is_valid():
         form.save()
         messages.success(
-            request, "Saving goal updated. Future funding uses the new values."
+            request, _("Saving goal updated. Future funding uses the new values.")
         )
     else:
         _show_form_errors(request, form)
@@ -873,12 +935,12 @@ def delete_savings_goal(request, item_id):
     if goal.current_balance != 0:
         messages.error(
             request,
-            "Move the remaining balance to a bank account before deleting this goal account.",
+            _("Move the remaining balance to a bank account before deleting this goal account."),
         )
     else:
         goal.is_archived = True
         goal.save(update_fields=["is_archived"])
-        messages.success(request, "Saving goal account removed. Its transfer history was kept.")
+        messages.success(request, _("Saving goal account removed. Its transfer history was kept."))
     return _dashboard_redirect("plans")
 
 
@@ -891,28 +953,32 @@ def fund_savings_goal(request, item_id):
     try:
         item = fund_goal_for_month(goal, request.user, timezone.localdate())
         if item:
-            preference, _ = BudgetPreference.objects.get_or_create(user=request.user)
+            preference, _created = BudgetPreference.objects.get_or_create(user=request.user)
             messages.success(
                 request,
-                f"{preference.currency_symbol}{item.amount:,.2f} moved to {goal.name}.",
+                _("%(amount)s moved to %(goal)s.")
+                % {
+                    "amount": f"{preference.currency_symbol}{item.amount:,.2f}",
+                    "goal": goal.name,
+                },
             )
         else:
-            messages.info(request, "This goal is already funded for the month.")
+            messages.info(request, _("This goal is already funded for the month."))
     except (InsufficientFunds, ValidationError) as error:
         messages.error(request, " ".join(error.messages))
     except IntegrityError:
-        messages.info(request, "This goal is already funded for the month.")
+        messages.info(request, _("This goal is already funded for the month."))
     return _dashboard_redirect("overview")
 
 
 @require_POST
 @login_required
 def update_budget_preference(request):
-    preference, _ = BudgetPreference.objects.get_or_create(user=request.user)
+    preference, _created = BudgetPreference.objects.get_or_create(user=request.user)
     form = BudgetPreferenceForm(request.POST, instance=preference)
     if form.is_valid():
         form.save()
-        messages.success(request, "Daily spending expectation updated.")
+        messages.success(request, _("Daily spending expectation updated."))
     else:
         _show_form_errors(request, form)
     return _dashboard_redirect("overview")
@@ -921,13 +987,13 @@ def update_budget_preference(request):
 @require_POST
 @login_required
 def update_dashboard_animations(request):
-    preference, _ = BudgetPreference.objects.get_or_create(user=request.user)
+    preference, _created = BudgetPreference.objects.get_or_create(user=request.user)
     form = DashboardAnimationForm(
         request.POST, request.FILES, instance=preference
     )
     if form.is_valid():
         form.save()
-        messages.success(request, "Settings updated.")
+        messages.success(request, _("Settings updated."))
     else:
         _show_form_errors(request, form)
     return _dashboard_redirect("overview")
@@ -936,12 +1002,12 @@ def update_dashboard_animations(request):
 @require_POST
 @login_required
 def update_security_settings(request):
-    preference, _ = BudgetPreference.objects.get_or_create(user=request.user)
+    preference, _created = BudgetPreference.objects.get_or_create(user=request.user)
     form = SecuritySettingsForm(request.POST, instance=preference)
     if form.is_valid():
         form.save()
         mark_session_unlocked(request)
-        messages.success(request, "Security settings updated.")
+        messages.success(request, _("Security settings updated."))
     else:
         _show_form_errors(request, form)
     return _dashboard_redirect("overview")
@@ -950,18 +1016,18 @@ def update_security_settings(request):
 @require_POST
 @login_required
 def remove_darith_pin(request):
-    preference, _ = BudgetPreference.objects.get_or_create(user=request.user)
+    preference, _created = BudgetPreference.objects.get_or_create(user=request.user)
     if preference.lock_timeout_minutes and not request.user.passkey_credentials.exists():
         messages.error(
             request,
-            "Add a passkey or turn off inactivity lock before removing your PIN.",
+            _("Add a passkey or turn off inactivity lock before removing your PIN."),
         )
     elif preference.darith_pin_hash:
         preference.darith_pin_hash = ""
         preference.save(update_fields=["darith_pin_hash"])
-        messages.success(request, "Darith PIN removed.")
+        messages.success(request, _("Darith PIN removed."))
     else:
-        messages.info(request, "There is no Darith PIN to remove.")
+        messages.info(request, _("There is no Darith PIN to remove."))
     return _dashboard_redirect("overview")
 
 
@@ -970,7 +1036,7 @@ def remove_darith_pin(request):
 def delete_user_account(request):
     form = AccountDeletionForm(request.POST, user=request.user)
     if not form.is_valid():
-        messages.error(request, "Account not deleted. Check every confirmation field.")
+        messages.error(request, _("Account not deleted. Check every confirmation field."))
         return render(
             request,
             "account.html",
@@ -986,7 +1052,7 @@ def delete_user_account(request):
     logout(request)
     messages.success(
         request,
-        "Your Darith account and live data were permanently deleted.",
+        _("Your Darith account and live data were permanently deleted."),
     )
     return redirect("login")
 
@@ -1001,7 +1067,7 @@ def submit_feedback(request):
         feedback.page = request.POST.get("page", "dashboard")[:80]
         feedback.save()
         notify_feedback(feedback)
-        messages.success(request, "Thank you. Your feedback was sent.")
+        messages.success(request, _("Thank you. Your feedback was sent."))
     else:
         _show_form_errors(request, form)
     tab = request.POST.get("tab", "overview")
@@ -1014,35 +1080,38 @@ def submit_feedback(request):
 @login_required
 def remove_dashboard_gif(request, status):
     status_labels = {
-        "healthy": "on-track",
-        "warning": "warning",
-        "danger": "out-of-budget",
+        "healthy": _("on-track"),
+        "warning": _("warning"),
+        "danger": _("out-of-budget"),
     }
     if status not in status_labels:
         raise Http404("Unknown budget status.")
 
-    preference, _ = BudgetPreference.objects.get_or_create(user=request.user)
+    preference, _created = BudgetPreference.objects.get_or_create(user=request.user)
     field_name = f"{status}_gif"
     current_gif = getattr(preference, field_name)
     if current_gif.name:
         setattr(preference, field_name, None)
         preference.save(update_fields=[field_name])
-        messages.success(request, f"The {status_labels[status]} GIF was removed.")
+        messages.success(
+            request,
+            _("The %(status)s GIF was removed.") % {"status": status_labels[status]},
+        )
     else:
-        messages.info(request, "There is no GIF to remove for this budget state.")
+        messages.info(request, _("There is no GIF to remove for this budget state."))
     return _dashboard_redirect("overview")
 
 
 @require_POST
 @login_required
 def remove_profile_picture(request):
-    preference, _ = BudgetPreference.objects.get_or_create(user=request.user)
+    preference, _created = BudgetPreference.objects.get_or_create(user=request.user)
     if preference.profile_picture.name:
         preference.profile_picture = None
         preference.save(update_fields=["profile_picture"])
-        messages.success(request, "Your profile picture was removed.")
+        messages.success(request, _("Your profile picture was removed."))
     else:
-        messages.info(request, "There is no profile picture to remove.")
+        messages.info(request, _("There is no profile picture to remove."))
     return _dashboard_redirect("overview")
 
 
@@ -1099,8 +1168,13 @@ def create_category(request, kind):
     model = _category_model(kind)
     form = CategoryForm(request.POST)
     if form.is_valid():
-        _, created = model.objects.get_or_create(user=request.user, name=form.cleaned_data["name"])
-        messages.success(request, "Category added." if created else "That category already exists.")
+        category, created = model.objects.get_or_create(
+            user=request.user, name=form.cleaned_data["name"]
+        )
+        messages.success(
+            request,
+            _("Category added.") if created else _("That category already exists."),
+        )
     else:
         _show_form_errors(request, form)
     return _dashboard_redirect("categories")
@@ -1116,9 +1190,9 @@ def update_category(request, kind, item_id):
         category.name = form.cleaned_data["name"]
         try:
             category.save()
-            messages.success(request, "Category updated.")
+            messages.success(request, _("Category updated."))
         except IntegrityError:
-            messages.error(request, "That category already exists.")
+            messages.error(request, _("That category already exists."))
     else:
         _show_form_errors(request, form)
     return _dashboard_redirect("categories")
@@ -1129,7 +1203,7 @@ def update_category(request, kind, item_id):
 def delete_category(request, kind, item_id):
     model = _category_model(kind)
     get_object_or_404(model, pk=item_id, user=request.user).delete()
-    messages.success(request, "Category removed. Existing transactions were kept.")
+    messages.success(request, _("Category removed. Existing transactions were kept."))
     return _dashboard_redirect("categories")
 
 
@@ -1144,7 +1218,7 @@ def user_login(request):
             login(request, user)
             mark_session_unlocked(request)
             return redirect("dashboard")
-        messages.error(request, "Invalid username or password.")
+        messages.error(request, _("Invalid username or password."))
     return render(request, "login.html")
 
 
@@ -1154,10 +1228,12 @@ def create_account(request):
     form = RegistrationForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         user = form.save()
+        language = getattr(request, "LANGUAGE_CODE", settings.LANGUAGE_CODE)
+        BudgetPreference.objects.create(user=user, language=language)
         notify_new_user(user)
         login(request, user)
         mark_session_unlocked(request)
-        messages.success(request, "Your account is ready.")
+        messages.success(request, _("Your account is ready."))
         return redirect("dashboard")
     return render(request, "create_account.html", {"form": form})
 
@@ -1178,13 +1254,13 @@ def forgot_password(request):
             reset_link = request.build_absolute_uri(reverse("reset_password", args=[uid, token]))
             message = render_to_string("reset_password_email.html", {"reset_link": reset_link})
             send_mail(
-                "Password reset request",
-                f"Open this link to reset your password: {reset_link}",
+                _("Password reset request"),
+                _("Open this link to reset your password: %(link)s") % {"link": reset_link},
                 None,
                 [user.email],
                 html_message=message,
             )
-        messages.success(request, "If that email exists, a password reset link has been sent.")
+        messages.success(request, _("If that email exists, a password reset link has been sent."))
         return redirect("login")
     return render(request, "forgot_password.html")
 

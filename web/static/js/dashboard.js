@@ -6,11 +6,11 @@ const app = document.querySelector(".app-shell");
 const panels = [...document.querySelectorAll("[data-tab-panel]")];
 const tabButtons = [...document.querySelectorAll("[data-tab-target]")];
 const titles = {
-    overview: "Overview",
-    accounts: "Accounts",
-    transactions: "Transactions",
-    plans: "Monthly plans",
-    categories: "Categories",
+    overview: app.dataset.titleOverview,
+    accounts: app.dataset.titleAccounts,
+    transactions: app.dataset.titleTransactions,
+    plans: app.dataset.titlePlans,
+    categories: app.dataset.titleCategories,
 };
 
 function activateTab(name, updateUrl = true) {

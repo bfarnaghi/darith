@@ -1,0 +1,565 @@
+# Dutch translations for Darith.
+# Copyright (C) 2026 ORGANIZATION
+# This file is distributed under the same license as the Darith project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: Darith VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2026-08-17 10:16+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: nl\n"
+"Language-Team: nl <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.10.3\n"
+
+msgid "Language"
+msgstr "Taal"
+
+msgid "Apply"
+msgstr "Toepassen"
+
+msgid "English"
+msgstr "Engels"
+
+msgid "Persian"
+msgstr "Perzisch"
+
+msgid "Italian"
+msgstr "Italiaans"
+
+msgid "French"
+msgstr "Frans"
+
+msgid "Spanish"
+msgstr "Spaans"
+
+msgid "Dutch"
+msgstr "Nederlands"
+
+msgid "Home"
+msgstr "Home"
+
+msgid "Tutorial"
+msgstr "Handleiding"
+
+msgid "Pricing"
+msgstr "Prijzen"
+
+msgid "Open dashboard"
+msgstr "Dashboard openen"
+
+msgid "Try Darith free"
+msgstr "Probeer Darith gratis"
+
+msgid "Sign in"
+msgstr "Inloggen"
+
+msgid "Create account"
+msgstr "Account maken"
+
+msgid "Username"
+msgstr "Gebruikersnaam"
+
+msgid "Password"
+msgstr "Wachtwoord"
+
+msgid "Email"
+msgstr "E-mail"
+
+msgid "Email address"
+msgstr "E-mailadres"
+
+msgid "Forgot password?"
+msgstr "Wachtwoord vergeten?"
+
+msgid "Reset password"
+msgstr "Wachtwoord herstellen"
+
+msgid "Welcome back"
+msgstr "Welkom terug"
+
+msgid "Sign in to your account"
+msgstr "Log in op je account"
+
+msgid "Use a passkey"
+msgstr "Passkey gebruiken"
+
+msgid "or"
+msgstr "of"
+
+msgid "New to Darith?"
+msgstr "Nieuw bij Darith?"
+
+msgid "Already registered?"
+msgstr "Al geregistreerd?"
+
+msgid "Overview"
+msgstr "Overzicht"
+
+msgid "Accounts"
+msgstr "Rekeningen"
+
+msgid "Transactions"
+msgstr "Transacties"
+
+msgid "Monthly plans"
+msgstr "Maandplannen"
+
+msgid "Categories"
+msgstr "Categorieën"
+
+msgid "Personal workspace"
+msgstr "Persoonlijke ruimte"
+
+msgid "Feedback"
+msgstr "Feedback"
+
+msgid "Send feedback"
+msgstr "Feedback sturen"
+
+msgid "Billing"
+msgstr "Facturering"
+
+msgid "Log out"
+msgstr "Uitloggen"
+
+msgid "Transfer"
+msgstr "Overboeking"
+
+msgid "Income"
+msgstr "Inkomen"
+
+msgid "Expense"
+msgstr "Uitgave"
+
+msgid "Settings"
+msgstr "Instellingen"
+
+msgid "Export CSV"
+msgstr "CSV exporteren"
+
+msgid "Free to spend this month"
+msgstr "Vrij te besteden deze maand"
+
+msgid "Current bank balance"
+msgstr "Huidig banksaldo"
+
+msgid "Month-end outlook"
+msgstr "Verwachting einde maand"
+
+msgid "On track"
+msgstr "Op schema"
+
+msgid "Warning"
+msgstr "Waarschuwing"
+
+msgid "Out of budget"
+msgstr "Buiten budget"
+
+msgid "Budget warning"
+msgstr "Budgetwaarschuwing"
+
+msgid "Income this month"
+msgstr "Inkomsten deze maand"
+
+msgid "Expenses this month"
+msgstr "Uitgaven deze maand"
+
+msgid "Expected daily costs"
+msgstr "Verwachte dagelijkse kosten"
+
+msgid "Saving due"
+msgstr "Te sparen"
+
+msgid "Saved in goals"
+msgstr "Gespaard in doelen"
+
+msgid "Current balance"
+msgstr "Huidig saldo"
+
+msgid "Not yet funded this month"
+msgstr "Deze maand nog niet gestort"
+
+msgid "Separate from spendable money"
+msgstr "Los van besteedbaar geld"
+
+msgid "Latest activity"
+msgstr "Laatste activiteit"
+
+msgid "View all"
+msgstr "Alles bekijken"
+
+msgid "No transactions yet"
+msgstr "Nog geen transacties"
+
+msgid "Add income, an expense, or a transfer to begin."
+msgstr "Voeg inkomen, een uitgave of een overboeking toe om te beginnen."
+
+msgid "This month"
+msgstr "Deze maand"
+
+msgid "this month"
+msgstr "deze maand"
+
+msgid "next month"
+msgstr "volgende maand"
+
+#, python-format
+msgid "Expected bills, daily costs, and saving goals are covered %(period)s."
+msgstr "Rekeningen, dagelijkse kosten en spaardoelen zijn gedekt voor %(period)s."
+
+#, python-format
+msgid "%(received)s received so far · %(due)s still due"
+msgstr "%(received)s ontvangen · %(due)s nog verwacht"
+
+#, python-format
+msgid "%(paid)s paid so far · %(due)s still due"
+msgstr "%(paid)s betaald · %(due)s nog verschuldigd"
+
+#, python-format
+msgid "%(amount)s / day"
+msgstr "%(amount)s / dag"
+
+#, python-format
+msgid "%(amount)s for remaining days"
+msgstr "%(amount)s voor de resterende dagen"
+
+#, python-format
+msgid "%(month)s status"
+msgstr "Status van %(month)s"
+
+#, python-format
+msgid "%(amount)s forecast free"
+msgstr "%(amount)s naar verwachting vrij"
+
+msgid "Edit"
+msgstr "Bewerken"
+
+msgid "Manage"
+msgstr "Beheren"
+
+msgid "Recent transactions"
+msgstr "Recente transacties"
+
+msgid "Coming up"
+msgstr "Binnenkort"
+
+msgid "Add account"
+msgstr "Rekening toevoegen"
+
+msgid "Add expense"
+msgstr "Uitgave toevoegen"
+
+msgid "Add income"
+msgstr "Inkomen toevoegen"
+
+msgid "Add goal"
+msgstr "Doel toevoegen"
+
+msgid "Activity"
+msgstr "Activiteit"
+
+msgid "Plans"
+msgstr "Plannen"
+
+msgid "Name"
+msgstr "Naam"
+
+msgid "Description"
+msgstr "Beschrijving"
+
+msgid "Amount"
+msgstr "Bedrag"
+
+msgid "Date"
+msgstr "Datum"
+
+msgid "Category"
+msgstr "Categorie"
+
+msgid "Bank account"
+msgstr "Bankrekening"
+
+msgid "Source"
+msgstr "Bron"
+
+msgid "Destination"
+msgstr "Bestemming"
+
+msgid "Save changes"
+msgstr "Wijzigingen opslaan"
+
+msgid "Delete"
+msgstr "Verwijderen"
+
+msgid "Cancel"
+msgstr "Annuleren"
+
+msgid "Close"
+msgstr "Sluiten"
+
+msgid "Appearance"
+msgstr "Weergave"
+
+msgid "Behavior"
+msgstr "Gedrag"
+
+msgid "Security"
+msgstr "Beveiliging"
+
+msgid "Account"
+msgstr "Account"
+
+msgid "Color theme"
+msgstr "Kleurthema"
+
+msgid "Display currency"
+msgstr "Weergavevaluta"
+
+msgid "Profile picture"
+msgstr "Profielfoto"
+
+msgid "Ocean"
+msgstr "Oceaan"
+
+msgid "Forest"
+msgstr "Bos"
+
+msgid "Graphite"
+msgstr "Grafiet"
+
+msgid "Purple"
+msgstr "Paars"
+
+msgid "Save appearance"
+msgstr "Weergave opslaan"
+
+msgid "App lock"
+msgstr "App-vergrendeling"
+
+msgid "Lock after"
+msgstr "Vergrendel na"
+
+msgid "Darith PIN"
+msgstr "Darith-pincode"
+
+msgid "Confirm PIN"
+msgstr "Pincode bevestigen"
+
+msgid "Add passkey"
+msgstr "Passkey toevoegen"
+
+msgid "Delete your account"
+msgstr "Je account verwijderen"
+
+msgid "Permanently delete account"
+msgstr "Account permanent verwijderen"
+
+msgid "Current password"
+msgstr "Huidig wachtwoord"
+
+msgid "Deletion signature"
+msgstr "Verwijderingsbevestiging"
+
+msgid "Account settings"
+msgstr "Accountinstellingen"
+
+msgid "Back to dashboard"
+msgstr "Terug naar dashboard"
+
+msgid "Personal money, made clear"
+msgstr "Persoonlijk geld, helder gemaakt"
+
+msgid "Know what's safe to spend this month."
+msgstr "Weet wat je deze maand veilig kunt uitgeven."
+
+msgid "Try Darith free for 45 days"
+msgstr "Probeer Darith 45 dagen gratis"
+
+msgid "No bank credentials"
+msgstr "Geen bankgegevens"
+
+msgid "Private by account"
+msgstr "Privé per account"
+
+msgid "Protected data storage"
+msgstr "Beveiligde opslag"
+
+msgid "Limited admin view"
+msgstr "Beperkte beheerdersweergave"
+
+msgid "Settings updated."
+msgstr "Instellingen bijgewerkt."
+
+msgid "Security settings updated."
+msgstr "Beveiligingsinstellingen bijgewerkt."
+
+msgid "Daily spending expectation updated."
+msgstr "Verwachte dagelijkse uitgaven bijgewerkt."
+
+msgid "Bank account added."
+msgstr "Bankrekening toegevoegd."
+
+msgid "Bank account updated."
+msgstr "Bankrekening bijgewerkt."
+
+msgid "Transfer completed."
+msgstr "Overboeking voltooid."
+
+msgid "Transfer updated."
+msgstr "Overboeking bijgewerkt."
+
+msgid "Monthly plan added."
+msgstr "Maandplan toegevoegd."
+
+msgid "Monthly plan updated. Future postings use the new values."
+msgstr "Maandplan bijgewerkt. Toekomstige boekingen gebruiken de nieuwe waarden."
+
+msgid "Category added."
+msgstr "Categorie toegevoegd."
+
+msgid "Category updated."
+msgstr "Categorie bijgewerkt."
+
+msgid "Thank you. Your feedback was sent."
+msgstr "Bedankt. Je feedback is verzonden."
+
+msgid "Invalid username or password."
+msgstr "Ongeldige gebruikersnaam of wachtwoord."
+
+msgid "Your account is ready."
+msgstr "Je account is klaar."
+
+msgid "The source account does not have enough money."
+msgstr "De bronrekening heeft onvoldoende saldo."
+
+msgid "Add bank account"
+msgstr "Bankrekening toevoegen"
+
+msgid "Move money"
+msgstr "Geld verplaatsen"
+
+msgid "Transfer money"
+msgstr "Geld overboeken"
+
+msgid "Expected daily spending"
+msgstr "Verwachte dagelijkse uitgaven"
+
+msgid "Save daily amount"
+msgstr "Dagbedrag opslaan"
+
+msgid "Add recurring income"
+msgstr "Terugkerend inkomen toevoegen"
+
+msgid "Add recurring expense"
+msgstr "Terugkerende uitgave toevoegen"
+
+msgid "Add savings goal"
+msgstr "Spaardoel toevoegen"
+
+msgid "Income plan"
+msgstr "Inkomstenplan"
+
+msgid "Expense plan"
+msgstr "Uitgavenplan"
+
+msgid "Add income plan"
+msgstr "Inkomstenplan toevoegen"
+
+msgid "Add expense plan"
+msgstr "Uitgavenplan toevoegen"
+
+msgid "Recurring income"
+msgstr "Terugkerend inkomen"
+
+msgid "Recurring expenses"
+msgstr "Terugkerende uitgaven"
+
+msgid "Savings goals"
+msgstr "Spaardoelen"
+
+msgid "Your accounts"
+msgstr "Je rekeningen"
+
+msgid "Live balances"
+msgstr "Actuele saldi"
+
+msgid "Included in monthly budget"
+msgstr "Opgenomen in maandbudget"
+
+msgid "Tracking only"
+msgstr "Alleen volgen"
+
+msgid "Savings goal account"
+msgstr "Spaardoelrekening"
+
+msgid "All activity"
+msgstr "Alle activiteit"
+
+msgid "Money movements"
+msgstr "Geldbewegingen"
+
+msgid "Automatic monthly entries"
+msgstr "Automatische maandboekingen"
+
+msgid "Income, expenses and savings"
+msgstr "Inkomsten, uitgaven en sparen"
+
+msgid "Custom categories"
+msgstr "Aangepaste categorieën"
+
+msgid "Expense categories"
+msgstr "Uitgavencategorieën"
+
+msgid "Income categories"
+msgstr "Inkomstencategorieën"
+
+msgid "Add category"
+msgstr "Categorie toevoegen"
+
+msgid "Edit category"
+msgstr "Categorie bewerken"
+
+msgid "Add"
+msgstr "Toevoegen"
+
+msgid "Edit bank account"
+msgstr "Bankrekening bewerken"
+
+msgid "Edit expense"
+msgstr "Uitgave bewerken"
+
+msgid "Edit income"
+msgstr "Inkomen bewerken"
+
+msgid "Edit recurring income"
+msgstr "Terugkerend inkomen bewerken"
+
+msgid "Edit recurring expense"
+msgstr "Terugkerende uitgave bewerken"
+
+msgid "Edit savings goal"
+msgstr "Spaardoel bewerken"
+
+msgid "Edit transfer"
+msgstr "Overboeking bewerken"
+
+#, python-format
+msgid "%(amount)s extra per day for %(days)s day"
+msgid_plural "%(amount)s extra per day for %(days)s days"
+msgstr[0] "%(amount)s extra per dag voor %(days)s dag"
+msgstr[1] "%(amount)s extra per dag voor %(days)s dagen"
+
+#, python-format
+msgid "Across %(count)s included account"
+msgid_plural "Across %(count)s included accounts"
+msgstr[0] "Over %(count)s inbegrepen rekening"
+msgstr[1] "Over %(count)s inbegrepen rekeningen"
+

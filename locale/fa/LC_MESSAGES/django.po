@@ -1,0 +1,563 @@
+# Persian translations for Darith.
+# Copyright (C) 2026 ORGANIZATION
+# This file is distributed under the same license as the Darith project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: Darith VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2026-08-17 10:16+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: fa\n"
+"Language-Team: fa <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.10.3\n"
+
+msgid "Language"
+msgstr "زبان"
+
+msgid "Apply"
+msgstr "اعمال"
+
+msgid "English"
+msgstr "انگلیسی"
+
+msgid "Persian"
+msgstr "فارسی"
+
+msgid "Italian"
+msgstr "ایتالیایی"
+
+msgid "French"
+msgstr "فرانسوی"
+
+msgid "Spanish"
+msgstr "اسپانیایی"
+
+msgid "Dutch"
+msgstr "هلندی"
+
+msgid "Home"
+msgstr "خانه"
+
+msgid "Tutorial"
+msgstr "راهنما"
+
+msgid "Pricing"
+msgstr "قیمت‌گذاری"
+
+msgid "Open dashboard"
+msgstr "باز کردن داشبورد"
+
+msgid "Try Darith free"
+msgstr "Darith را رایگان امتحان کنید"
+
+msgid "Sign in"
+msgstr "ورود"
+
+msgid "Create account"
+msgstr "ایجاد حساب"
+
+msgid "Username"
+msgstr "نام کاربری"
+
+msgid "Password"
+msgstr "رمز عبور"
+
+msgid "Email"
+msgstr "ایمیل"
+
+msgid "Email address"
+msgstr "نشانی ایمیل"
+
+msgid "Forgot password?"
+msgstr "رمز را فراموش کرده‌اید؟"
+
+msgid "Reset password"
+msgstr "بازنشانی رمز عبور"
+
+msgid "Welcome back"
+msgstr "خوش آمدید"
+
+msgid "Sign in to your account"
+msgstr "وارد حساب خود شوید"
+
+msgid "Use a passkey"
+msgstr "استفاده از کلید عبور"
+
+msgid "or"
+msgstr "یا"
+
+msgid "New to Darith?"
+msgstr "تازه به Darith آمده‌اید؟"
+
+msgid "Already registered?"
+msgstr "قبلاً ثبت‌نام کرده‌اید؟"
+
+msgid "Overview"
+msgstr "نمای کلی"
+
+msgid "Accounts"
+msgstr "حساب‌ها"
+
+msgid "Transactions"
+msgstr "تراکنش‌ها"
+
+msgid "Monthly plans"
+msgstr "برنامه‌های ماهانه"
+
+msgid "Categories"
+msgstr "دسته‌بندی‌ها"
+
+msgid "Personal workspace"
+msgstr "فضای شخصی"
+
+msgid "Feedback"
+msgstr "بازخورد"
+
+msgid "Send feedback"
+msgstr "ارسال بازخورد"
+
+msgid "Billing"
+msgstr "پرداخت"
+
+msgid "Log out"
+msgstr "خروج"
+
+msgid "Transfer"
+msgstr "انتقال"
+
+msgid "Income"
+msgstr "درآمد"
+
+msgid "Expense"
+msgstr "هزینه"
+
+msgid "Settings"
+msgstr "تنظیمات"
+
+msgid "Export CSV"
+msgstr "خروجی CSV"
+
+msgid "Free to spend this month"
+msgstr "مبلغ آزاد برای خرج این ماه"
+
+msgid "Current bank balance"
+msgstr "موجودی فعلی بانک"
+
+msgid "Month-end outlook"
+msgstr "برآورد پایان ماه"
+
+msgid "On track"
+msgstr "طبق برنامه"
+
+msgid "Warning"
+msgstr "هشدار"
+
+msgid "Out of budget"
+msgstr "خارج از بودجه"
+
+msgid "Budget warning"
+msgstr "هشدار بودجه"
+
+msgid "Income this month"
+msgstr "درآمد این ماه"
+
+msgid "Expenses this month"
+msgstr "هزینه‌های این ماه"
+
+msgid "Expected daily costs"
+msgstr "هزینه روزانه مورد انتظار"
+
+msgid "Saving due"
+msgstr "پس‌انداز سررسیدشده"
+
+msgid "Saved in goals"
+msgstr "پس‌انداز در هدف‌ها"
+
+msgid "Current balance"
+msgstr "موجودی فعلی"
+
+msgid "Not yet funded this month"
+msgstr "هنوز این ماه تأمین نشده"
+
+msgid "Separate from spendable money"
+msgstr "جدا از پول قابل خرج"
+
+msgid "Latest activity"
+msgstr "آخرین فعالیت"
+
+msgid "View all"
+msgstr "مشاهده همه"
+
+msgid "No transactions yet"
+msgstr "هنوز تراکنشی وجود ندارد"
+
+msgid "Add income, an expense, or a transfer to begin."
+msgstr "برای شروع، درآمد، هزینه یا انتقالی اضافه کنید."
+
+msgid "This month"
+msgstr "این ماه"
+
+msgid "this month"
+msgstr "این ماه"
+
+msgid "next month"
+msgstr "ماه آینده"
+
+#, python-format
+msgid "Expected bills, daily costs, and saving goals are covered %(period)s."
+msgstr "قبض‌ها، هزینه‌های روزانه و هدف‌های پس‌انداز برای %(period)s پوشش داده شده‌اند."
+
+#, python-format
+msgid "%(received)s received so far · %(due)s still due"
+msgstr "تا کنون %(received)s دریافت شده · %(due)s باقی‌مانده"
+
+#, python-format
+msgid "%(paid)s paid so far · %(due)s still due"
+msgstr "تا کنون %(paid)s پرداخت شده · %(due)s باقی‌مانده"
+
+#, python-format
+msgid "%(amount)s / day"
+msgstr "روزانه %(amount)s"
+
+#, python-format
+msgid "%(amount)s for remaining days"
+msgstr "%(amount)s برای روزهای باقی‌مانده"
+
+#, python-format
+msgid "%(month)s status"
+msgstr "وضعیت %(month)s"
+
+#, python-format
+msgid "%(amount)s forecast free"
+msgstr "%(amount)s آزاد در پیش‌بینی"
+
+msgid "Edit"
+msgstr "ویرایش"
+
+msgid "Manage"
+msgstr "مدیریت"
+
+msgid "Recent transactions"
+msgstr "تراکنش‌های اخیر"
+
+msgid "Coming up"
+msgstr "در راه"
+
+msgid "Add account"
+msgstr "افزودن حساب"
+
+msgid "Add expense"
+msgstr "افزودن هزینه"
+
+msgid "Add income"
+msgstr "افزودن درآمد"
+
+msgid "Add goal"
+msgstr "افزودن هدف"
+
+msgid "Activity"
+msgstr "فعالیت"
+
+msgid "Plans"
+msgstr "برنامه‌ها"
+
+msgid "Name"
+msgstr "نام"
+
+msgid "Description"
+msgstr "توضیحات"
+
+msgid "Amount"
+msgstr "مبلغ"
+
+msgid "Date"
+msgstr "تاریخ"
+
+msgid "Category"
+msgstr "دسته‌بندی"
+
+msgid "Bank account"
+msgstr "حساب بانکی"
+
+msgid "Source"
+msgstr "مبدأ"
+
+msgid "Destination"
+msgstr "مقصد"
+
+msgid "Save changes"
+msgstr "ذخیره تغییرات"
+
+msgid "Delete"
+msgstr "حذف"
+
+msgid "Cancel"
+msgstr "لغو"
+
+msgid "Close"
+msgstr "بستن"
+
+msgid "Appearance"
+msgstr "ظاهر"
+
+msgid "Behavior"
+msgstr "رفتار"
+
+msgid "Security"
+msgstr "امنیت"
+
+msgid "Account"
+msgstr "حساب"
+
+msgid "Color theme"
+msgstr "پوسته رنگی"
+
+msgid "Display currency"
+msgstr "واحد پول نمایشی"
+
+msgid "Profile picture"
+msgstr "تصویر پروفایل"
+
+msgid "Ocean"
+msgstr "اقیانوس"
+
+msgid "Forest"
+msgstr "جنگل"
+
+msgid "Graphite"
+msgstr "گرافیت"
+
+msgid "Purple"
+msgstr "بنفش"
+
+msgid "Save appearance"
+msgstr "ذخیره ظاهر"
+
+msgid "App lock"
+msgstr "قفل برنامه"
+
+msgid "Lock after"
+msgstr "قفل پس از"
+
+msgid "Darith PIN"
+msgstr "پین Darith"
+
+msgid "Confirm PIN"
+msgstr "تأیید پین"
+
+msgid "Add passkey"
+msgstr "افزودن کلید عبور"
+
+msgid "Delete your account"
+msgstr "حذف حساب شما"
+
+msgid "Permanently delete account"
+msgstr "حذف دائمی حساب"
+
+msgid "Current password"
+msgstr "رمز عبور فعلی"
+
+msgid "Deletion signature"
+msgstr "عبارت تأیید حذف"
+
+msgid "Account settings"
+msgstr "تنظیمات حساب"
+
+msgid "Back to dashboard"
+msgstr "بازگشت به داشبورد"
+
+msgid "Personal money, made clear"
+msgstr "پول شخصی، روشن و ساده"
+
+msgid "Know what's safe to spend this month."
+msgstr "بدانید این ماه چقدر می‌توانید با خیال راحت خرج کنید."
+
+msgid "Try Darith free for 45 days"
+msgstr "Darith را ۴۵ روز رایگان امتحان کنید"
+
+msgid "No bank credentials"
+msgstr "بدون اطلاعات ورود بانکی"
+
+msgid "Private by account"
+msgstr "خصوصی برای هر حساب کاربری"
+
+msgid "Protected data storage"
+msgstr "ذخیره‌سازی محافظت‌شده"
+
+msgid "Limited admin view"
+msgstr "دسترسی محدود مدیر"
+
+msgid "Settings updated."
+msgstr "تنظیمات به‌روزرسانی شد."
+
+msgid "Security settings updated."
+msgstr "تنظیمات امنیتی به‌روزرسانی شد."
+
+msgid "Daily spending expectation updated."
+msgstr "برآورد هزینه روزانه به‌روزرسانی شد."
+
+msgid "Bank account added."
+msgstr "حساب بانکی اضافه شد."
+
+msgid "Bank account updated."
+msgstr "حساب بانکی به‌روزرسانی شد."
+
+msgid "Transfer completed."
+msgstr "انتقال انجام شد."
+
+msgid "Transfer updated."
+msgstr "انتقال به‌روزرسانی شد."
+
+msgid "Monthly plan added."
+msgstr "برنامه ماهانه اضافه شد."
+
+msgid "Monthly plan updated. Future postings use the new values."
+msgstr "برنامه ماهانه به‌روزرسانی شد. ثبت‌های آینده از مقادیر جدید استفاده می‌کنند."
+
+msgid "Category added."
+msgstr "دسته‌بندی اضافه شد."
+
+msgid "Category updated."
+msgstr "دسته‌بندی به‌روزرسانی شد."
+
+msgid "Thank you. Your feedback was sent."
+msgstr "سپاسگزاریم. بازخورد شما ارسال شد."
+
+msgid "Invalid username or password."
+msgstr "نام کاربری یا رمز عبور نادرست است."
+
+msgid "Your account is ready."
+msgstr "حساب شما آماده است."
+
+msgid "The source account does not have enough money."
+msgstr "موجودی حساب مبدأ کافی نیست."
+
+msgid "Add bank account"
+msgstr "افزودن حساب بانکی"
+
+msgid "Move money"
+msgstr "انتقال پول"
+
+msgid "Transfer money"
+msgstr "انتقال پول"
+
+msgid "Expected daily spending"
+msgstr "هزینه روزانه مورد انتظار"
+
+msgid "Save daily amount"
+msgstr "ذخیره مبلغ روزانه"
+
+msgid "Add recurring income"
+msgstr "افزودن درآمد تکرارشونده"
+
+msgid "Add recurring expense"
+msgstr "افزودن هزینه تکرارشونده"
+
+msgid "Add savings goal"
+msgstr "افزودن هدف پس‌انداز"
+
+msgid "Income plan"
+msgstr "برنامه درآمد"
+
+msgid "Expense plan"
+msgstr "برنامه هزینه"
+
+msgid "Add income plan"
+msgstr "افزودن برنامه درآمد"
+
+msgid "Add expense plan"
+msgstr "افزودن برنامه هزینه"
+
+msgid "Recurring income"
+msgstr "درآمد تکرارشونده"
+
+msgid "Recurring expenses"
+msgstr "هزینه‌های تکرارشونده"
+
+msgid "Savings goals"
+msgstr "هدف‌های پس‌انداز"
+
+msgid "Your accounts"
+msgstr "حساب‌های شما"
+
+msgid "Live balances"
+msgstr "موجودی‌های جاری"
+
+msgid "Included in monthly budget"
+msgstr "مشمول بودجه ماهانه"
+
+msgid "Tracking only"
+msgstr "فقط برای پیگیری"
+
+msgid "Savings goal account"
+msgstr "حساب هدف پس‌انداز"
+
+msgid "All activity"
+msgstr "همه فعالیت‌ها"
+
+msgid "Money movements"
+msgstr "جابجایی پول"
+
+msgid "Automatic monthly entries"
+msgstr "ثبت‌های خودکار ماهانه"
+
+msgid "Income, expenses and savings"
+msgstr "درآمد، هزینه‌ها و پس‌انداز"
+
+msgid "Custom categories"
+msgstr "دسته‌بندی‌های سفارشی"
+
+msgid "Expense categories"
+msgstr "دسته‌بندی‌های هزینه"
+
+msgid "Income categories"
+msgstr "دسته‌بندی‌های درآمد"
+
+msgid "Add category"
+msgstr "افزودن دسته‌بندی"
+
+msgid "Edit category"
+msgstr "ویرایش دسته‌بندی"
+
+msgid "Add"
+msgstr "افزودن"
+
+msgid "Edit bank account"
+msgstr "ویرایش حساب بانکی"
+
+msgid "Edit expense"
+msgstr "ویرایش هزینه"
+
+msgid "Edit income"
+msgstr "ویرایش درآمد"
+
+msgid "Edit recurring income"
+msgstr "ویرایش درآمد تکرارشونده"
+
+msgid "Edit recurring expense"
+msgstr "ویرایش هزینه تکرارشونده"
+
+msgid "Edit savings goal"
+msgstr "ویرایش هدف پس‌انداز"
+
+msgid "Edit transfer"
+msgstr "ویرایش انتقال"
+
+#, python-format
+msgid "%(amount)s extra per day for %(days)s day"
+msgid_plural "%(amount)s extra per day for %(days)s days"
+msgstr[0] "روزانه %(amount)s اضافه برای %(days)s روز"
+
+#, python-format
+msgid "Across %(count)s included account"
+msgid_plural "Across %(count)s included accounts"
+msgstr[0] "در %(count)s حساب مشمول"
+

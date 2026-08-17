@@ -1,67 +1,67 @@
 {# Author: Behnam <b.farnaghi@gmail.com> #}
 {# AI-assisted implementation; manually reviewed and verified by the developer. #}
 {% extends "base.html" %}
-{% load static %}
+{% load static i18n %}
 
-{% block title %}Subscription | Darith{% endblock %}
+{% block title %}{% translate "Subscription" %} | Darith{% endblock %}
 {% block styles %}<link rel="stylesheet" href="{% static 'css/subscription.css' %}">{% endblock %}
 
 {% block body %}
 <div class="billing-shell">
     <header class="billing-header">
         <a class="billing-brand" href="{% url 'home' %}"><img src="{% static 'images/logo.png' %}" alt=""><span>Darith</span></a>
-        <div class="billing-header-actions"><a class="quiet-button" href="{% url 'account_settings' %}">Account</a><form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="quiet-button" type="submit">Log out</button></form></div>
+        <div class="billing-header-actions"><a class="quiet-button" href="{% url 'account_settings' %}">{% translate "Account" %}</a><form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="quiet-button" type="submit">{% translate "Log out" %}</button></form></div>
     </header>
 
     <main class="billing-main">
         {% if messages %}<div class="billing-messages" aria-live="polite">{% for message in messages %}<div class="billing-message {{ message.tags }}">{{ message }}</div>{% endfor %}</div>{% endif %}
 
         <section class="billing-copy">
-            <p class="billing-kicker">Account access</p>
-            <h1>{% if plan %}{{ plan.name }}{% else %}Darith subscription{% endif %}</h1>
+            <p class="billing-kicker">{% translate "Account access" %}</p>
+            <h1>{% if plan %}{{ plan.name }}{% else %}{% translate "Darith subscription" %}{% endif %}</h1>
 
             <section class="access-explainer" aria-labelledby="access-explainer-title">
-                <h2 id="access-explainer-title">Free locally, convenient online</h2>
-                <p>Darith is free for individuals to run on their own computer using the setup instructions on GitHub. Hosted access is for people who want to reach Darith online at any time; the monthly contribution helps cover the server, backups, maintenance, and updates.</p>
-                <div class="billing-actions"><a class="secondary-button" href="https://github.com/bfarnaghi/darith" target="_blank" rel="noopener noreferrer">Local setup on GitHub</a><a class="coffee-button" href="https://buymeacoffee.com/darith" target="_blank" rel="noopener noreferrer">Buy Me a Coffee</a></div>
-                <small>Buy Me a Coffee supports one-time help and automatically recurring monthly contributions. Darith account access is still verified manually after you report the payment.</small>
+                <h2 id="access-explainer-title">{% translate "Free locally, convenient online" %}</h2>
+                <p>{% translate "Darith is free for individuals to run on their own computer using the setup instructions on GitHub. Hosted access is for people who want to reach Darith online at any time; the monthly contribution helps cover the server, backups, maintenance, and updates." %}</p>
+                <div class="billing-actions"><a class="secondary-button" href="https://github.com/bfarnaghi/darith" target="_blank" rel="noopener noreferrer">{% translate "Local setup on GitHub" %}</a><a class="coffee-button" href="https://buymeacoffee.com/darith" target="_blank" rel="noopener noreferrer">Buy Me a Coffee</a></div>
+                <small>{% translate "Buy Me a Coffee supports one-time help and automatically recurring monthly contributions. Darith account access is still verified manually after you report the payment." %}</small>
             </section>
 
             {% if subscription.has_access %}
                 {% if subscription.status == 'pending' %}
-                    <div class="access-state pending"><strong>Payment awaiting verification</strong><span>Your existing access remains available through {{ subscription.access_until|date:"j M Y" }}.</span></div>
+                    <div class="access-state pending"><strong>{% translate "Payment awaiting verification" %}</strong><span>{% blocktranslate with date=subscription.access_until|date:"j M Y" %}Your existing access remains available through {{ date }}.{% endblocktranslate %}</span></div>
                 {% elif subscription.status == 'trialing' %}
-                    <div class="access-state success"><strong>Free trial</strong><span>Your trial is available through {{ subscription.access_until|date:"j M Y" }}.</span></div>
+                    <div class="access-state success"><strong>{% translate "Free trial" %}</strong><span>{% blocktranslate with date=subscription.access_until|date:"j M Y" %}Your trial is available through {{ date }}.{% endblocktranslate %}</span></div>
                 {% else %}
-                    <div class="access-state success"><strong>Subscription active</strong><span>Your access is available through {{ subscription.access_until|date:"j M Y" }}.</span></div>
+                    <div class="access-state success"><strong>{% translate "Subscription active" %}</strong><span>{% blocktranslate with date=subscription.access_until|date:"j M Y" %}Your access is available through {{ date }}.{% endblocktranslate %}</span></div>
                 {% endif %}
-                <a class="primary-button" href="{% url 'dashboard' %}">Open dashboard</a>
+                <a class="primary-button" href="{% url 'dashboard' %}">{% translate "Open dashboard" %}</a>
             {% elif subscription.payment_reported_at %}
-                <div class="access-state pending"><strong>Payment awaiting verification</strong><span>Reported {{ subscription.payment_reported_at|date:"j M Y, H:i" }}. An administrator will update your access after confirming the payment.</span></div>
+                <div class="access-state pending"><strong>{% translate "Payment awaiting verification" %}</strong><span>{% blocktranslate with date=subscription.payment_reported_at|date:"j M Y, H:i" %}Reported {{ date }}. An administrator will update your access after confirming the payment.{% endblocktranslate %}</span></div>
             {% elif subscription.is_expired %}
-                <div class="access-state warning"><strong>Access expired</strong><span>Your previous access ended {{ subscription.access_until|date:"j M Y" }}.</span></div>
+                <div class="access-state warning"><strong>{% translate "Access expired" %}</strong><span>{% blocktranslate with date=subscription.access_until|date:"j M Y" %}Your previous access ended {{ date }}.{% endblocktranslate %}</span></div>
             {% endif %}
 
             {% if plan %}
-                <div class="plan-price"><strong>{% if plan.currency == 'eur' %}€{% endif %}{{ plan.monthly_price|floatformat:2 }}</strong><span>{{ plan.currency|upper }} / month</span></div>
-                <p class="hosted-purpose">A small monthly price, like buying a coffee, keeps the hosted service available and maintained.</p>
-                <ol class="payment-steps"><li>Pay through Buy Me a Coffee or one of the methods below.</li><li>Include your Darith reference when the payment method allows it.</li><li>Report the payment here for administrator verification.</li></ol>
+                <div class="plan-price"><strong>{% if plan.currency == 'eur' %}€{% endif %}{{ plan.monthly_price|floatformat:2 }}</strong><span>{% blocktranslate with currency=plan.currency|upper %}{{ currency }} / month{% endblocktranslate %}</span></div>
+                <p class="hosted-purpose">{% translate "A small monthly price, like buying a coffee, keeps the hosted service available and maintained." %}</p>
+                <ol class="payment-steps"><li>{% translate "Pay through Buy Me a Coffee or one of the methods below." %}</li><li>{% translate "Include your Darith reference when the payment method allows it." %}</li><li>{% translate "Report the payment here for administrator verification." %}</li></ol>
 
                 <section class="payment-details" aria-labelledby="payment-details-title">
-                    <h2 id="payment-details-title">Payment instructions</h2>
-                    {% if plan.payment_instructions %}<p>{{ plan.payment_instructions|linebreaksbr }}</p>{% else %}<p>Payment instructions have not been configured yet. Contact the Darith administrator before paying.</p>{% endif %}
-                    <div class="payment-reference"><span>Your reference</span><code>{{ subscription.payment_reference }}</code></div>
+                    <h2 id="payment-details-title">{% translate "Payment instructions" %}</h2>
+                    {% if plan.payment_instructions %}<p>{{ plan.payment_instructions|linebreaksbr }}</p>{% else %}<p>{% translate "Payment instructions have not been configured yet. Contact the Darith administrator before paying." %}</p>{% endif %}
+                    <div class="payment-reference"><span>{% translate "Your reference" %}</span><code>{{ subscription.payment_reference }}</code></div>
                 </section>
 
                 {% if subscription.payment_reported_at %}
-                    <p class="reported-copy">Your latest payment report is already waiting for verification.</p>
+                    <p class="reported-copy">{% translate "Your latest payment report is already waiting for verification." %}</p>
                 {% else %}
-                    <form method="post" action="{% url 'report_subscription_payment' %}">{% csrf_token %}<button class="primary-button" type="submit">I have paid</button></form>
+                    <form method="post" action="{% url 'report_subscription_payment' %}">{% csrf_token %}<button class="primary-button" type="submit">{% translate "I have paid" %}</button></form>
                 {% endif %}
-                <p class="secure-copy">Darith does not collect card or bank credentials. Payment is completed directly with the method listed above.</p>
-                <p class="support-copy">Using Darith from GitHub without hosted access? You can still support its development through <a href="https://buymeacoffee.com/darith" target="_blank" rel="noopener noreferrer">Buy Me a Coffee</a>.</p>
+                <p class="secure-copy">{% translate "Darith does not collect card or bank credentials. Payment is completed directly with the method listed above." %}</p>
+                <p class="support-copy">{% translate "Using Darith from GitHub without hosted access? You can still support its development through" %} <a href="https://buymeacoffee.com/darith" target="_blank" rel="noopener noreferrer">Buy Me a Coffee</a>.</p>
             {% else %}
-                <div class="access-state warning"><strong>Subscriptions are not configured</strong><span>An administrator must create and activate a subscription plan.</span></div>
+                <div class="access-state warning"><strong>{% translate "Subscriptions are not configured" %}</strong><span>{% translate "An administrator must create and activate a subscription plan." %}</span></div>
             {% endif %}
         </section>
     </main>

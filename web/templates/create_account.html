@@ -1,26 +1,26 @@
 {# Author: Behnam <b.farnaghi@gmail.com> #}
 {# AI-assisted implementation; manually reviewed and verified by the developer. #}
 {% extends "base.html" %}
-{% load static %}
-{% block title %}Create account | Darith{% endblock %}
+{% load static i18n %}
+{% block title %}{% translate "Create account" %} | Darith{% endblock %}
 {% block styles %}<link rel="stylesheet" href="{% static 'css/auth.css' %}">{% endblock %}
 {% block body %}
 <main class="auth-shell">
     <section class="auth-intro">
         <a class="auth-brand" href="{% url 'home' %}"><img src="{% static 'images/logo.png' %}" alt="">Darith</a>
-        <div class="auth-summary"><p>YOUR MONTH AT A GLANCE</p><h1>Give every euro a clear purpose.</h1><div class="summary-visual saving"><span>Monthly saving</span><strong>€400</strong><small>reserved before free spending</small><i></i></div></div>
-        <small class="auth-footnote">Accounts, plans, savings, and daily spending in one place.</small>
+        <div class="auth-summary"><p>{% translate "YOUR MONTH AT A GLANCE" %}</p><h1>{% translate "Give every euro a clear purpose." %}</h1><div class="summary-visual saving"><span>{% translate "Monthly saving" %}</span><strong>€400</strong><small>{% translate "reserved before free spending" %}</small><i></i></div></div>
+        <small class="auth-footnote">{% translate "Accounts, plans, savings, and daily spending in one place." %}</small>
     </section>
     <section class="auth-form-side">
         <div class="auth-form-wrap">
-            <p class="auth-kicker">Get started</p><h2>Create your account</h2>
+            <p class="auth-kicker">{% translate "Get started" %}</p><h2>{% translate "Create your account" %}</h2>
             <form method="post" class="auth-form">
                 {% csrf_token %}
                 {% for field in form %}<p><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<small class="field-help">{{ field.help_text|safe }}</small>{% endif %}{% for error in field.errors %}<span class="field-error">{{ error }}</span>{% endfor %}</p>{% endfor %}
                 {% for error in form.non_field_errors %}<div class="auth-message error">{{ error }}</div>{% endfor %}
-                <button class="auth-submit" type="submit">Create account</button>
+                <button class="auth-submit" type="submit">{% translate "Create account" %}</button>
             </form>
-            <p class="auth-switch">Already registered? <a href="{% url 'login' %}">Sign in</a></p>
+            <p class="auth-switch">{% translate "Already registered?" %} <a href="{% url 'login' %}">{% translate "Sign in" %}</a></p>
         </div>
     </section>
 </main>

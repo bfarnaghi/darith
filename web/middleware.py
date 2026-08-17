@@ -6,6 +6,7 @@ import time
 from django.conf import settings
 from django.shortcuts import redirect
 from django.urls import Resolver404, resolve, reverse
+from django.utils import translation
 
 from .subscriptions import user_has_subscription_access
 from .models import BudgetPreference
@@ -19,6 +20,7 @@ EXEMPT_URL_NAMES = {
     "forgot_password",
     "home",
     "login",
+    "set_language_preference",
     "logout",
     "pricing",
     "reset_password",
@@ -26,6 +28,24 @@ EXEMPT_URL_NAMES = {
     "report_subscription_payment",
     "tutorial",
 }
+
+
+class UserLanguageMiddleware:
+    """Use the saved locale after authentication has identified the user."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        if request.user.is_authenticated:
+            try:
+                language = request.user.budget_preference.language
+            except BudgetPreference.DoesNotExist:
+                language = None
+            if language:
+                translation.activate(language)
+                request.LANGUAGE_CODE = language
+        return self.get_response(request)
 
 
 class SubscriptionAccessMiddleware:
@@ -60,6 +80,7 @@ LOCK_EXEMPT_URL_NAMES = {
     "forgot_password",
     "home",
     "login",
+    "set_language_preference",
     "logout",
     "passkey_login_options",
     "passkey_login_verify",

@@ -1707,6 +1707,65 @@ class RegistrationTests(TestCase):
         self.assertEqual(int(self.client.session["_auth_user_id"]), user.id)
         notify_new_user_mock.assert_called_once_with(user)
 
+    @patch("web.views.notify_new_user")
+    def test_registration_keeps_the_visitors_selected_language(self, _notify):
+        self.client.post(
+            reverse("set_language_preference"),
+            {"language": "it", "next": reverse("create_account")},
+        )
+
+        self.client.post(
+            reverse("create_account"),
+            {
+                "username": "italian-user",
+                "email": "italian@example.com",
+                "password1": "a-strong-password-123",
+                "password2": "a-strong-password-123",
+            },
+        )
+
+        preference = BudgetPreference.objects.get(user__username="italian-user")
+        self.assertEqual(preference.language, "it")
+
+
+class LanguagePreferenceTests(TestCase):
+    def test_visitor_language_is_stored_in_a_cookie_and_translates_public_pages(self):
+        response = self.client.post(
+            reverse("set_language_preference"),
+            {"language": "fa", "next": reverse("home")},
+        )
+
+        self.assertRedirects(response, reverse("home"))
+        self.assertEqual(response.cookies["django_language"].value, "fa")
+        response = self.client.get(reverse("home"))
+        self.assertContains(response, 'lang="fa"')
+        self.assertContains(response, 'dir="rtl"')
+        self.assertContains(response, "پول شخصی، روشن و ساده")
+
+    def test_signed_in_language_is_saved_and_overrides_the_old_cookie(self):
+        user = User.objects.create_user("polyglot", password="good-password-123")
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse("set_language_preference"),
+            {"language": "fr", "next": reverse("dashboard")},
+        )
+
+        self.assertRedirects(response, reverse("dashboard"))
+        self.assertEqual(user.budget_preference.language, "fr")
+        self.client.cookies["django_language"] = "es"
+        response = self.client.get(reverse("dashboard"))
+        self.assertContains(response, 'lang="fr"')
+        self.assertContains(response, "Vue d’ensemble")
+
+    def test_invalid_language_falls_back_to_english(self):
+        response = self.client.post(
+            reverse("set_language_preference"),
+            {"language": "invalid", "next": reverse("home")},
+        )
+
+        self.assertEqual(response.cookies["django_language"].value, "en")
+
 
 class ManualSubscriptionTests(TestCase):
     def setUp(self):

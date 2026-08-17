@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
+from django.utils.translation import gettext_lazy as _
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -65,9 +66,11 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "web.middleware.UserLanguageMiddleware",
     "web.middleware.SessionLockMiddleware",
     "web.middleware.SubscriptionAccessMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -158,7 +161,19 @@ PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.ScryptPasswordHasher",
 ]
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "en"
+LANGUAGES = [
+    ("en", _("English")),
+    ("fa", _("Persian")),
+    ("it", _("Italian")),
+    ("fr", _("French")),
+    ("es", _("Spanish")),
+    ("nl", _("Dutch")),
+]
+LOCALE_PATHS = [BASE_DIR / "locale"]
+LANGUAGE_COOKIE_AGE = 60 * 60 * 24 * 365
+LANGUAGE_COOKIE_HTTPONLY = True
+LANGUAGE_COOKIE_SAMESITE = "Lax"
 TIME_ZONE = os.environ.get("DJANGO_TIME_ZONE", "Europe/Rome")
 USE_I18N = True
 USE_TZ = True

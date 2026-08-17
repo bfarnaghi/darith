@@ -7,6 +7,7 @@ from decimal import Decimal, ROUND_UP
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Q, Sum
+from django.utils.translation import gettext as _
 
 from .models import (
     BankAccount,
@@ -120,7 +121,7 @@ def _source_balance(item):
 def _apply_transfer(item, reverse=False, check_funds=True):
     source_delta = item.amount if reverse else -item.amount
     if not reverse and check_funds and _source_balance(item) < item.amount:
-        raise InsufficientFunds("The source account does not have enough money.")
+        raise InsufficientFunds(_("The source account does not have enough money."))
 
     if item.source_bank_id:
         adjust_account_balance(item.source_bank_id, source_delta)
@@ -212,14 +213,14 @@ def fund_goal_for_month(goal, user, today):
     if Transfer.objects.filter(destination_goal=goal, goal_period=period).exists():
         return None
     if not goal.bank_account_id:
-        raise ValidationError("Choose a funding bank account for this goal first.")
+        raise ValidationError(_("Choose a funding bank account for this goal first."))
 
     amount = goal_monthly_contribution(goal, today)
     if amount <= ZERO:
         return None
     item = Transfer(
         user=user,
-        name=f"Save for {goal.name}",
+        name=_("Save for %(goal)s") % {"goal": goal.name},
         amount=amount,
         date=today,
         source_bank=goal.bank_account,
@@ -311,32 +312,41 @@ def _status_for_commitments(
     savings_target,
     savings_balance,
     currency_symbol,
-    period_label="this month",
+    period_label=None,
 ):
+    period_label = period_label or _("this month")
     free_to_spend = available_before_daily_costs - daily_expenses - savings_target
     if available_before_daily_costs < daily_expenses:
         status = "danger"
         shortfall = daily_expenses - available_before_daily_costs
         if savings_balance >= shortfall:
-            warning = (
-                f"Your spendable accounts are {currency_symbol}{shortfall:,.2f} "
-                "short of expected daily costs. You may need to move money from savings."
-            )
+            warning = _(
+                "Your spendable accounts are %(amount)s short of expected daily costs. "
+                "You may need to move money from savings."
+            ) % {"amount": f"{currency_symbol}{shortfall:,.2f}"}
         else:
-            warning = (
-                f"Your spendable accounts are {currency_symbol}{shortfall:,.2f} "
-                f"short of expected daily costs, even before {period_label}'s saving goals."
-            )
+            warning = _(
+                "Your spendable accounts are %(amount)s short of expected daily costs, "
+                "even before the saving goals for %(period)s."
+            ) % {
+                "amount": f"{currency_symbol}{shortfall:,.2f}",
+                "period": period_label,
+            }
     elif free_to_spend < ZERO:
         status = "warning"
         shortfall = abs(free_to_spend)
-        warning = (
-            f"Daily costs are covered, but {currency_symbol}{shortfall:,.2f} "
-            f"is still needed for {period_label}'s saving goals."
-        )
+        warning = _(
+            "Daily costs are covered, but %(amount)s is still needed for the "
+            "saving goals for %(period)s."
+        ) % {
+            "amount": f"{currency_symbol}{shortfall:,.2f}",
+            "period": period_label,
+        }
     else:
         status = "healthy"
-        warning = f"Expected bills, daily costs, and saving goals are covered {period_label}."
+        warning = _(
+            "Expected bills, daily costs, and saving goals are covered %(period)s."
+        ) % {"period": period_label}
     return status, warning, free_to_spend
 
 
@@ -368,7 +378,7 @@ def _goal_target_for_period(user, period_start, period_end):
 def build_next_month_forecast(user, today, current_budget=None):
     current_budget = current_budget or build_monthly_budget(user, today)
     period_start = add_month(today.replace(day=1))
-    _, period_end = month_bounds(period_start)
+    _period_start, period_end = month_bounds(period_start)
     accounts = BankAccount.objects.filter(user=user, include_in_budget=True)
     incomes = RecurringIncome.objects.filter(
         user=user,
@@ -420,7 +430,7 @@ def build_next_month_forecast(user, today, current_budget=None):
         savings_target,
         savings_balance,
         currency_symbol,
-        period_label="next month",
+        period_label=_("next month"),
     )
     return {
         "month_start": period_start,

@@ -1,0 +1,565 @@
+# Italian translations for Darith.
+# Copyright (C) 2026 ORGANIZATION
+# This file is distributed under the same license as the Darith project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: Darith VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2026-08-17 10:16+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: it\n"
+"Language-Team: it <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.10.3\n"
+
+msgid "Language"
+msgstr "Lingua"
+
+msgid "Apply"
+msgstr "Applica"
+
+msgid "English"
+msgstr "Inglese"
+
+msgid "Persian"
+msgstr "Persiano"
+
+msgid "Italian"
+msgstr "Italiano"
+
+msgid "French"
+msgstr "Francese"
+
+msgid "Spanish"
+msgstr "Spagnolo"
+
+msgid "Dutch"
+msgstr "Olandese"
+
+msgid "Home"
+msgstr "Home"
+
+msgid "Tutorial"
+msgstr "Guida"
+
+msgid "Pricing"
+msgstr "Prezzi"
+
+msgid "Open dashboard"
+msgstr "Apri dashboard"
+
+msgid "Try Darith free"
+msgstr "Prova Darith gratis"
+
+msgid "Sign in"
+msgstr "Accedi"
+
+msgid "Create account"
+msgstr "Crea account"
+
+msgid "Username"
+msgstr "Nome utente"
+
+msgid "Password"
+msgstr "Password"
+
+msgid "Email"
+msgstr "Email"
+
+msgid "Email address"
+msgstr "Indirizzo email"
+
+msgid "Forgot password?"
+msgstr "Password dimenticata?"
+
+msgid "Reset password"
+msgstr "Reimposta password"
+
+msgid "Welcome back"
+msgstr "Bentornato"
+
+msgid "Sign in to your account"
+msgstr "Accedi al tuo account"
+
+msgid "Use a passkey"
+msgstr "Usa una passkey"
+
+msgid "or"
+msgstr "oppure"
+
+msgid "New to Darith?"
+msgstr "Nuovo su Darith?"
+
+msgid "Already registered?"
+msgstr "Già registrato?"
+
+msgid "Overview"
+msgstr "Panoramica"
+
+msgid "Accounts"
+msgstr "Conti"
+
+msgid "Transactions"
+msgstr "Transazioni"
+
+msgid "Monthly plans"
+msgstr "Piani mensili"
+
+msgid "Categories"
+msgstr "Categorie"
+
+msgid "Personal workspace"
+msgstr "Spazio personale"
+
+msgid "Feedback"
+msgstr "Feedback"
+
+msgid "Send feedback"
+msgstr "Invia feedback"
+
+msgid "Billing"
+msgstr "Fatturazione"
+
+msgid "Log out"
+msgstr "Esci"
+
+msgid "Transfer"
+msgstr "Trasferimento"
+
+msgid "Income"
+msgstr "Entrata"
+
+msgid "Expense"
+msgstr "Spesa"
+
+msgid "Settings"
+msgstr "Impostazioni"
+
+msgid "Export CSV"
+msgstr "Esporta CSV"
+
+msgid "Free to spend this month"
+msgstr "Libero da spendere questo mese"
+
+msgid "Current bank balance"
+msgstr "Saldo bancario attuale"
+
+msgid "Month-end outlook"
+msgstr "Previsione di fine mese"
+
+msgid "On track"
+msgstr "In linea"
+
+msgid "Warning"
+msgstr "Attenzione"
+
+msgid "Out of budget"
+msgstr "Fuori budget"
+
+msgid "Budget warning"
+msgstr "Avviso budget"
+
+msgid "Income this month"
+msgstr "Entrate del mese"
+
+msgid "Expenses this month"
+msgstr "Spese del mese"
+
+msgid "Expected daily costs"
+msgstr "Costi giornalieri previsti"
+
+msgid "Saving due"
+msgstr "Risparmio dovuto"
+
+msgid "Saved in goals"
+msgstr "Risparmiato negli obiettivi"
+
+msgid "Current balance"
+msgstr "Saldo attuale"
+
+msgid "Not yet funded this month"
+msgstr "Non ancora finanziato questo mese"
+
+msgid "Separate from spendable money"
+msgstr "Separato dal denaro spendibile"
+
+msgid "Latest activity"
+msgstr "Attività recente"
+
+msgid "View all"
+msgstr "Vedi tutto"
+
+msgid "No transactions yet"
+msgstr "Nessuna transazione"
+
+msgid "Add income, an expense, or a transfer to begin."
+msgstr "Aggiungi un'entrata, una spesa o un trasferimento per iniziare."
+
+msgid "This month"
+msgstr "Questo mese"
+
+msgid "this month"
+msgstr "questo mese"
+
+msgid "next month"
+msgstr "il mese prossimo"
+
+#, python-format
+msgid "Expected bills, daily costs, and saving goals are covered %(period)s."
+msgstr "Bollette, costi giornalieri e obiettivi di risparmio sono coperti per %(period)s."
+
+#, python-format
+msgid "%(received)s received so far · %(due)s still due"
+msgstr "%(received)s ricevuti · %(due)s ancora dovuti"
+
+#, python-format
+msgid "%(paid)s paid so far · %(due)s still due"
+msgstr "%(paid)s pagati · %(due)s ancora dovuti"
+
+#, python-format
+msgid "%(amount)s / day"
+msgstr "%(amount)s / giorno"
+
+#, python-format
+msgid "%(amount)s for remaining days"
+msgstr "%(amount)s per i giorni rimanenti"
+
+#, python-format
+msgid "%(month)s status"
+msgstr "Stato di %(month)s"
+
+#, python-format
+msgid "%(amount)s forecast free"
+msgstr "%(amount)s liberi previsti"
+
+msgid "Edit"
+msgstr "Modifica"
+
+msgid "Manage"
+msgstr "Gestisci"
+
+msgid "Recent transactions"
+msgstr "Transazioni recenti"
+
+msgid "Coming up"
+msgstr "In arrivo"
+
+msgid "Add account"
+msgstr "Aggiungi conto"
+
+msgid "Add expense"
+msgstr "Aggiungi spesa"
+
+msgid "Add income"
+msgstr "Aggiungi entrata"
+
+msgid "Add goal"
+msgstr "Aggiungi obiettivo"
+
+msgid "Activity"
+msgstr "Attività"
+
+msgid "Plans"
+msgstr "Piani"
+
+msgid "Name"
+msgstr "Nome"
+
+msgid "Description"
+msgstr "Descrizione"
+
+msgid "Amount"
+msgstr "Importo"
+
+msgid "Date"
+msgstr "Data"
+
+msgid "Category"
+msgstr "Categoria"
+
+msgid "Bank account"
+msgstr "Conto bancario"
+
+msgid "Source"
+msgstr "Origine"
+
+msgid "Destination"
+msgstr "Destinazione"
+
+msgid "Save changes"
+msgstr "Salva modifiche"
+
+msgid "Delete"
+msgstr "Elimina"
+
+msgid "Cancel"
+msgstr "Annulla"
+
+msgid "Close"
+msgstr "Chiudi"
+
+msgid "Appearance"
+msgstr "Aspetto"
+
+msgid "Behavior"
+msgstr "Comportamento"
+
+msgid "Security"
+msgstr "Sicurezza"
+
+msgid "Account"
+msgstr "Account"
+
+msgid "Color theme"
+msgstr "Tema colore"
+
+msgid "Display currency"
+msgstr "Valuta visualizzata"
+
+msgid "Profile picture"
+msgstr "Immagine profilo"
+
+msgid "Ocean"
+msgstr "Oceano"
+
+msgid "Forest"
+msgstr "Foresta"
+
+msgid "Graphite"
+msgstr "Grafite"
+
+msgid "Purple"
+msgstr "Viola"
+
+msgid "Save appearance"
+msgstr "Salva aspetto"
+
+msgid "App lock"
+msgstr "Blocco app"
+
+msgid "Lock after"
+msgstr "Blocca dopo"
+
+msgid "Darith PIN"
+msgstr "PIN Darith"
+
+msgid "Confirm PIN"
+msgstr "Conferma PIN"
+
+msgid "Add passkey"
+msgstr "Aggiungi passkey"
+
+msgid "Delete your account"
+msgstr "Elimina il tuo account"
+
+msgid "Permanently delete account"
+msgstr "Elimina definitivamente"
+
+msgid "Current password"
+msgstr "Password attuale"
+
+msgid "Deletion signature"
+msgstr "Firma di eliminazione"
+
+msgid "Account settings"
+msgstr "Impostazioni account"
+
+msgid "Back to dashboard"
+msgstr "Torna alla dashboard"
+
+msgid "Personal money, made clear"
+msgstr "Finanze personali, più chiare"
+
+msgid "Know what's safe to spend this month."
+msgstr "Scopri quanto puoi spendere in sicurezza questo mese."
+
+msgid "Try Darith free for 45 days"
+msgstr "Prova Darith gratis per 45 giorni"
+
+msgid "No bank credentials"
+msgstr "Nessuna credenziale bancaria"
+
+msgid "Private by account"
+msgstr "Privato per account"
+
+msgid "Protected data storage"
+msgstr "Archiviazione protetta"
+
+msgid "Limited admin view"
+msgstr "Vista amministratore limitata"
+
+msgid "Settings updated."
+msgstr "Impostazioni aggiornate."
+
+msgid "Security settings updated."
+msgstr "Impostazioni di sicurezza aggiornate."
+
+msgid "Daily spending expectation updated."
+msgstr "Spesa giornaliera prevista aggiornata."
+
+msgid "Bank account added."
+msgstr "Conto bancario aggiunto."
+
+msgid "Bank account updated."
+msgstr "Conto bancario aggiornato."
+
+msgid "Transfer completed."
+msgstr "Trasferimento completato."
+
+msgid "Transfer updated."
+msgstr "Trasferimento aggiornato."
+
+msgid "Monthly plan added."
+msgstr "Piano mensile aggiunto."
+
+msgid "Monthly plan updated. Future postings use the new values."
+msgstr "Piano mensile aggiornato. Le registrazioni future useranno i nuovi valori."
+
+msgid "Category added."
+msgstr "Categoria aggiunta."
+
+msgid "Category updated."
+msgstr "Categoria aggiornata."
+
+msgid "Thank you. Your feedback was sent."
+msgstr "Grazie. Il tuo feedback è stato inviato."
+
+msgid "Invalid username or password."
+msgstr "Nome utente o password non validi."
+
+msgid "Your account is ready."
+msgstr "Il tuo account è pronto."
+
+msgid "The source account does not have enough money."
+msgstr "Il conto di origine non ha fondi sufficienti."
+
+msgid "Add bank account"
+msgstr "Aggiungi conto bancario"
+
+msgid "Move money"
+msgstr "Sposta denaro"
+
+msgid "Transfer money"
+msgstr "Trasferisci denaro"
+
+msgid "Expected daily spending"
+msgstr "Spesa giornaliera prevista"
+
+msgid "Save daily amount"
+msgstr "Salva importo giornaliero"
+
+msgid "Add recurring income"
+msgstr "Aggiungi entrata ricorrente"
+
+msgid "Add recurring expense"
+msgstr "Aggiungi spesa ricorrente"
+
+msgid "Add savings goal"
+msgstr "Aggiungi obiettivo di risparmio"
+
+msgid "Income plan"
+msgstr "Piano entrate"
+
+msgid "Expense plan"
+msgstr "Piano spese"
+
+msgid "Add income plan"
+msgstr "Aggiungi piano entrate"
+
+msgid "Add expense plan"
+msgstr "Aggiungi piano spese"
+
+msgid "Recurring income"
+msgstr "Entrate ricorrenti"
+
+msgid "Recurring expenses"
+msgstr "Spese ricorrenti"
+
+msgid "Savings goals"
+msgstr "Obiettivi di risparmio"
+
+msgid "Your accounts"
+msgstr "I tuoi conti"
+
+msgid "Live balances"
+msgstr "Saldi attuali"
+
+msgid "Included in monthly budget"
+msgstr "Incluso nel budget mensile"
+
+msgid "Tracking only"
+msgstr "Solo monitoraggio"
+
+msgid "Savings goal account"
+msgstr "Conto obiettivo di risparmio"
+
+msgid "All activity"
+msgstr "Tutte le attività"
+
+msgid "Money movements"
+msgstr "Movimenti di denaro"
+
+msgid "Automatic monthly entries"
+msgstr "Registrazioni mensili automatiche"
+
+msgid "Income, expenses and savings"
+msgstr "Entrate, spese e risparmi"
+
+msgid "Custom categories"
+msgstr "Categorie personalizzate"
+
+msgid "Expense categories"
+msgstr "Categorie di spesa"
+
+msgid "Income categories"
+msgstr "Categorie di entrata"
+
+msgid "Add category"
+msgstr "Aggiungi categoria"
+
+msgid "Edit category"
+msgstr "Modifica categoria"
+
+msgid "Add"
+msgstr "Aggiungi"
+
+msgid "Edit bank account"
+msgstr "Modifica conto bancario"
+
+msgid "Edit expense"
+msgstr "Modifica spesa"
+
+msgid "Edit income"
+msgstr "Modifica entrata"
+
+msgid "Edit recurring income"
+msgstr "Modifica entrata ricorrente"
+
+msgid "Edit recurring expense"
+msgstr "Modifica spesa ricorrente"
+
+msgid "Edit savings goal"
+msgstr "Modifica obiettivo di risparmio"
+
+msgid "Edit transfer"
+msgstr "Modifica trasferimento"
+
+#, python-format
+msgid "%(amount)s extra per day for %(days)s day"
+msgid_plural "%(amount)s extra per day for %(days)s days"
+msgstr[0] "%(amount)s extra al giorno per %(days)s giorno"
+msgstr[1] "%(amount)s extra al giorno per %(days)s giorni"
+
+#, python-format
+msgid "Across %(count)s included account"
+msgid_plural "Across %(count)s included accounts"
+msgstr[0] "Su %(count)s conto incluso"
+msgstr[1] "Su %(count)s conti inclusi"
+

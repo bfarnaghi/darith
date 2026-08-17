@@ -1,6 +1,6 @@
 {# Author: Behnam <b.farnaghi@gmail.com> #}
 {# AI-assisted implementation; manually reviewed and verified by the developer. #}
-{% load humanize money %}
+{% load humanize money i18n %}
 <div class="transaction-list{% if compact %} compact{% endif %}">
     {% for item in items %}
     <button class="transaction-row" type="button" data-dialog-open="{{ item.kind }}-edit-{{ item.id }}">
@@ -10,12 +10,12 @@
             {% if item.kind == "transfer" %}
             <small>{{ item.source.name }} → {{ item.destination.name }}</small>
             {% else %}
-            <small>{{ item.category.name|default:"Uncategorized" }} · {{ item.bank_account.name|default:"Deleted account" }}</small>
+            <small>{% if item.category %}{{ item.category.name }}{% else %}{% translate "Uncategorized" %}{% endif %} · {% if item.bank_account %}{{ item.bank_account.name }}{% else %}{% translate "Deleted account" %}{% endif %}</small>
             {% endif %}
         </span>
         <span class="transaction-date">{{ item.date|date:"j M Y" }}</span>
         <b class="transaction-amount {% if item.kind == 'income' %}positive{% elif item.kind == 'expense' %}negative{% endif %}">{% if item.kind == 'income' %}{{ item.amount|money_plus:budget_preference }}{% elif item.kind == 'expense' %}{{ item.amount|money_minus:budget_preference }}{% else %}{{ item.amount|money:budget_preference }}{% endif %}</b>
         <span class="row-chevron">›</span>
     </button>
-    {% empty %}<div class="empty-state"><strong>No transactions yet</strong><span>Add income, an expense, or a transfer to begin.</span></div>{% endfor %}
+    {% empty %}<div class="empty-state"><strong>{% translate "No transactions yet" %}</strong><span>{% translate "Add income, an expense, or a transfer to begin." %}</span></div>{% endfor %}
 </div>

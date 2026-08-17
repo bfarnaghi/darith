@@ -1,28 +1,28 @@
 {# Author: Behnam <b.farnaghi@gmail.com> #}
 {# AI-assisted implementation; manually reviewed and verified by the developer. #}
 {% extends "base.html" %}
-{% load static %}
-{% block title %}Darith locked{% endblock %}
+{% load static i18n %}
+{% block title %}{% translate "Darith locked" %}{% endblock %}
 {% block styles %}<link rel="stylesheet" href="{% static 'css/auth.css' %}">{% endblock %}
 {% block body %}
-<main class="lock-screen" data-passkey-options-url="{% url 'passkey_unlock_options' %}" data-passkey-verify-url="{% url 'passkey_unlock_verify' %}">
+<main class="lock-screen" data-passkey-options-url="{% url 'passkey_unlock_options' %}" data-passkey-verify-url="{% url 'passkey_unlock_verify' %}" data-passkey-unsupported="{% translate 'Passkeys need HTTPS and a supported browser.' %}" data-security-error="{% translate 'The security request failed.' %}" data-passkey-waiting="{% translate 'Waiting for your device...' %}" data-passkey-choose="{% translate 'Choose your passkey...' %}" data-passkey-added="{% translate 'Passkey added.' %}" data-passkey-unlocked="{% translate 'Unlocked.' %}" data-passkey-canceled="{% translate 'Passkey request canceled.' %}" data-default-passkey-name="{% translate 'My passkey' %}">
     <section class="lock-panel">
         <a class="lock-brand" href="{% url 'home' %}"><img src="{% static 'images/logo.png' %}" alt="">Darith</a>
         <span class="lock-symbol" aria-hidden="true">&#128274;</span>
-        <h1>Darith is locked</h1>
-        <p>Your session is still signed in. Unlock it to see your money information.</p>
+        <h1>{% translate "Darith is locked" %}</h1>
+        <p>{% translate "Your session is still signed in. Unlock it to see your money information." %}</p>
         {% if messages %}{% for message in messages %}<div class="auth-message {{ message.tags }}">{{ message }}</div>{% endfor %}{% endif %}
-        {% if has_passkey %}<button class="auth-passkey lock-passkey" type="button" data-passkey-authenticate>Use passkey / fingerprint / Face ID</button>{% endif %}
+        {% if has_passkey %}<button class="auth-passkey lock-passkey" type="button" data-passkey-authenticate>{% translate "Use passkey / fingerprint / Face ID" %}</button>{% endif %}
         {% if has_pin %}
         <form method="post" action="{% url 'security_unlock' %}" class="pin-unlock-form">
             {% csrf_token %}
-            <label for="unlock-pin">Darith PIN</label>
+            <label for="unlock-pin">{% translate "Darith PIN" %}</label>
             <input id="unlock-pin" name="pin" type="password" inputmode="numeric" pattern="[0-9]{4,8}" minlength="4" maxlength="8" autocomplete="off" required autofocus>
-            <button class="auth-submit" type="submit">Unlock</button>
+            <button class="auth-submit" type="submit">{% translate "Unlock" %}</button>
         </form>
         {% else %}<form>{% csrf_token %}</form>{% endif %}
         <p class="passkey-message auth-passkey-message" data-passkey-message role="status"></p>
-        <form method="post" action="{% url 'logout' %}" class="lock-logout">{% csrf_token %}<button type="submit">Sign out instead</button></form>
+        <form method="post" action="{% url 'logout' %}" class="lock-logout">{% csrf_token %}<button type="submit">{% translate "Sign out instead" %}</button></form>
     </section>
 </main>
 {% endblock %}

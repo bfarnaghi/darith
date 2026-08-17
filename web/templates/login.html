@@ -1,30 +1,30 @@
 {# Author: Behnam <b.farnaghi@gmail.com> #}
 {# AI-assisted implementation; manually reviewed and verified by the developer. #}
 {% extends "base.html" %}
-{% load static %}
-{% block title %}Sign in | Darith{% endblock %}
+{% load static i18n %}
+{% block title %}{% translate "Sign in" %} | Darith{% endblock %}
 {% block styles %}<link rel="stylesheet" href="{% static 'css/auth.css' %}">{% endblock %}
 {% block body %}
-<main class="auth-shell" data-passkey-options-url="{% url 'passkey_login_options' %}" data-passkey-verify-url="{% url 'passkey_login_verify' %}">
+<main class="auth-shell" data-passkey-options-url="{% url 'passkey_login_options' %}" data-passkey-verify-url="{% url 'passkey_login_verify' %}" data-passkey-unsupported="{% translate 'Passkeys need HTTPS and a supported browser.' %}" data-security-error="{% translate 'The security request failed.' %}" data-passkey-waiting="{% translate 'Waiting for your device...' %}" data-passkey-choose="{% translate 'Choose your passkey...' %}" data-passkey-added="{% translate 'Passkey added.' %}" data-passkey-unlocked="{% translate 'Unlocked.' %}" data-passkey-canceled="{% translate 'Passkey request canceled.' %}" data-default-passkey-name="{% translate 'My passkey' %}">
     <section class="auth-intro">
         <a class="auth-brand" href="{% url 'home' %}"><img src="{% static 'images/logo.png' %}" alt="">Darith</a>
-        <div class="auth-summary"><p>PERSONAL MONEY, MADE CLEAR</p><h1>Know what is safe to spend today.</h1><div class="summary-visual"><span>Free this month</span><strong>€1,240</strong><small>after plans and savings</small><i></i></div></div>
-        <small class="auth-footnote">Private by account. Built for everyday decisions.</small>
+        <div class="auth-summary"><p>{% translate "PERSONAL MONEY, MADE CLEAR" %}</p><h1>{% translate "Know what is safe to spend today." %}</h1><div class="summary-visual"><span>{% translate "Free this month" %}</span><strong>€1,240</strong><small>{% translate "after plans and savings" %}</small><i></i></div></div>
+        <small class="auth-footnote">{% translate "Private by account. Built for everyday decisions." %}</small>
     </section>
     <section class="auth-form-side">
         <div class="auth-form-wrap">
-            <p class="auth-kicker">Welcome back</p><h2>Sign in to your account</h2>
+            <p class="auth-kicker">{% translate "Welcome back" %}</p><h2>{% translate "Sign in to your account" %}</h2>
             {% if messages %}{% for message in messages %}<div class="auth-message {{ message.tags }}">{{ message }}</div>{% endfor %}{% endif %}
             <form method="post" class="auth-form">
                 {% csrf_token %}
-                <p><label for="username">Username</label><input id="username" name="username" autocomplete="username" required autofocus></p>
-                <p><span class="label-row"><label for="password">Password</label><a href="{% url 'forgot_password' %}">Forgot password?</a></span><input type="password" id="password" name="password" autocomplete="current-password" required></p>
-                <button class="auth-submit" type="submit">Sign in</button>
+                <p><label for="username">{% translate "Username" %}</label><input id="username" name="username" autocomplete="username" required autofocus></p>
+                <p><span class="label-row"><label for="password">{% translate "Password" %}</label><a href="{% url 'forgot_password' %}">{% translate "Forgot password?" %}</a></span><input type="password" id="password" name="password" autocomplete="current-password" required></p>
+                <button class="auth-submit" type="submit">{% translate "Sign in" %}</button>
             </form>
-            <div class="auth-divider"><span>or</span></div>
-            <button class="auth-passkey" type="button" data-passkey-authenticate>Use a passkey</button>
+            <div class="auth-divider"><span>{% translate "or" %}</span></div>
+            <button class="auth-passkey" type="button" data-passkey-authenticate>{% translate "Use a passkey" %}</button>
             <p class="passkey-message auth-passkey-message" data-passkey-message role="status"></p>
-            <p class="auth-switch">New to Darith? <a href="{% url 'create_account' %}">Create an account</a></p>
+            <p class="auth-switch">{% translate "New to Darith?" %} <a href="{% url 'create_account' %}">{% translate "Create an account" %}</a></p>
         </div>
     </section>
 </main>

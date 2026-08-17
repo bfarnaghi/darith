@@ -16,6 +16,7 @@ from django.db.models import Q
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 from .validators import validate_dashboard_gif, validate_profile_image
 
@@ -104,10 +105,10 @@ class BudgetPreference(models.Model):
     THEME_GRAPHITE = "graphite"
     THEME_PURPLE = "purple"
     THEME_CHOICES = [
-        (THEME_OCEAN, "Ocean"),
-        (THEME_FOREST, "Forest"),
-        (THEME_GRAPHITE, "Graphite"),
-        (THEME_PURPLE, "Purple"),
+        (THEME_OCEAN, _("Ocean")),
+        (THEME_FOREST, _("Forest")),
+        (THEME_GRAPHITE, _("Graphite")),
+        (THEME_PURPLE, _("Purple")),
     ]
     CURRENCY_EUR = "EUR"
     CURRENCY_USD = "USD"
@@ -117,13 +118,13 @@ class BudgetPreference(models.Model):
     CURRENCY_AUD = "AUD"
     CURRENCY_IRT = "IRT"
     CURRENCY_CHOICES = [
-        (CURRENCY_EUR, "Euro (EUR)"),
-        (CURRENCY_USD, "US dollar (USD)"),
-        (CURRENCY_GBP, "British pound (GBP)"),
-        (CURRENCY_CHF, "Swiss franc (CHF)"),
-        (CURRENCY_CAD, "Canadian dollar (CAD)"),
-        (CURRENCY_AUD, "Australian dollar (AUD)"),
-        (CURRENCY_IRT, "Iranian Toman (IRT)"),
+        (CURRENCY_EUR, _("Euro (EUR)")),
+        (CURRENCY_USD, _("US dollar (USD)")),
+        (CURRENCY_GBP, _("British pound (GBP)")),
+        (CURRENCY_CHF, _("Swiss franc (CHF)")),
+        (CURRENCY_CAD, _("Canadian dollar (CAD)")),
+        (CURRENCY_AUD, _("Australian dollar (AUD)")),
+        (CURRENCY_IRT, _("Iranian Toman (IRT)")),
     ]
     CURRENCY_SYMBOLS = {
         CURRENCY_EUR: "\u20ac",
@@ -137,15 +138,23 @@ class BudgetPreference(models.Model):
     DELETE_BALANCE_AUTOMATIC = "automatic"
     DELETE_BALANCE_MANUAL = "manual"
     DELETE_BALANCE_CHOICES = [
-        (DELETE_BALANCE_AUTOMATIC, "Update balances automatically"),
-        (DELETE_BALANCE_MANUAL, "Leave balances unchanged"),
+        (DELETE_BALANCE_AUTOMATIC, _("Update balances automatically")),
+        (DELETE_BALANCE_MANUAL, _("Leave balances unchanged")),
     ]
     LOCK_TIMEOUT_CHOICES = [
-        (0, "Off"),
-        (1, "1 minute"),
-        (5, "5 minutes"),
-        (15, "15 minutes"),
-        (30, "30 minutes"),
+        (0, _("Off")),
+        (1, _("1 minute")),
+        (5, _("5 minutes")),
+        (15, _("15 minutes")),
+        (30, _("30 minutes")),
+    ]
+    LANGUAGE_CHOICES = [
+        ("en", _("English")),
+        ("fa", _("Persian")),
+        ("it", _("Italian")),
+        ("fr", _("French")),
+        ("es", _("Spanish")),
+        ("nl", _("Dutch")),
     ]
 
     user = models.OneToOneField(
@@ -166,6 +175,11 @@ class BudgetPreference(models.Model):
         max_length=3,
         choices=CURRENCY_CHOICES,
         default=CURRENCY_EUR,
+    )
+    language = models.CharField(
+        max_length=5,
+        choices=LANGUAGE_CHOICES,
+        default="en",
     )
     hide_financial_values = models.BooleanField(default=False)
     lock_timeout_minutes = models.PositiveSmallIntegerField(
@@ -559,7 +573,7 @@ class UserSubscription(models.Model):
     def clean(self):
         super().clean()
         if self.status in {self.STATUS_TRIALING, self.STATUS_ACTIVE} and not self.access_until:
-            raise ValidationError("Trial and active subscriptions need an access expiry date.")
+            raise ValidationError(_("Trial and active subscriptions need an access expiry date."))
 
     def __str__(self):
         return f"{self.user.username} - {self.get_status_display()}"
@@ -640,16 +654,16 @@ class Transfer(models.Model):
         sources = [self.source_bank, self.source_goal]
         destinations = [self.destination_bank, self.destination_goal]
         if sum(item is not None for item in sources) != 1:
-            raise ValidationError("Choose exactly one source account.")
+            raise ValidationError(_("Choose exactly one source account."))
         if sum(item is not None for item in destinations) != 1:
-            raise ValidationError("Choose exactly one destination account.")
+            raise ValidationError(_("Choose exactly one destination account."))
         if self.source_bank_id and self.source_bank_id == self.destination_bank_id:
-            raise ValidationError("Source and destination must be different.")
+            raise ValidationError(_("Source and destination must be different."))
         if self.source_goal_id and self.source_goal_id == self.destination_goal_id:
-            raise ValidationError("Source and destination must be different.")
+            raise ValidationError(_("Source and destination must be different."))
         for item in [*sources, *destinations]:
             if item is not None and item.user_id != self.user_id:
-                raise ValidationError("All transfer accounts must belong to the same user.")
+                raise ValidationError(_("All transfer accounts must belong to the same user."))
 
     def __str__(self):
         return f"{self.name}: {self.source} to {self.destination}"

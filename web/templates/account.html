@@ -1,36 +1,36 @@
 {# Author: Behnam <b.farnaghi@gmail.com> #}
 {# AI-assisted implementation; manually reviewed and verified by the developer. #}
 {% extends "base.html" %}
-{% load static %}
+{% load static i18n %}
 
-{% block title %}Account settings | Darith{% endblock %}
+{% block title %}{% translate "Account settings" %} | Darith{% endblock %}
 {% block styles %}<link rel="stylesheet" href="{% static 'css/account.css' %}">{% endblock %}
 
 {% block body %}
 <div class="account-shell">
     <header class="account-header">
         <a class="account-brand" href="{% url 'home' %}"><img src="{% static 'images/logo.png' %}" alt=""><span>Darith</span></a>
-        {% if subscriptions_enabled %}<a class="quiet-link" href="{% url 'subscription_overview' %}">Back to billing</a>{% else %}<a class="quiet-link" href="{% url 'dashboard' %}">Back to dashboard</a>{% endif %}
+        {% if subscriptions_enabled %}<a class="quiet-link" href="{% url 'subscription_overview' %}">{% translate "Back to billing" %}</a>{% else %}<a class="quiet-link" href="{% url 'dashboard' %}">{% translate "Back to dashboard" %}</a>{% endif %}
     </header>
     <main class="account-main">
         <section class="account-content" aria-labelledby="account-title">
-            <p class="account-kicker">Account settings</p>
-            <h1 id="account-title">Your Darith account</h1>
-            <p class="account-identity">Signed in as <strong>{{ request.user.username }}</strong>{% if request.user.email %} with {{ request.user.email }}{% endif %}.</p>
+            <p class="account-kicker">{% translate "Account settings" %}</p>
+            <h1 id="account-title">{% translate "Your Darith account" %}</h1>
+            <p class="account-identity">{% blocktranslate with username=request.user.username %}Signed in as <strong>{{ username }}</strong>{% endblocktranslate %}{% if request.user.email %} {% blocktranslate with email=request.user.email %}with {{ email }}{% endblocktranslate %}{% endif %}.</p>
             {% if messages %}<div class="account-messages" aria-live="polite">{% for message in messages %}<div class="account-message {{ message.tags }}">{{ message }}</div>{% endfor %}</div>{% endif %}
 
             <section class="delete-section" aria-labelledby="delete-account-title">
-                <p class="danger-kicker">Permanent action</p>
-                <h2 id="delete-account-title">Delete your account</h2>
-                <p>This removes your accounts, balances, transactions, plans, goals, categories, settings, passkeys, subscription record, feedback, profile picture, and private GIFs from the live Darith system. This cannot be undone.</p>
-                <small>Encrypted historical backups may retain a copy until they are removed through the server's normal backup rotation.</small>
-                <form method="post" action="{% url 'delete_user_account' %}" class="delete-form" data-confirm="This is the final confirmation. Permanently delete your Darith account and live data?">
+                <p class="danger-kicker">{% translate "Permanent action" %}</p>
+                <h2 id="delete-account-title">{% translate "Delete your account" %}</h2>
+                <p>{% translate "This removes your accounts, balances, transactions, plans, goals, categories, settings, passkeys, subscription record, feedback, profile picture, and private GIFs from the live Darith system. This cannot be undone." %}</p>
+                <small>{% translate "Encrypted historical backups may retain a copy until they are removed through the server's normal backup rotation." %}</small>
+                <form method="post" action="{% url 'delete_user_account' %}" class="delete-form" data-confirm="{% translate 'This is the final confirmation. Permanently delete your Darith account and live data?' %}">
                     {% csrf_token %}
                     <label class="delete-check" for="{{ form.confirm_deletion.id_for_label }}">{{ form.confirm_deletion }}<span>{{ form.confirm_deletion.label }}</span></label>
                     {{ form.confirm_deletion.errors }}
-                    <p><label for="{{ form.signature.id_for_label }}">{{ form.signature.label }}</label>{{ form.signature }}<small>Type <code>DELETE {{ request.user.username }}</code> exactly.</small>{{ form.signature.errors }}</p>
+                    <p><label for="{{ form.signature.id_for_label }}">{{ form.signature.label }}</label>{{ form.signature }}<small>{% blocktranslate with username=request.user.username %}Type <code>DELETE {{ username }}</code> exactly.{% endblocktranslate %}</small>{{ form.signature.errors }}</p>
                     <p><label for="{{ form.current_password.id_for_label }}">{{ form.current_password.label }}</label>{{ form.current_password }}{{ form.current_password.errors }}</p>
-                    <button type="submit">Permanently delete account</button>
+                    <button type="submit">{% translate "Permanently delete account" %}</button>
                 </form>
             </section>
         </section>
