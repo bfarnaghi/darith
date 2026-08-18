@@ -46,6 +46,7 @@ from .services import (
     build_next_month_forecast,
     fund_due_savings_goals,
     goal_funding_reminders,
+    goal_monthly_contribution,
     post_due_recurring,
 )
 from .subscriptions import initialize_user_subscription, report_manual_payment
@@ -1192,7 +1193,7 @@ class FinanceTestCase(TestCase):
         self.assertEqual(budget["expected_income"], Decimal("2000.00"))
         self.assertEqual(budget["expected_expenses"], Decimal("500.00"))
         self.assertEqual(budget["savings_target"], Decimal("400.00"))
-        self.assertEqual(budget["projected_balance"], Decimal("2500.00"))
+        self.assertEqual(budget["projected_balance"], Decimal("2100.00"))
         self.assertEqual(budget["free_to_spend"], Decimal("600.00"))
         self.assertEqual(budget["status"], "healthy")
 
@@ -1290,7 +1291,7 @@ class FinanceTestCase(TestCase):
         self.assertEqual(budget["remaining_daily_expenses"], Decimal("180.00"))
         self.assertEqual(budget["uncovered_future_expenses"], Decimal("0.00"))
         self.assertEqual(budget["free_to_spend"], Decimal("20.00"))
-        self.assertEqual(budget["projected_balance"], Decimal("950.00"))
+        self.assertEqual(budget["projected_balance"], Decimal("770.00"))
 
         with patch("web.views.timezone.localdate", return_value=date(2026, 8, 14)):
             response = self.client.get(reverse("dashboard"))
@@ -1545,6 +1546,34 @@ class FinanceTestCase(TestCase):
             1,
         )
         self.assertEqual(goal_funding_reminders(self.user, date(2026, 8, 14)), [])
+
+    def test_dated_goal_keeps_fixed_monthly_amount_in_later_months(self):
+        response = self.client.post(
+            reverse("create_savings_goal"),
+            {
+                "name": "DL",
+                "monthly_amount": "",
+                "target_amount": "150.00",
+                "target_date": "2026-10-30",
+                "current_balance": "0.00",
+                "start_date": "2026-08-30",
+                "bank_account": self.account.id,
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        goal = SavingsGoal.objects.get(name="DL")
+        self.assertEqual(goal.monthly_amount, Decimal("50.00"))
+        self.assertEqual(
+            goal_monthly_contribution(goal, date(2026, 9, 1)),
+            Decimal("50.00"),
+        )
+
+        goal.current_balance = Decimal("140.00")
+        goal.save(update_fields=["current_balance"])
+        self.assertEqual(
+            goal_monthly_contribution(goal, date(2026, 10, 1)),
+            Decimal("10.00"),
+        )
 
     def test_mark_saved_handles_nearly_complete_goal_without_server_error(self):
         self.account.balance = Decimal("770.00")

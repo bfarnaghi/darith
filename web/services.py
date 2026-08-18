@@ -2,7 +2,7 @@
 # AI-assisted implementation; manually reviewed and verified by the developer.
 import calendar
 from datetime import date
-from decimal import Decimal, ROUND_UP
+from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
@@ -22,7 +22,6 @@ from .models import (
 
 
 ZERO = Decimal("0.00")
-CENT = Decimal("0.01")
 
 
 class InsufficientFunds(ValidationError):
@@ -166,13 +165,10 @@ def goal_monthly_contribution(goal, as_of):
     if not goal.target_date or as_of >= goal.target_date:
         return remaining
 
-    months_remaining = (
-        (goal.target_date.year - as_of.year) * 12
-        + goal.target_date.month
-        - as_of.month
-        + 1
-    )
-    return (remaining / max(months_remaining, 1)).quantize(CENT, rounding=ROUND_UP)
+    # Dated goals get a fixed monthly amount when the form is saved.
+    # Keep using that planned amount in later months instead of
+    # recalculating it from the remaining months each time.
+    return min(goal.monthly_amount, remaining)
 
 
 def goal_funding_reminders(user, today):
@@ -414,11 +410,7 @@ def build_next_month_forecast(user, today, current_budget=None):
     days_in_month = period_end.day
     daily_expenses = daily_expense * days_in_month
     savings_target = _goal_target_for_period(user, period_start, period_end)
-    opening_balance = (
-        current_budget["projected_balance"]
-        - current_budget["remaining_daily_expenses"]
-        - current_budget["savings_target"]
-    )
+    opening_balance = current_budget["projected_balance"]
     uncovered_expenses = max(expected_expenses - expected_income, ZERO)
     available_before_daily_costs = opening_balance - uncovered_expenses
     savings_balance = _sum(
@@ -500,7 +492,6 @@ def build_monthly_budget(user, today):
     savings_balance = _sum(
         SavingsGoal.objects.filter(user=user, is_archived=False), "current_balance"
     )
-    projected_balance = current_balance + expected_income - expected_expenses
     days_remaining = (month_end - today).days + 1
     preference = BudgetPreference.objects.filter(user=user).first()
     daily_expense = preference.expected_daily_expense if preference else ZERO
@@ -510,6 +501,13 @@ def build_monthly_budget(user, today):
         else BudgetPreference.CURRENCY_SYMBOLS[BudgetPreference.CURRENCY_EUR]
     )
     remaining_daily_expenses = daily_expense * days_remaining
+    projected_balance = (
+        current_balance
+        + expected_income
+        - expected_expenses
+        - remaining_daily_expenses
+        - savings_target
+    )
     uncovered_future_expenses = max(expected_expenses - expected_income, ZERO)
     available_before_daily_costs = current_balance - uncovered_future_expenses
     status, warning, free_to_spend = _status_for_commitments(
