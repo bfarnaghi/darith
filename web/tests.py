@@ -1547,6 +1547,32 @@ class FinanceTestCase(TestCase):
         )
         self.assertEqual(goal_funding_reminders(self.user, date(2026, 8, 14)), [])
 
+    def test_month_end_outlook_reserves_saving_scheduled_later_this_month(self):
+        BudgetPreference.objects.create(
+            user=self.user,
+            expected_daily_expense=Decimal("10.00"),
+        )
+        SavingsGoal.objects.create(
+            user=self.user,
+            name="DL",
+            monthly_amount=Decimal("50.00"),
+            start_date=date(2026, 8, 30),
+            target_amount=Decimal("150.00"),
+            target_date=date(2026, 10, 30),
+            current_balance=Decimal("0.00"),
+            bank_account=self.account,
+        )
+
+        budget = build_monthly_budget(self.user, date(2026, 8, 18))
+
+        # It is not actionable before 30 August, so the immediate saving-due
+        # figure stays zero. The month-end outlook must still reserve it.
+        self.assertEqual(budget["savings_target"], Decimal("0.00"))
+        self.assertEqual(budget["month_end_savings_target"], Decimal("50.00"))
+        self.assertEqual(budget["remaining_daily_expenses"], Decimal("140.00"))
+        self.assertEqual(budget["projected_balance"], Decimal("810.00"))
+        self.assertEqual(budget["free_to_spend"], Decimal("860.00"))
+
     def test_dated_goal_keeps_fixed_monthly_amount_in_later_months(self):
         response = self.client.post(
             reverse("create_savings_goal"),

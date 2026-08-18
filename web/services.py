@@ -486,7 +486,11 @@ def build_monthly_budget(user, today):
         for item in reminders
         if not item["source_account"] or item["source_account"].include_in_budget
     ]
+    # ``savings_target`` is the amount that is actionable/due as of today.
+    # The month-end outlook must also reserve contributions scheduled later
+    # in this month, even when their first saving date has not arrived yet.
     savings_target = sum((item["amount"] for item in budget_reminders), ZERO)
+    month_end_savings_target = _goal_target_for_period(user, month_start, month_end)
     current_balance = _sum(accounts, "balance")
     included_account_count = accounts.count()
     savings_balance = _sum(
@@ -506,7 +510,7 @@ def build_monthly_budget(user, today):
         + expected_income
         - expected_expenses
         - remaining_daily_expenses
-        - savings_target
+        - month_end_savings_target
     )
     uncovered_future_expenses = max(expected_expenses - expected_income, ZERO)
     available_before_daily_costs = current_balance - uncovered_future_expenses
@@ -552,6 +556,7 @@ def build_monthly_budget(user, today):
         "remaining_daily_expenses": remaining_daily_expenses,
         "uncovered_future_expenses": uncovered_future_expenses,
         "savings_target": savings_target,
+        "month_end_savings_target": month_end_savings_target,
         "projected_balance": projected_balance,
         "free_to_spend": free_to_spend,
         "free_to_spend_abs": abs(free_to_spend),
