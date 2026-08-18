@@ -29,15 +29,16 @@ Open `http://127.0.0.1:8000`, create a user account, and sign in.
 5. Add salary, rent, bills, and subscriptions under **Monthly plans**. The first payment or charge date sets the monthly day; the optional stop date does not create another transaction.
 6. Create an ongoing savings goal with a monthly amount, or enter a target amount and target date. Choose the bank that will fund it.
 7. When a monthly savings reminder appears, press **Mark saved**. Darith transfers the calculated amount from the selected bank into that goal once for the month.
-8. Check **Free to spend** for money available now after uncovered bills, expected daily costs, and unfunded savings goals. Future surplus appears in the month-end outlook instead of becoming spendable early.
-9. Use **Export CSV** above the transaction list to download your accounts, goals, plans, transactions, and transfers.
-10. Use **Settings → Appearance** to choose English, Persian, Italian, French, Spanish, or Dutch. The choice is saved to your user; Persian automatically uses a right-to-left layout.
-11. In the same section, choose a theme, display currency, profile picture, and budget-state GIFs. Iranian Toman is shown as `IRT`. Currency changes labels only and does not convert stored amounts.
-12. Press the eye button in **Free to spend** to hide or show dashboard amounts. Darith remembers this choice for your user account.
-13. In Settings, you can upload and remove a GIF for each budget state. Profile pictures and GIFs are limited to 2 MB and 1200 x 1200 pixels; GIFs are also limited to 300 frames.
-14. Under **Settings → Security**, add a passkey or Darith PIN and choose an inactivity timeout. Passkeys use the security built into your phone or computer; Darith does not receive your fingerprint or face data.
-15. Use **Feedback** in the account menu to send a comment to the Darith administrator.
-16. Use **Settings → Account** to permanently delete your user account and live data. Darith requires your current password, an acknowledgement, an exact typed signature, and a final confirmation.
+8. Check **Safe to spend today** for the maximum one-time optional amount you can spend now while Darith keeps planned daily costs, bills, and savings protected on every forecast day through the end of next month. Future income is not treated as spendable before its scheduled arrival date.
+9. Use **Your money timeline** on the Overview to move day by day from today through the end of next month. It separates projected bank balance from money that is safe for extras and shows the planned income, bills, savings, and daily cost for the selected date.
+10. Use **Export CSV** above the transaction list to download your accounts, goals, plans, transactions, and transfers.
+11. Use **Settings → Appearance** to choose English, Persian, Italian, French, Spanish, or Dutch. The choice is saved to your user; Persian automatically uses a right-to-left layout.
+12. In the same section, choose a theme, display currency, profile picture, and budget-state GIFs. Iranian Toman is shown as `IRT`. Currency changes labels only and does not convert stored amounts.
+13. Press the eye button in **Safe to spend today** to hide or show dashboard amounts. Darith remembers this choice for your user account.
+14. In Settings, you can upload and remove a GIF for each budget state. Profile pictures and GIFs are limited to 2 MB and 1200 x 1200 pixels; GIFs are also limited to 300 frames.
+15. Under **Settings → Security**, add a passkey or Darith PIN and choose an inactivity timeout. Passkeys use the security built into your phone or computer; Darith does not receive your fingerprint or face data.
+16. Use **Feedback** in the account menu to send a comment to the Darith administrator.
+17. Use **Settings → Account** to permanently delete your user account and live data. Darith requires your current password, an acknowledgement, an exact typed signature, and a final confirmation.
 
 Editing a transaction always updates its account balance. Deleting a transaction or transfer reverses its previous balance change by default; choose **Leave balances unchanged** under **Settings → Behavior** when you prefer to correct balances manually. A bank or goal with transfer history is kept to protect the ledger.
 

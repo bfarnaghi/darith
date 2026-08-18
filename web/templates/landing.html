@@ -23,8 +23,8 @@
         <div class="product-hero-inner">
             <img class="hero-logo" src="{% static 'images/logo.png' %}" alt="">
             <p class="hero-kicker">{% translate "Personal money, made clear" %}</p>
-            <h1 id="hero-title">{% translate "Know what's safe to spend this month." %}</h1>
-            <p class="hero-copy">{% translate "Add your balances, income, bills, daily costs, and savings goals. Darith shows what is safe to spend now and warns when the month no longer fits." %}</p>
+            <h1 id="hero-title">{% translate "Know what's safe to spend today." %}</h1>
+            <p class="hero-copy">{% translate "Add your balances, income, bills, daily costs, and savings goals. Darith shows what is safe to spend today and checks your plan day by day into next month." %}</p>
             {% if request.user.is_authenticated %}
                 <a class="hero-action" href="{% url 'dashboard' %}">{% translate "Open dashboard" %}</a>
             {% else %}

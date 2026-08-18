@@ -20,6 +20,7 @@ from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
+from django.utils.formats import date_format
 from django.utils import timezone
 from django.utils.translation import gettext as _, ngettext
 from django.utils.encoding import force_bytes
@@ -74,6 +75,7 @@ from .security import (
 )
 from .services import (
     InsufficientFunds,
+    build_daily_forecast,
     build_monthly_budget,
     build_next_month_forecast,
     delete_transaction,
@@ -101,6 +103,62 @@ from .webauthn_service import (
 
 DEFAULT_EXPENSE_CATEGORIES = ["Bills", "Food", "Health", "Housing", "Leisure", "Transport"]
 DEFAULT_INCOME_CATEGORIES = ["Freelance", "Other", "Salary"]
+
+
+def _display_money(amount, preference, sign=""):
+    if preference.hide_financial_values:
+        return "******"
+    prefix = sign
+    if not sign and amount < 0:
+        prefix = "−"
+    return f"{prefix}{preference.currency_symbol}{abs(amount):,.2f}"
+
+
+def _forecast_timeline_payload(daily_forecast, preference):
+    status_labels = {
+        "healthy": _("Comfortable"),
+        "warning": _("Tight"),
+        "danger": _("Shortfall"),
+    }
+    rows = []
+    for row in daily_forecast["rows"]:
+        events = []
+        for event in row["events"]:
+            sign = "+" if event["kind"] == "income" else "−"
+            events.append(
+                {
+                    "kind": event["kind"],
+                    "name": event["name"],
+                    "amount": _display_money(event["amount"], preference, sign),
+                }
+            )
+
+        rows.append(
+            {
+                "date": row["date"].isoformat(),
+                "dateLabel": date_format(row["date"], "D, j M"),
+                "dateLong": date_format(row["date"], "l, j F Y"),
+                "safe": _display_money(row["safe_to_spend"], preference),
+                "balance": _display_money(row["opening_balance"], preference),
+                "protected": _display_money(row["protected_amount"], preference),
+                "dailyRemaining": _display_money(
+                    row["remaining_daily_costs"], preference
+                ),
+                "uncovered": _display_money(
+                    row["uncovered_commitments"], preference
+                ),
+                "incomeToday": _display_money(row["income"], preference, "+"),
+                "expensesToday": _display_money(row["expenses"], preference, "−"),
+                "savingsToday": _display_money(row["savings"], preference, "−"),
+                "dailyCost": _display_money(row["daily_cost"], preference, "−"),
+                "status": row["status"],
+                "statusLabel": status_labels[row["status"]],
+                "events": events,
+                "isToday": row["date"] == daily_forecast["start_date"],
+                "isMonthStart": row["date"].day == 1,
+            }
+        )
+    return rows
 
 
 def home(request):
@@ -479,8 +537,16 @@ def dashboard(request):
         ).select_related("bank_account")
     )
     goal_reminders = goal_funding_reminders(request.user, today)
-    budget = build_monthly_budget(request.user, today)
-    next_budget = build_next_month_forecast(request.user, today, budget)
+    daily_forecast = build_daily_forecast(request.user, today)
+    budget = build_monthly_budget(
+        request.user, today, daily_forecast=daily_forecast
+    )
+    next_budget = build_next_month_forecast(
+        request.user,
+        today,
+        budget,
+        daily_forecast=daily_forecast,
+    )
     active_animation = getattr(preference, f"{budget['status']}_gif")
 
     context = {
@@ -503,6 +569,11 @@ def dashboard(request):
         "income_categories": IncomeCategory.objects.filter(user=request.user),
         "budget": budget,
         "next_budget": next_budget,
+        "forecast_timeline": _forecast_timeline_payload(
+            daily_forecast, preference
+        ),
+        "forecast_start": daily_forecast["start_date"],
+        "forecast_end": daily_forecast["end_date"],
         "budget_preference": preference,
         "passkeys": request.user.passkey_credentials.all(),
         "currency_symbol": preference.currency_symbol,

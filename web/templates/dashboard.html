@@ -74,24 +74,86 @@
                     <button class="budget-settings" type="button" data-dialog-open="dashboard-animation-edit" aria-label="{% translate 'Settings' %}" title="{% translate 'Settings' %}">⚙</button>
                 </div>
                 <div class="budget-main">
-                    <p>{% translate "Free to spend this month" %}</p>
+                    <p>{% translate "Safe to spend today" %}</p>
                     <strong>{{ budget.free_to_spend|money:budget_preference }}</strong>
-                    <span>{% blocktranslate count days=budget.days_remaining with amount=budget.daily_allowance|money:budget_preference %}{{ amount }} extra per day for {{ days }} day{% plural %}{{ amount }} extra per day for {{ days }} days{% endblocktranslate %}</span>
+                    <span>{% blocktranslate count days=budget.days_remaining with amount=budget.daily_allowance|money:budget_preference end=budget.forecast_horizon_end|date:"j M" %}{{ amount }} extra per day for {{ days }} day · protected through {{ end }}{% plural %}{{ amount }} extra per day for {{ days }} days · protected through {{ end }}{% endblocktranslate %}</span>
                 </div>
                 {% if active_budget_animation %}<div class="budget-animation" aria-hidden="true"><img src="{% url 'dashboard_animation' budget.status %}" alt=""></div>{% endif %}
                 <div class="budget-meter" aria-label="{% translate 'Current balance and monthly outlook' %}">
                     <span class="status-dot status-{{ budget.status }}"></span>
                     <div class="budget-summary">
                         <span><small>{% translate "Current bank balance" %}</small><strong>{{ budget.current_balance|money:budget_preference }}</strong></span>
-                        <span><small>{% translate "Month-end outlook" %}</small><strong>{{ budget.projected_balance|money:budget_preference }}</strong></span>
-                        <span class="next-month-summary"><small>{% blocktranslate with month=next_budget.month_start|date:"F" %}{{ month }} status{% endblocktranslate %}</small><strong><i class="status-dot status-{{ next_budget.status }}"></i>{% if next_budget.status == 'healthy' %}{% translate "On track" %}{% elif next_budget.status == 'warning' %}{% translate "Warning" %}{% else %}{% translate "Out of budget" %}{% endif %}</strong><em>{% blocktranslate with amount=next_budget.free_to_spend|money:budget_preference %}{{ amount }} forecast free{% endblocktranslate %}</em></span>
+                        <span><small>{% blocktranslate with date=budget.month_end|date:"j M" %}Projected balance on {{ date }}{% endblocktranslate %}</small><strong>{{ budget.projected_balance|money:budget_preference }}</strong></span>
+                        <span class="next-month-summary"><small>{% blocktranslate with date=next_budget.month_start|date:"j M" %}Safe to spend on {{ date }}{% endblocktranslate %}</small><strong><i class="status-dot status-{{ next_budget.status }}"></i>{{ next_budget.free_to_spend|money:budget_preference }}</strong><em>{% blocktranslate with amount=next_budget.projected_balance|money:budget_preference month=next_budget.month_start|date:"F" %}{{ amount }} projected at the end of {{ month }}{% endblocktranslate %}</em></span>
                     </div>
                 </div>
             </div>
 
+            <section class="forecast-timeline" aria-labelledby="forecast-timeline-title" data-timeline-root data-no-events="{% translate 'No scheduled income, bills, or saving transfers on this day.' %}">
+                <div class="forecast-timeline-head">
+                    <div>
+                        <p class="eyebrow">{% translate "Plan ahead" %}</p>
+                        <h2 id="forecast-timeline-title">{% translate "Your money timeline" %}</h2>
+                        <p>{% blocktranslate with end=forecast_end|date:"j M" %}Drag through each day to see what is genuinely safe for optional spending while your plans stay protected through {{ end }}.{% endblocktranslate %}</p>
+                    </div>
+                    <button class="button button-secondary button-small timeline-today" type="button" data-timeline-today>{% translate "Today" %}</button>
+                </div>
+
+                <div class="timeline-date-control">
+                    <button class="timeline-step" type="button" data-timeline-prev aria-label="{% translate 'Previous day' %}">‹</button>
+                    <div>
+                        <strong data-timeline-date>{{ forecast_start|date:"D, j M" }}</strong>
+                        <span data-timeline-status>{% translate "Loading forecast..." %}</span>
+                    </div>
+                    <button class="timeline-step" type="button" data-timeline-next aria-label="{% translate 'Next day' %}">›</button>
+                </div>
+
+                <div class="timeline-slider-wrap">
+                    <label class="sr-only" for="money-timeline-slider">{% translate "Choose a forecast date" %}</label>
+                    <input id="money-timeline-slider" class="timeline-slider" type="range" min="0" max="0" value="0" step="1" data-timeline-slider>
+                    <div class="timeline-event-rail" data-timeline-event-rail aria-hidden="true"></div>
+                    <div class="timeline-range-labels"><span>{{ forecast_start|date:"j M" }}</span><span>{{ forecast_end|date:"j M" }}</span></div>
+                </div>
+
+                <div class="timeline-metrics" aria-live="polite">
+                    <article class="timeline-metric timeline-primary-metric">
+                        <span>{% translate "Safe for extras" %}</span>
+                        <strong data-timeline-safe>—</strong>
+                        <small>{% translate "One-time optional spending that keeps the future plan safe." %}</small>
+                    </article>
+                    <article class="timeline-metric">
+                        <span>{% translate "Projected bank balance" %}</span>
+                        <strong data-timeline-balance>—</strong>
+                        <small>{% translate "Expected spendable cash at the start of this day." %}</small>
+                    </article>
+                    <article class="timeline-metric">
+                        <span>{% translate "Protected" %}</span>
+                        <strong data-timeline-protected>—</strong>
+                        <small class="timeline-protected-breakdown"><span>{% translate "Daily costs left" %}: <b data-timeline-daily-remaining>—</b></span><span>{% translate "Uncovered bills + savings" %}: <b data-timeline-uncovered>—</b></span></small>
+                    </article>
+                </div>
+
+                <div class="timeline-detail-grid">
+                    <div class="timeline-day-flows">
+                        <h3>{% translate "Planned on this day" %}</h3>
+                        <div class="timeline-flow-grid">
+                            <span><small>{% translate "Income" %}</small><strong class="positive" data-timeline-income>—</strong></span>
+                            <span><small>{% translate "Bills" %}</small><strong class="negative" data-timeline-expenses>—</strong></span>
+                            <span><small>{% translate "Savings" %}</small><strong class="negative" data-timeline-savings>—</strong></span>
+                            <span><small>{% translate "Daily cost" %}</small><strong class="negative" data-timeline-daily>—</strong></span>
+                        </div>
+                    </div>
+                    <div class="timeline-events">
+                        <h3>{% translate "Events" %}</h3>
+                        <div data-timeline-events></div>
+                    </div>
+                </div>
+            </section>
+            {{ forecast_timeline|json_script:"forecast-timeline-data" }}
+
             <div class="notice notice-{{ budget.status }}">
                 <span class="notice-symbol" aria-hidden="true">{% if budget.status == 'healthy' %}✓{% else %}!{% endif %}</span>
-                <div><strong>{% if budget.status == 'healthy' %}{% translate "On track" %}{% else %}{% translate "Budget warning" %}{% endif %}</strong><p>{% if budget_preference.hide_financial_values and budget.status != 'healthy' %}{% translate "Your budget needs attention. Show amounts for the detailed shortfall." %}{% else %}{{ budget.warning }}{% endif %}</p></div>
+                <div><strong>{% if budget.status == 'healthy' %}{% translate "Comfortable" %}{% elif budget.status == 'warning' %}{% translate "Tight" %}{% else %}{% translate "Shortfall" %}{% endif %}</strong><p>{% if budget_preference.hide_financial_values and budget.status != 'healthy' %}{% translate "Your budget needs attention. Show amounts for the detailed shortfall." %}{% else %}{{ budget.warning }}{% endif %}</p></div>
             </div>
 
             {% if goal_reminders %}

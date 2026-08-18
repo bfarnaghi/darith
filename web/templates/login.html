@@ -8,7 +8,7 @@
 <main class="auth-shell" data-passkey-options-url="{% url 'passkey_login_options' %}" data-passkey-verify-url="{% url 'passkey_login_verify' %}" data-passkey-unsupported="{% translate 'Passkeys need HTTPS and a supported browser.' %}" data-security-error="{% translate 'The security request failed.' %}" data-passkey-waiting="{% translate 'Waiting for your device...' %}" data-passkey-choose="{% translate 'Choose your passkey...' %}" data-passkey-added="{% translate 'Passkey added.' %}" data-passkey-unlocked="{% translate 'Unlocked.' %}" data-passkey-canceled="{% translate 'Passkey request canceled.' %}" data-default-passkey-name="{% translate 'My passkey' %}">
     <section class="auth-intro">
         <a class="auth-brand" href="{% url 'home' %}"><img src="{% static 'images/logo.png' %}" alt="">Darith</a>
-        <div class="auth-summary"><p>{% translate "PERSONAL MONEY, MADE CLEAR" %}</p><h1>{% translate "Know what is safe to spend today." %}</h1><div class="summary-visual"><span>{% translate "Free this month" %}</span><strong>€1,240</strong><small>{% translate "after plans and savings" %}</small><i></i></div></div>
+        <div class="auth-summary"><p>{% translate "PERSONAL MONEY, MADE CLEAR" %}</p><h1>{% translate "Know what is safe to spend today." %}</h1><div class="summary-visual"><span>{% translate "Safe today" %}</span><strong>€1,240</strong><small>{% translate "after future plans and daily costs" %}</small><i></i></div></div>
         <small class="auth-footnote">{% translate "Private by account. Built for everyday decisions." %}</small>
     </section>
     <section class="auth-form-side">

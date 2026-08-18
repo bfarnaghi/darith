@@ -42,6 +42,7 @@ from .models import (
 )
 from .notifications import send_telegram_admin_notification
 from .services import (
+    build_daily_forecast,
     build_monthly_budget,
     build_next_month_forecast,
     fund_due_savings_goals,
@@ -97,8 +98,9 @@ class TutorialPageTests(SimpleTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Understand your money, one section at a time.")
-        self.assertContains(response, "Free to spend this month")
-        self.assertContains(response, "How future income is treated")
+        self.assertContains(response, "Safe to spend today")
+        self.assertContains(response, "Why Darith checks every future day")
+        self.assertContains(response, "Money timeline")
         self.assertContains(response, "Tracking-only accounts")
         self.assertContains(response, "Automatic posting")
         self.assertContains(response, "Saving goals")
@@ -443,7 +445,7 @@ class FinanceTestCase(TestCase):
         self.assertContains(response, "Private by account")
         self.assertContains(response, "Protected data storage")
         self.assertContains(response, "Limited admin view")
-        self.assertContains(response, "Know what's safe to spend this month.")
+        self.assertContains(response, "Know what's safe to spend today.")
         self.assertContains(response, "See your safe-to-spend amount instantly.")
         self.assertContains(response, "Free for your own local setup.")
         self.assertContains(response, "45-day hosted trial")
@@ -501,7 +503,7 @@ class FinanceTestCase(TestCase):
         self.assertEqual(forecast["expected_income"], Decimal("1300.00"))
         self.assertEqual(forecast["expected_expenses"], Decimal("550.00"))
         self.assertEqual(forecast["daily_expenses"], Decimal("300.00"))
-        self.assertEqual(forecast["free_to_spend"], Decimal("1220.00"))
+        self.assertEqual(forecast["free_to_spend"], Decimal("470.00"))
         self.assertEqual(forecast["projected_balance"], Decimal("1220.00"))
         self.assertEqual(forecast["status"], "healthy")
 
@@ -536,18 +538,116 @@ class FinanceTestCase(TestCase):
             bank_account=self.account,
         )
 
-        forecast = build_next_month_forecast(
-            self.user,
-            date(2026, 8, 18),
-            {"projected_balance": Decimal("387.14")},
-        )
+        forecast = build_next_month_forecast(self.user, date(2026, 8, 18))
 
         self.assertEqual(forecast["expected_income"], Decimal("1387.00"))
         self.assertEqual(forecast["expected_expenses"], Decimal("330.00"))
         self.assertEqual(forecast["daily_expenses"], Decimal("300.00"))
-        self.assertEqual(forecast["free_to_spend"], Decimal("1144.14"))
-        self.assertEqual(forecast["projected_balance"], Decimal("1144.14"))
+        self.assertEqual(forecast["free_to_spend"], Decimal("1874.04"))
+        self.assertEqual(forecast["projected_balance"], Decimal("3261.04"))
         self.assertEqual(forecast["status"], "healthy")
+
+    def test_next_month_forecast_excludes_expense_after_its_end_date(self):
+        MonthlyExpense.objects.create(
+            user=self.user,
+            name="Old rent",
+            amount=Decimal("550.00"),
+            start_date=date(2026, 8, 1),
+            end_date=date(2026, 8, 30),
+            category=self.expense_category,
+            bank_account=self.account,
+        )
+        MonthlyExpense.objects.create(
+            user=self.user,
+            name="New rent",
+            amount=Decimal("330.00"),
+            start_date=date(2026, 9, 1),
+            category=self.expense_category,
+            bank_account=self.account,
+        )
+
+        forecast = build_next_month_forecast(self.user, date(2026, 8, 18))
+
+        self.assertEqual(forecast["expected_expenses"], Decimal("330.00"))
+
+    def test_daily_forecast_separates_next_month_opening_cash_from_safe_spending(self):
+        self.account.balance = Decimal("527.14")
+        self.account.save(update_fields=["balance"])
+        BudgetPreference.objects.create(
+            user=self.user,
+            expected_daily_expense=Decimal("10.00"),
+        )
+        RecurringIncome.objects.create(
+            user=self.user,
+            name="Salary",
+            amount=Decimal("1387.00"),
+            start_date=date(2026, 9, 2),
+            category=self.income_category,
+            bank_account=self.account,
+        )
+        MonthlyExpense.objects.create(
+            user=self.user,
+            name="September commitments",
+            amount=Decimal("597.95"),
+            start_date=date(2026, 9, 10),
+            category=self.expense_category,
+            bank_account=self.account,
+        )
+        SavingsGoal.objects.create(
+            user=self.user,
+            name="September savings",
+            monthly_amount=Decimal("503.85"),
+            start_date=date(2026, 9, 30),
+            current_balance=Decimal("0.00"),
+            bank_account=self.account,
+        )
+
+        forecast = build_daily_forecast(self.user, date(2026, 8, 18))
+        september_first = next(
+            row for row in forecast["rows"] if row["date"] == date(2026, 9, 1)
+        )
+        september_end = next(
+            row for row in forecast["rows"] if row["date"] == date(2026, 9, 30)
+        )
+
+        self.assertEqual(september_first["opening_balance"], Decimal("387.14"))
+        self.assertEqual(september_first["remaining_daily_costs"], Decimal("300.00"))
+        self.assertEqual(september_first["safe_to_spend"], Decimal("87.14"))
+        self.assertEqual(september_end["closing_balance"], Decimal("372.34"))
+
+    def test_daily_forecast_detects_liquidity_gap_when_bill_arrives_before_salary(self):
+        self.account.balance = Decimal("397.14")
+        self.account.save(update_fields=["balance"])
+        BudgetPreference.objects.create(
+            user=self.user,
+            expected_daily_expense=Decimal("10.00"),
+        )
+        MonthlyExpense.objects.create(
+            user=self.user,
+            name="Rent",
+            amount=Decimal("330.00"),
+            start_date=date(2026, 9, 1),
+            category=self.expense_category,
+            bank_account=self.account,
+        )
+        RecurringIncome.objects.create(
+            user=self.user,
+            name="Salary",
+            amount=Decimal("1387.00"),
+            start_date=date(2026, 9, 28),
+            category=self.income_category,
+            bank_account=self.account,
+        )
+
+        forecast = build_daily_forecast(self.user, date(2026, 8, 31))
+        september_first = next(
+            row for row in forecast["rows"] if row["date"] == date(2026, 9, 1)
+        )
+
+        self.assertEqual(september_first["opening_balance"], Decimal("387.14"))
+        self.assertEqual(september_first["day_headroom"], Decimal("87.14"))
+        self.assertEqual(september_first["safe_to_spend"], Decimal("-242.86"))
+        self.assertEqual(september_first["status"], "danger")
 
     def test_security_settings_hash_pin_and_require_unlock_method(self):
         response = self.client.post(
@@ -948,7 +1048,8 @@ class FinanceTestCase(TestCase):
         self.client.force_login(self.user)
         response = self.client.get(reverse("dashboard"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Free to spend this month")
+        self.assertContains(response, "Safe to spend today")
+        self.assertContains(response, "Your money timeline")
         self.assertContains(response, "1,000.00")
 
     def test_create_update_and_delete_expense_adjusts_balance(self):
@@ -1238,7 +1339,7 @@ class FinanceTestCase(TestCase):
         self.assertEqual(budget["expected_expenses"], Decimal("500.00"))
         self.assertEqual(budget["savings_target"], Decimal("400.00"))
         self.assertEqual(budget["projected_balance"], Decimal("2100.00"))
-        self.assertEqual(budget["free_to_spend"], Decimal("600.00"))
+        self.assertEqual(budget["free_to_spend"], Decimal("100.00"))
         self.assertEqual(budget["status"], "healthy")
 
     def test_tracking_only_account_is_excluded_from_monthly_budget(self):
@@ -1354,9 +1455,9 @@ class FinanceTestCase(TestCase):
             start_date=date(2026, 1, 1),
         )
         budget = build_monthly_budget(self.user, date(2026, 8, 14))
-        self.assertEqual(budget["free_to_spend"], Decimal("-300.00"))
-        self.assertEqual(budget["status"], "warning")
-        self.assertIn("saving goals", budget["warning"])
+        self.assertEqual(budget["free_to_spend"], Decimal("-700.00"))
+        self.assertEqual(budget["status"], "danger")
+        self.assertIn("projected", budget["warning"])
 
     def test_user_cannot_edit_another_users_account(self):
         private_account = BankAccount.objects.create(
@@ -1487,9 +1588,9 @@ class FinanceTestCase(TestCase):
 
         self.assertEqual(budget["days_remaining"], 18)
         self.assertEqual(budget["remaining_daily_expenses"], Decimal("90.00"))
-        self.assertEqual(budget["free_to_spend"], Decimal("-40.00"))
+        self.assertEqual(budget["free_to_spend"], Decimal("-190.00"))
         self.assertEqual(budget["status"], "danger")
-        self.assertIn("move money from savings", budget["warning"])
+        self.assertIn("projected", budget["warning"])
 
     def test_bank_transfer_create_update_and_delete_reverses_balances(self):
         second = BankAccount.objects.create(
@@ -1615,7 +1716,7 @@ class FinanceTestCase(TestCase):
         self.assertEqual(budget["month_end_savings_target"], Decimal("50.00"))
         self.assertEqual(budget["remaining_daily_expenses"], Decimal("140.00"))
         self.assertEqual(budget["projected_balance"], Decimal("810.00"))
-        self.assertEqual(budget["free_to_spend"], Decimal("860.00"))
+        self.assertEqual(budget["free_to_spend"], Decimal("460.00"))
 
     def test_dated_goal_keeps_fixed_monthly_amount_in_later_months(self):
         response = self.client.post(

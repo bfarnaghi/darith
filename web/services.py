@@ -1,10 +1,11 @@
 # Author: Behnam <b.farnaghi@gmail.com>
 # AI-assisted implementation; manually reviewed and verified by the developer.
 import calendar
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
+from django.utils.formats import date_format
 from django.db import IntegrityError, transaction
 from django.db.models import Q, Sum
 from django.utils.translation import gettext as _
@@ -302,50 +303,6 @@ def _sum(queryset, field):
     return queryset.aggregate(total=Sum(field))["total"] or ZERO
 
 
-def _status_for_commitments(
-    available_before_daily_costs,
-    daily_expenses,
-    savings_target,
-    savings_balance,
-    currency_symbol,
-    period_label=None,
-):
-    period_label = period_label or _("this month")
-    free_to_spend = available_before_daily_costs - daily_expenses - savings_target
-    if available_before_daily_costs < daily_expenses:
-        status = "danger"
-        shortfall = daily_expenses - available_before_daily_costs
-        if savings_balance >= shortfall:
-            warning = _(
-                "Your spendable accounts are %(amount)s short of expected daily costs. "
-                "You may need to move money from savings."
-            ) % {"amount": f"{currency_symbol}{shortfall:,.2f}"}
-        else:
-            warning = _(
-                "Your spendable accounts are %(amount)s short of expected daily costs, "
-                "even before the saving goals for %(period)s."
-            ) % {
-                "amount": f"{currency_symbol}{shortfall:,.2f}",
-                "period": period_label,
-            }
-    elif free_to_spend < ZERO:
-        status = "warning"
-        shortfall = abs(free_to_spend)
-        warning = _(
-            "Daily costs are covered, but %(amount)s is still needed for the "
-            "saving goals for %(period)s."
-        ) % {
-            "amount": f"{currency_symbol}{shortfall:,.2f}",
-            "period": period_label,
-        }
-    else:
-        status = "healthy"
-        warning = _(
-            "Expected bills, daily costs, and saving goals are covered %(period)s."
-        ) % {"period": period_label}
-    return status, warning, free_to_spend
-
-
 def _goal_target_for_period(user, period_start, period_end):
     goals = SavingsGoal.objects.filter(
         user=user,
@@ -371,35 +328,136 @@ def _goal_target_for_period(user, period_start, period_end):
     return target
 
 
-def build_next_month_forecast(user, today, current_budget=None):
-    current_budget = current_budget or build_monthly_budget(user, today)
-    period_start = add_month(today.replace(day=1))
-    _period_start, period_end = month_bounds(period_start)
+def _default_forecast_horizon(today):
+    """Forecast through the end of next month by default."""
+    next_month_start = add_month(today.replace(day=1))
+    return month_bounds(next_month_start)[1]
+
+
+def _goal_saving_events(user, range_start, range_end):
+    """Return unfunded saving contributions by date for a future range.
+
+    Goal amounts are simulated sequentially, so a dated goal that reaches its
+    target in one forecast month is not charged again in later forecast months.
+    """
+    goals = SavingsGoal.objects.filter(
+        user=user,
+        start_date__lte=range_end,
+        is_archived=False,
+    ).select_related("bank_account")
+    funded_periods = set(
+        Transfer.objects.filter(
+            user=user,
+            destination_goal__isnull=False,
+            goal_period__gte=range_start.replace(day=1),
+            goal_period__lte=range_end.replace(day=1),
+        ).values_list("destination_goal_id", "goal_period")
+    )
+
+    events = []
+    for goal in goals:
+        if goal.bank_account and not goal.bank_account.include_in_budget:
+            continue
+
+        remaining = None
+        if goal.target_amount is not None:
+            remaining = max(goal.target_amount - goal.current_balance, ZERO)
+
+        # Start at the first day of the current month so an unfunded goal whose
+        # normal saving day has already passed is treated as due today instead
+        # of disappearing from the forecast.
+        for occurrence in occurrence_dates(
+            goal, range_start.replace(day=1), range_end
+        ):
+            period = occurrence.replace(day=1)
+            if (goal.pk, period) in funded_periods:
+                continue
+            if remaining is not None:
+                if remaining <= ZERO:
+                    break
+                amount = (
+                    remaining
+                    if goal.target_date and occurrence >= goal.target_date
+                    else min(goal.monthly_amount, remaining)
+                )
+                remaining -= amount
+            else:
+                amount = goal.monthly_amount
+
+            if amount > ZERO:
+                effective_date = max(occurrence, range_start)
+                events.append(
+                    {
+                        "date": effective_date,
+                        "kind": "saving",
+                        "name": goal.name,
+                        "amount": amount,
+                    }
+                )
+    return events
+
+
+def _timeline_status(safe_to_spend, daily_expense, currency_symbol, horizon_end):
+    """Classify a day as comfortable, tight, or projected shortfall."""
+    if safe_to_spend < ZERO:
+        shortfall = abs(safe_to_spend)
+        return (
+            "danger",
+            _(
+                "You are projected to be %(amount)s short before %(date)s if no plan changes."
+            )
+            % {
+                "amount": f"{currency_symbol}{shortfall:,.2f}",
+                "date": date_format(horizon_end, "j M"),
+            },
+        )
+
+    tight_threshold = daily_expense * Decimal("3")
+    if daily_expense > ZERO and safe_to_spend < tight_threshold:
+        return (
+            "warning",
+            _(
+                "Your plan is covered, but only %(amount)s is safe for optional spending through %(date)s."
+            )
+            % {
+                "amount": f"{currency_symbol}{safe_to_spend:,.2f}",
+                "date": date_format(horizon_end, "j M"),
+            },
+        )
+
+    return (
+        "healthy",
+        _(
+            "Planned bills, savings, and everyday costs stay protected through %(date)s."
+        )
+        % {
+            "date": date_format(horizon_end, "j M"),
+        },
+    )
+
+
+def build_daily_forecast(user, today, horizon_end=None):
+    """Build the single source of truth for Darith's forward-looking budget.
+
+    Each row represents the start of one day. ``opening_balance`` is the bank
+    balance expected before that day's planned movements. ``safe_to_spend`` is
+    the maximum optional amount that can be spent on that day without pushing
+    any later day in the forecast horizon below its protected commitments.
+
+    Protected commitments are:
+    * expected daily costs for the rest of the selected calendar month; and
+    * scheduled bills and saving contributions not covered by income that is
+      still expected in that same month.
+
+    This deliberately prevents future income from becoming spendable before it
+    arrives while still allowing future income to cover future known bills.
+    """
+    horizon_end = horizon_end or _default_forecast_horizon(today)
+    if horizon_end < today:
+        horizon_end = today
+
     accounts = BankAccount.objects.filter(user=user, include_in_budget=True)
-    incomes = RecurringIncome.objects.filter(
-        user=user,
-        bank_account__include_in_budget=True,
-        start_date__lte=period_end,
-    )
-    expenses = MonthlyExpense.objects.filter(
-        user=user,
-        bank_account__include_in_budget=True,
-        start_date__lte=period_end,
-    )
-    expected_income = sum(
-        (
-            plan.amount * len(occurrence_dates(plan, period_start, period_end))
-            for plan in incomes
-        ),
-        ZERO,
-    )
-    expected_expenses = sum(
-        (
-            plan.amount * len(occurrence_dates(plan, period_start, period_end))
-            for plan in expenses
-        ),
-        ZERO,
-    )
+    current_balance = _sum(accounts, "balance")
     preference = BudgetPreference.objects.filter(user=user).first()
     daily_expense = preference.expected_daily_expense if preference else ZERO
     currency_symbol = (
@@ -407,51 +465,198 @@ def build_next_month_forecast(user, today, current_budget=None):
         if preference
         else BudgetPreference.CURRENCY_SYMBOLS[BudgetPreference.CURRENCY_EUR]
     )
-    days_in_month = period_end.day
-    daily_expenses = daily_expense * days_in_month
-    savings_target = _goal_target_for_period(user, period_start, period_end)
-    opening_balance = current_budget["projected_balance"]
-    # Next-month free-to-spend is a full cash-flow forecast. Include the
-    # whole expected income and subtract the whole expected expense amount;
-    # otherwise any income left after covering bills disappears from the
-    # forecast even though it remains in the spendable accounts.
-    available_before_daily_costs = (
-        opening_balance + expected_income - expected_expenses
+
+    event_map = {}
+
+    def add_event(event_date, kind, name, amount):
+        bucket = event_map.setdefault(
+            event_date,
+            {"income": ZERO, "expense": ZERO, "saving": ZERO, "events": []},
+        )
+        bucket[kind] += amount
+        bucket["events"].append(
+            {"kind": kind, "name": name, "amount": amount}
+        )
+
+    recurring_incomes = RecurringIncome.objects.filter(
+        user=user,
+        bank_account__include_in_budget=True,
+        start_date__lte=horizon_end,
     )
-    savings_balance = _sum(
-        SavingsGoal.objects.filter(user=user, is_archived=False), "current_balance"
+    recurring_expenses = MonthlyExpense.objects.filter(
+        user=user,
+        bank_account__include_in_budget=True,
+        start_date__lte=horizon_end,
     )
-    status, warning, free_to_spend = _status_for_commitments(
-        available_before_daily_costs,
-        daily_expenses,
-        savings_target,
-        savings_balance,
-        currency_symbol,
-        period_label=_("next month"),
+
+    # Dashboard posting runs before forecasting, so recurring occurrences due
+    # today are already reflected in the current account balance. Start those
+    # planned events tomorrow to avoid counting them twice.
+    for plan in recurring_incomes:
+        for occurrence in occurrence_dates(plan, today, horizon_end):
+            if occurrence > today:
+                add_event(occurrence, "income", plan.name, plan.amount)
+
+    for plan in recurring_expenses:
+        for occurrence in occurrence_dates(plan, today, horizon_end):
+            if occurrence > today:
+                add_event(occurrence, "expense", plan.name, plan.amount)
+
+    # A saving contribution due today may still be unfunded if its source bank
+    # account did not have enough money, so today's saving event must remain in
+    # the forecast unless a goal-period transfer already exists.
+    for event in _goal_saving_events(user, today, horizon_end):
+        add_event(event["date"], "saving", event["name"], event["amount"])
+
+    rows = []
+    day = today
+    opening_balance = current_balance
+    while day <= horizon_end:
+        bucket = event_map.get(
+            day,
+            {"income": ZERO, "expense": ZERO, "saving": ZERO, "events": []},
+        )
+        closing_balance = (
+            opening_balance
+            + bucket["income"]
+            - bucket["expense"]
+            - bucket["saving"]
+            - daily_expense
+        )
+        rows.append(
+            {
+                "date": day,
+                "opening_balance": opening_balance,
+                "closing_balance": closing_balance,
+                "income": bucket["income"],
+                "expenses": bucket["expense"],
+                "savings": bucket["saving"],
+                "daily_cost": daily_expense,
+                "events": list(bucket["events"]),
+            }
+        )
+        opening_balance = closing_balance
+        day += timedelta(days=1)
+
+    # First calculate the liquidity headroom for each date within its own
+    # calendar month. Daily costs are deliberately reserved from bank cash even
+    # when later income is expected; future income may cover future bills and
+    # savings, but it is not treated as spendable cash before arrival.
+    month_key = None
+    remaining_income = ZERO
+    remaining_expenses = ZERO
+    remaining_savings = ZERO
+    remaining_daily_costs = ZERO
+    for row in reversed(rows):
+        key = (row["date"].year, row["date"].month)
+        if key != month_key:
+            month_key = key
+            remaining_income = ZERO
+            remaining_expenses = ZERO
+            remaining_savings = ZERO
+            remaining_daily_costs = ZERO
+
+        remaining_income += row["income"]
+        remaining_expenses += row["expenses"]
+        remaining_savings += row["savings"]
+        remaining_daily_costs += row["daily_cost"]
+        uncovered_commitments = max(
+            remaining_expenses + remaining_savings - remaining_income,
+            ZERO,
+        )
+        protected_amount = remaining_daily_costs + uncovered_commitments
+        row.update(
+            {
+                "remaining_income": remaining_income,
+                "remaining_expenses": remaining_expenses,
+                "remaining_savings": remaining_savings,
+                "remaining_daily_costs": remaining_daily_costs,
+                "uncovered_commitments": uncovered_commitments,
+                "protected_amount": protected_amount,
+                "day_headroom": row["opening_balance"] - protected_amount,
+            }
+        )
+
+    # Spending on a selected date affects every later balance. Therefore the
+    # safe optional amount is the lowest future headroom, not merely the cash
+    # visible on the selected day.
+    minimum_future_headroom = None
+    for row in reversed(rows):
+        if minimum_future_headroom is None:
+            minimum_future_headroom = row["day_headroom"]
+        else:
+            minimum_future_headroom = min(
+                minimum_future_headroom, row["day_headroom"]
+            )
+        row["safe_to_spend"] = minimum_future_headroom
+        row["status"], row["warning"] = _timeline_status(
+            minimum_future_headroom,
+            daily_expense,
+            currency_symbol,
+            horizon_end,
+        )
+
+    return {
+        "start_date": today,
+        "end_date": horizon_end,
+        "daily_expense": daily_expense,
+        "current_balance": current_balance,
+        "rows": rows,
+    }
+
+
+def build_next_month_forecast(user, today, current_budget=None, daily_forecast=None):
+    period_start = add_month(today.replace(day=1))
+    _period_start, period_end = month_bounds(period_start)
+    daily_forecast = daily_forecast or build_daily_forecast(
+        user, today, horizon_end=period_end
     )
+    rows = [
+        row
+        for row in daily_forecast["rows"]
+        if period_start <= row["date"] <= period_end
+    ]
+    if not rows:
+        return {
+            "month_start": period_start,
+            "month_end": period_end,
+            "opening_balance": ZERO,
+            "expected_income": ZERO,
+            "expected_expenses": ZERO,
+            "daily_expenses": ZERO,
+            "savings_target": ZERO,
+            "projected_balance": ZERO,
+            "free_to_spend": ZERO,
+            "status": "healthy",
+            "warning": "",
+            "included_account_count": 0,
+        }
+
+    first_row = rows[0]
+    last_row = rows[-1]
+    expected_income = sum((row["income"] for row in rows), ZERO)
+    expected_expenses = sum((row["expenses"] for row in rows), ZERO)
+    daily_expenses = sum((row["daily_cost"] for row in rows), ZERO)
+    savings_target = sum((row["savings"] for row in rows), ZERO)
     return {
         "month_start": period_start,
         "month_end": period_end,
-        "opening_balance": opening_balance,
+        "opening_balance": first_row["opening_balance"],
         "expected_income": expected_income,
         "expected_expenses": expected_expenses,
         "daily_expenses": daily_expenses,
         "savings_target": savings_target,
-        "projected_balance": (
-            opening_balance
-            + expected_income
-            - expected_expenses
-            - daily_expenses
-            - savings_target
-        ),
-        "free_to_spend": free_to_spend,
-        "status": status,
-        "warning": warning,
-        "included_account_count": accounts.count(),
+        "projected_balance": last_row["closing_balance"],
+        "free_to_spend": first_row["safe_to_spend"],
+        "status": first_row["status"],
+        "warning": first_row["warning"],
+        "included_account_count": BankAccount.objects.filter(
+            user=user, include_in_budget=True
+        ).count(),
     }
 
 
-def build_monthly_budget(user, today):
+def build_monthly_budget(user, today, daily_forecast=None):
     month_start, month_end = month_bounds(today)
     accounts = BankAccount.objects.filter(user=user, include_in_budget=True)
     recurring_incomes = RecurringIncome.objects.filter(
@@ -504,28 +709,17 @@ def build_monthly_budget(user, today):
     days_remaining = (month_end - today).days + 1
     preference = BudgetPreference.objects.filter(user=user).first()
     daily_expense = preference.expected_daily_expense if preference else ZERO
-    currency_symbol = (
-        preference.currency_symbol
-        if preference
-        else BudgetPreference.CURRENCY_SYMBOLS[BudgetPreference.CURRENCY_EUR]
-    )
     remaining_daily_expenses = daily_expense * days_remaining
-    projected_balance = (
-        current_balance
-        + expected_income
-        - expected_expenses
-        - remaining_daily_expenses
-        - month_end_savings_target
+    daily_forecast = daily_forecast or build_daily_forecast(user, today)
+    current_row = daily_forecast["rows"][0]
+    month_end_row = next(
+        row for row in daily_forecast["rows"] if row["date"] == month_end
     )
+    projected_balance = month_end_row["closing_balance"]
     uncovered_future_expenses = max(expected_expenses - expected_income, ZERO)
-    available_before_daily_costs = current_balance - uncovered_future_expenses
-    status, warning, free_to_spend = _status_for_commitments(
-        available_before_daily_costs,
-        remaining_daily_expenses,
-        savings_target,
-        savings_balance,
-        currency_symbol,
-    )
+    status = current_row["status"]
+    warning = current_row["warning"]
+    free_to_spend = current_row["safe_to_spend"]
     daily_allowance = free_to_spend / days_remaining
 
     actual_income = _sum(
@@ -575,4 +769,5 @@ def build_monthly_budget(user, today):
         "income_month_total": income_month_total,
         "expense_month_total": expense_month_total,
         "upcoming": sorted(upcoming, key=lambda item: item["date"]),
+        "forecast_horizon_end": daily_forecast["end_date"],
     }

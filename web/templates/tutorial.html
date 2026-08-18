@@ -37,9 +37,9 @@
 
     <section class="result-strip" aria-label="What Darith helps you understand">
         <div class="tutorial-inner result-strip-inner">
-            <div><strong>Now</strong><span>Your real balance in accounts included in the budget.</span></div>
-            <div><strong>This month</strong><span>What remains after bills, daily costs, and saving goals.</span></div>
-            <div><strong>Next month</strong><span>An early warning based on your repeating plans.</span></div>
+            <div><strong>Today</strong><span>What is safe to use for an optional expense right now.</span></div>
+            <div><strong>Each day</strong><span>How projected cash and protected money change as plans arrive.</span></div>
+            <div><strong>Month ahead</strong><span>Where a future bill, saving, or late income could make cash tight.</span></div>
         </div>
     </section>
 
@@ -94,27 +94,28 @@
                 <div class="section-number">03</div>
                 <p class="section-kicker">Your monthly picture</p>
                 <h2>Overview</h2>
-                <p class="section-lead">Overview answers two different questions: what you have now, and what your plans say about the rest of the month.</p>
+                <p class="section-lead">Overview separates the money visible in your bank from the amount that is genuinely safe to use for optional spending.</p>
 
                 <div class="definition-list">
-                    <div><dt>Free to spend this month</dt><dd>Money left after Darith reserves uncovered future bills, expected daily costs for the remaining days, and saving contributions that are still due.</dd></div>
-                    <div><dt>Extra per day</dt><dd>The free-to-spend amount divided by the number of days remaining, including today.</dd></div>
+                    <div><dt>Safe to spend today</dt><dd>The most you can spend on something optional today without pushing a later day in the forecast below the money needed for planned bills, saving contributions, and everyday costs.</dd></div>
+                    <div><dt>Extra per day</dt><dd>The safe-to-spend amount divided by the number of days remaining in the current month, including today.</dd></div>
                     <div><dt>Current bank balance</dt><dd>The live total of bank and cash accounts that have <b>Include in monthly budget</b> enabled. Saving goal balances and tracking-only accounts are separate.</dd></div>
-                    <div><dt>Month-end outlook</dt><dd>Current included balance plus scheduled income still due, minus scheduled expenses still due, expected daily costs for the remaining days, and saving contributions still due.</dd></div>
-                    <div><dt>Following month status</dt><dd>An early forecast that carries this month forward, then checks next month's repeating income, bills, daily costs, and goals.</dd></div>
+                    <div><dt>Projected month-end balance</dt><dd>The bank balance Darith expects after scheduled income, bills, everyday costs, and saving contributions through the end of the current month. It is not the same as money that is safe to spend.</dd></div>
+                    <div><dt>Next-month safe amount</dt><dd>The amount projected to be safe for optional spending at the start of next month. The smaller line below it shows the projected bank balance at that month's end.</dd></div>
+                    <div><dt>Money timeline</dt><dd>A day-by-day view from today through the end of next month. Drag the slider to see projected cash, protected money, planned movements, and the safe amount for any date.</dd></div>
                 </div>
 
-                <div class="calculation" aria-label="Free to spend calculation">
-                    <span>Included balance</span><b>&minus;</b><span>Uncovered future bills</span><b>&minus;</b><span>Remaining daily costs</span><b>&minus;</b><span>Saving due</span><b>=</b><strong>Free to spend</strong>
+                <div class="calculation" aria-label="Safe to spend calculation">
+                    <span>Projected cash</span><b>&minus;</b><span>Remaining daily costs</span><b>&minus;</b><span>Bills + savings not covered by future income</span><b>=</b><strong>Daily headroom</strong>
                 </div>
 
-                <div class="note note-info"><strong>How future income is treated</strong><p>Future income can cover future scheduled bills in the plan, but any extra future income does not become free-to-spend before it arrives. It does still appear in the month-end outlook.</p></div>
+                <div class="note note-info"><strong>Why Darith checks every future day</strong><p>Future income can cover future scheduled bills and saving contributions, but extra income does not become spendable before it arrives. Darith projects the cash balance day by day and uses the lowest future headroom as the safe amount. This catches situations where a bill arrives before salary even when the whole month looks positive.</p></div>
 
                 <h3>Budget status</h3>
                 <div class="status-list">
-                    <div class="status-healthy"><span></span><strong>On track</strong><p>Daily costs and this month's saving contributions are covered.</p></div>
-                    <div class="status-warning"><span></span><strong>Warning</strong><p>Expected daily costs are covered, but there is not enough left for all saving goals.</p></div>
-                    <div class="status-danger"><span></span><strong>Out of budget</strong><p>Included spendable accounts cannot cover the expected daily costs for the remaining days. Darith may suggest moving money from savings when savings can cover the gap.</p></div>
+                    <div class="status-healthy"><span></span><strong>Comfortable</strong><p>Your plan is protected and there is useful room for optional spending.</p></div>
+                    <div class="status-warning"><span></span><strong>Tight</strong><p>Your plan is still covered, but the safe optional amount is below roughly three days of normal spending.</p></div>
+                    <div class="status-danger"><span></span><strong>Shortfall</strong><p>A future day falls below the amount needed to keep the plan protected. Review timing, spending, savings, or upcoming income.</p></div>
                 </div>
 
                 <h3>The six detail figures</h3>

@@ -28,6 +28,111 @@ function activateTab(name, updateUrl = true) {
 tabButtons.forEach((button) => button.addEventListener("click", () => activateTab(button.dataset.tabTarget)));
 activateTab(app.dataset.activeTab, false);
 
+const timelineRoot = document.querySelector("[data-timeline-root]");
+const timelineDataElement = document.getElementById("forecast-timeline-data");
+
+if (timelineRoot && timelineDataElement) {
+    const timelineRows = JSON.parse(timelineDataElement.textContent || "[]");
+    const slider = timelineRoot.querySelector("[data-timeline-slider]");
+    const previousButton = timelineRoot.querySelector("[data-timeline-prev]");
+    const nextButton = timelineRoot.querySelector("[data-timeline-next]");
+    const todayButton = timelineRoot.querySelector("[data-timeline-today]");
+    const eventRail = timelineRoot.querySelector("[data-timeline-event-rail]");
+    const dateValue = timelineRoot.querySelector("[data-timeline-date]");
+    const statusValue = timelineRoot.querySelector("[data-timeline-status]");
+    const safeValue = timelineRoot.querySelector("[data-timeline-safe]");
+    const balanceValue = timelineRoot.querySelector("[data-timeline-balance]");
+    const protectedValue = timelineRoot.querySelector("[data-timeline-protected]");
+    const dailyRemainingValue = timelineRoot.querySelector("[data-timeline-daily-remaining]");
+    const uncoveredValue = timelineRoot.querySelector("[data-timeline-uncovered]");
+    const incomeValue = timelineRoot.querySelector("[data-timeline-income]");
+    const expensesValue = timelineRoot.querySelector("[data-timeline-expenses]");
+    const savingsValue = timelineRoot.querySelector("[data-timeline-savings]");
+    const dailyValue = timelineRoot.querySelector("[data-timeline-daily]");
+    const eventsValue = timelineRoot.querySelector("[data-timeline-events]");
+
+    function renderTimelineEvents(row) {
+        eventsValue.replaceChildren();
+        if (!row.events.length) {
+            const empty = document.createElement("p");
+            empty.className = "timeline-event-empty";
+            empty.textContent = timelineRoot.dataset.noEvents;
+            eventsValue.append(empty);
+            return;
+        }
+
+        row.events.forEach((event) => {
+            const item = document.createElement("div");
+            item.className = `timeline-event-item ${event.kind}`;
+            const copy = document.createElement("span");
+            const dot = document.createElement("i");
+            const name = document.createElement("em");
+            const amount = document.createElement("strong");
+            name.textContent = event.name;
+            amount.textContent = event.amount;
+            copy.append(dot, name);
+            item.append(copy, amount);
+            eventsValue.append(item);
+        });
+    }
+
+    function renderTimeline(index) {
+        if (!timelineRows.length) return;
+        const safeIndex = Math.max(0, Math.min(index, timelineRows.length - 1));
+        const row = timelineRows[safeIndex];
+        slider.value = String(safeIndex);
+        slider.setAttribute("aria-valuetext", `${row.dateLong}: ${row.safe}`);
+        dateValue.textContent = row.dateLong;
+        statusValue.textContent = row.statusLabel;
+        safeValue.textContent = row.safe;
+        balanceValue.textContent = row.balance;
+        protectedValue.textContent = row.protected;
+        dailyRemainingValue.textContent = row.dailyRemaining;
+        uncoveredValue.textContent = row.uncovered;
+        incomeValue.textContent = row.incomeToday;
+        expensesValue.textContent = row.expensesToday;
+        savingsValue.textContent = row.savingsToday;
+        dailyValue.textContent = row.dailyCost;
+        timelineRoot.dataset.status = row.status;
+        previousButton.disabled = safeIndex === 0;
+        nextButton.disabled = safeIndex === timelineRows.length - 1;
+        renderTimelineEvents(row);
+    }
+
+    function buildTimelineRail() {
+        eventRail.replaceChildren();
+        if (timelineRows.length < 2) return;
+        timelineRows.forEach((row, index) => {
+            const position = (index / (timelineRows.length - 1)) * 100;
+            if (row.isMonthStart && index !== 0) {
+                const boundary = document.createElement("span");
+                boundary.className = "timeline-event-dot month-start";
+                boundary.style.left = `${position}%`;
+                eventRail.append(boundary);
+            }
+            if (!row.events.length) return;
+            const marker = document.createElement("span");
+            const kinds = new Set(row.events.map((event) => event.kind));
+            let kind = "saving";
+            if (kinds.has("income")) kind = "income";
+            else if (kinds.has("expense")) kind = "expense";
+            marker.className = `timeline-event-dot ${kind}`;
+            marker.style.left = `${position}%`;
+            eventRail.append(marker);
+        });
+    }
+
+    if (timelineRows.length) {
+        slider.max = String(timelineRows.length - 1);
+        slider.addEventListener("input", () => renderTimeline(Number(slider.value)));
+        previousButton.addEventListener("click", () => renderTimeline(Number(slider.value) - 1));
+        nextButton.addEventListener("click", () => renderTimeline(Number(slider.value) + 1));
+        todayButton.addEventListener("click", () => renderTimeline(0));
+        buildTimelineRail();
+        renderTimeline(0);
+    }
+}
+
 const settingsDialog = document.getElementById("dashboard-animation-edit");
 const settingsTabs = [...document.querySelectorAll("[data-settings-tab]")];
 const settingsPanels = [...document.querySelectorAll("[data-settings-panel]")];
