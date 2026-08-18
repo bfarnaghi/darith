@@ -411,8 +411,13 @@ def build_next_month_forecast(user, today, current_budget=None):
     daily_expenses = daily_expense * days_in_month
     savings_target = _goal_target_for_period(user, period_start, period_end)
     opening_balance = current_budget["projected_balance"]
-    uncovered_expenses = max(expected_expenses - expected_income, ZERO)
-    available_before_daily_costs = opening_balance - uncovered_expenses
+    # Next-month free-to-spend is a full cash-flow forecast. Include the
+    # whole expected income and subtract the whole expected expense amount;
+    # otherwise any income left after covering bills disappears from the
+    # forecast even though it remains in the spendable accounts.
+    available_before_daily_costs = (
+        opening_balance + expected_income - expected_expenses
+    )
     savings_balance = _sum(
         SavingsGoal.objects.filter(user=user, is_archived=False), "current_balance"
     )

@@ -501,8 +501,52 @@ class FinanceTestCase(TestCase):
         self.assertEqual(forecast["expected_income"], Decimal("1300.00"))
         self.assertEqual(forecast["expected_expenses"], Decimal("550.00"))
         self.assertEqual(forecast["daily_expenses"], Decimal("300.00"))
-        self.assertEqual(forecast["free_to_spend"], Decimal("470.00"))
+        self.assertEqual(forecast["free_to_spend"], Decimal("1220.00"))
         self.assertEqual(forecast["projected_balance"], Decimal("1220.00"))
+        self.assertEqual(forecast["status"], "healthy")
+
+    def test_next_month_forecast_includes_income_surplus_and_respects_income_end_date(self):
+        BudgetPreference.objects.create(
+            user=self.user,
+            expected_daily_expense=Decimal("10.00"),
+        )
+        RecurringIncome.objects.create(
+            user=self.user,
+            name="Salary",
+            amount=Decimal("1387.00"),
+            start_date=date(2026, 8, 28),
+            category=self.income_category,
+            bank_account=self.account,
+        )
+        RecurringIncome.objects.create(
+            user=self.user,
+            name="August only income",
+            amount=Decimal("257.04"),
+            start_date=date(2026, 8, 20),
+            end_date=date(2026, 8, 30),
+            category=self.income_category,
+            bank_account=self.account,
+        )
+        MonthlyExpense.objects.create(
+            user=self.user,
+            name="September rent",
+            amount=Decimal("330.00"),
+            start_date=date(2026, 9, 1),
+            category=self.expense_category,
+            bank_account=self.account,
+        )
+
+        forecast = build_next_month_forecast(
+            self.user,
+            date(2026, 8, 18),
+            {"projected_balance": Decimal("387.14")},
+        )
+
+        self.assertEqual(forecast["expected_income"], Decimal("1387.00"))
+        self.assertEqual(forecast["expected_expenses"], Decimal("330.00"))
+        self.assertEqual(forecast["daily_expenses"], Decimal("300.00"))
+        self.assertEqual(forecast["free_to_spend"], Decimal("1144.14"))
+        self.assertEqual(forecast["projected_balance"], Decimal("1144.14"))
         self.assertEqual(forecast["status"], "healthy")
 
     def test_security_settings_hash_pin_and_require_unlock_method(self):
