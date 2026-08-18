@@ -59,7 +59,7 @@
                     <ul>
                         <li>{% blocktranslate with days=trial_days %}{{ days }}-day hosted trial with no card required{% endblocktranslate %}</li>
                         <li>{% translate "Access from your phone or desktop wherever darith.app is available" %}</li>
-                        <li>{% translate "Server maintenance, application updates, and protected backups" %}</li>
+                        <li>{% translate "Server maintenance, app updates, and encrypted backups" %}</li>
                         <li>{% translate "Manual payment verification without sharing bank credentials" %}</li>
                     </ul>
                     {% if request.user.is_authenticated %}
@@ -84,7 +84,7 @@
                     <li><b>{% translate "Use your reference." %}</b> {% translate "Include the personal Darith payment reference when the payment service allows it." %}</li>
                     <li><b>{% translate "Report the payment." %}</b> {% translate "Select I have paid in Billing. An administrator verifies it and updates your access date." %}</li>
                 </ol>
-                <p class="recurring-note">{% translate "Buy Me a Coffee can also create a recurring monthly contribution. Hosted access is still matched and verified manually by the Darith administrator." %}</p>
+                <p class="recurring-note">{% translate "Buy Me a Coffee can also make a monthly payment. Darith still checks hosted access manually." %}</p>
             </div>
             <aside class="coffee-panel">
                 <img src="{% static 'images/buy-me-a-coffee-qr.png' %}" alt="{% translate 'QR code for Darith on Buy Me a Coffee' %}">
@@ -103,9 +103,9 @@
             </div>
             <div class="included-grid">
                 <div><strong>{% translate "Accounts and transfers" %}</strong><span>{% translate "Track included or tracking-only accounts and move money between banks and saving goals." %}</span></div>
-                <div><strong>{% translate "Monthly planning" %}</strong><span>{% translate "Schedule recurring income, bills, daily costs, and automatic saving contributions." %}</span></div>
-                <div><strong>{% translate "Free-to-spend guidance" %}</strong><span>{% translate "See what is safe today, explore the day-by-day money timeline, and keep future bills, daily costs, and savings protected." %}</span></div>
-                <div><strong>{% translate "Personal controls" %}</strong><span>{% translate "Use themes, currencies, CSV export, private media, passkeys, a Darith PIN, and inactivity lock." %}</span></div>
+                <div><strong>{% translate "Monthly planning" %}</strong><span>{% translate "Plan monthly income, expenses, daily spending, and savings." %}</span></div>
+                <div><strong>{% translate "Safe-to-spend help" %}</strong><span>{% translate "See what is safe to spend today and use the day-by-day timeline to check future income, expenses, daily spending, and savings." %}</span></div>
+                <div><strong>{% translate "Personal controls" %}</strong><span>{% translate "Use themes, currencies, CSV export, private files, passkeys, a Darith PIN, and auto lock." %}</span></div>
             </div>
         </div>
     </section>

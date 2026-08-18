@@ -37,9 +37,9 @@
 
     <section class="result-strip" aria-label="What Darith helps you understand">
         <div class="tutorial-inner result-strip-inner">
-            <div><strong>Today</strong><span>What is safe to use for an optional expense right now.</span></div>
-            <div><strong>Each day</strong><span>How projected cash and protected money change as plans arrive.</span></div>
-            <div><strong>Month ahead</strong><span>Where a future bill, saving, or late income could make cash tight.</span></div>
+            <div><strong>Today</strong><span>How much extra money you can safely spend now.</span></div>
+            <div><strong>Each day</strong><span>How your money changes as income, expenses, and savings happen.</span></div>
+            <div><strong>Month ahead</strong><span>When future spending or late income may make money tight.</span></div>
         </div>
     </section>
 
@@ -66,11 +66,11 @@
                 <div class="section-number">01</div>
                 <p class="section-kicker">Begin here</p>
                 <h2>A useful first setup</h2>
-                <p class="section-lead">Darith becomes accurate when your starting balances and repeating commitments are accurate. This order takes only a few minutes and avoids confusing totals later.</p>
+                <p class="section-lead">Darith works best when your starting balances and monthly plans are correct. This setup takes only a few minutes.</p>
                 <ol class="setup-steps">
                     <li><span>1</span><div><strong>Choose your display</strong><p>Open Settings, choose a currency and theme, and optionally add a profile picture. Currency changes how amounts are shown; it does not convert money between currencies.</p></div></li>
                     <li><span>2</span><div><strong>Add your accounts</strong><p>Enter the current balance of each bank or cash account. Turn off <b>Include in monthly budget</b> for money you only want to track.</p></div></li>
-                    <li><span>3</span><div><strong>Set expected daily spending</strong><p>On Overview, choose Edit beside Expected daily costs. Enter a realistic average for food, transport, and other ordinary daily spending.</p></div></li>
+                    <li><span>3</span><div><strong>Set expected daily spending</strong><p>On Overview, choose Edit beside Daily spending plan. Enter a normal daily amount for food, transport, and other everyday spending.</p></div></li>
                     <li><span>4</span><div><strong>Add monthly plans</strong><p>Add salary and other repeating income, then rent, bills, subscriptions, and other repeating expenses with their first and optional last dates.</p></div></li>
                     <li><span>5</span><div><strong>Add saving goals</strong><p>Choose a monthly amount or a target amount and date. Select the bank account that will fund each goal.</p></div></li>
                     <li><span>6</span><div><strong>Record daily activity</strong><p>Add income and expenses when they happen. Darith updates the selected account and recalculates the month immediately.</p></div></li>
@@ -94,28 +94,27 @@
                 <div class="section-number">03</div>
                 <p class="section-kicker">Your monthly picture</p>
                 <h2>Overview</h2>
-                <p class="section-lead">Overview separates the money visible in your bank from the amount that is genuinely safe to use for optional spending.</p>
+                <p class="section-lead">Overview shows the difference between the money in your bank and the money that is safe to spend.</p>
 
                 <div class="definition-list">
-                    <div><dt>Safe to spend today</dt><dd>The most you can spend on something optional today without pushing a later day in the forecast below the money needed for planned bills, saving contributions, and everyday costs.</dd></div>
-                    <div><dt>Extra per day</dt><dd>The safe-to-spend amount divided by the number of days remaining in the current month, including today.</dd></div>
-                    <div><dt>Current bank balance</dt><dd>The live total of bank and cash accounts that have <b>Include in monthly budget</b> enabled. Saving goal balances and tracking-only accounts are separate.</dd></div>
-                    <div><dt>Projected month-end balance</dt><dd>The bank balance Darith expects after scheduled income, bills, everyday costs, and saving contributions through the end of the current month. It is not the same as money that is safe to spend.</dd></div>
-                    <div><dt>Next-month safe amount</dt><dd>The amount projected to be safe for optional spending at the start of next month. The smaller line below it shows the projected bank balance at that month's end.</dd></div>
-                    <div><dt>Money timeline</dt><dd>A day-by-day view from today through the end of next month. Drag the slider to see projected cash, protected money, planned movements, and the safe amount for any date.</dd></div>
+                    <div><dt>Safe to spend today</dt><dd>The most extra money you can spend today while keeping your future income, expenses, savings, and daily spending on track.</dd></div>
+                    <div><dt>Extra per day</dt><dd>The safe-to-spend amount divided by the days left in this month, including today.</dd></div>
+                    <div><dt>Current bank balance</dt><dd>The total money in bank and cash accounts that are included in your budget. Savings goals and tracking-only accounts are separate.</dd></div>
+                    <div><dt>Balance expected at month end</dt><dd>The bank balance Darith expects at the end of this month after planned income, expenses, daily spending, and savings. This is not all free to spend.</dd></div>
+                                        <div><dt>Money timeline</dt><dd>A day-by-day view. Move the slider to see your bank balance, what is still planned, and how much is safe to spend on each day.</dd></div>
                 </div>
 
-                <div class="calculation" aria-label="Safe to spend calculation">
-                    <span>Projected cash</span><b>&minus;</b><span>Remaining daily costs</span><b>&minus;</b><span>Bills + savings not covered by future income</span><b>=</b><strong>Daily headroom</strong>
+                <div class="calculation" aria-label="Safe to spend idea">
+                    <span>Money in your plan</span><b>&minus;</b><span>Daily spending</span><b>&minus;</b><span>Money Darith must keep aside</span><b>=</b><strong>Safe to spend</strong>
                 </div>
 
-                <div class="note note-info"><strong>Why Darith checks every future day</strong><p>Future income can cover future scheduled bills and saving contributions, but extra income does not become spendable before it arrives. Darith projects the cash balance day by day and uses the lowest future headroom as the safe amount. This catches situations where a bill arrives before salary even when the whole month looks positive.</p></div>
+                <div class="note note-info"><strong>Why Darith checks every future day</strong><p>Darith checks each day because income may arrive after an expense. Money is not treated as available before it arrives. This helps Darith find days when your money could become too low, even if the whole month looks fine.</p></div>
 
                 <h3>Budget status</h3>
                 <div class="status-list">
-                    <div class="status-healthy"><span></span><strong>Comfortable</strong><p>Your plan is protected and there is useful room for optional spending.</p></div>
-                    <div class="status-warning"><span></span><strong>Tight</strong><p>Your plan is still covered, but the safe optional amount is below roughly three days of normal spending.</p></div>
-                    <div class="status-danger"><span></span><strong>Shortfall</strong><p>A future day falls below the amount needed to keep the plan protected. Review timing, spending, savings, or upcoming income.</p></div>
+                    <div class="status-healthy"><span></span><strong>Good</strong><p>Your plan looks good and you have some extra money you can safely spend.</p></div>
+                    <div class="status-warning"><span></span><strong>Tight</strong><p>Your plan is still okay, but there is only a small amount of extra money.</p></div>
+                    <div class="status-danger"><span></span><strong>Not enough</strong><p>Darith expects your money to become too low on a future day. Check your income, expenses, savings, or daily spending.</p></div>
                 </div>
 
                 <h3>The six detail figures</h3>
@@ -125,7 +124,7 @@
                     <div><strong>Expenses this month</strong><p>Expenses already paid plus repeating expenses still due.</p></div>
                     <div><strong>Expected daily costs</strong><p>Your daily estimate and its total for the remaining days.</p></div>
                     <div><strong>Saving due</strong><p>This month's goal contributions that have not yet been funded.</p></div>
-                    <div><strong>Saved in goals</strong><p>Total held in active goal accounts, separate from spendable money.</p></div>
+                    <div><strong>Saved in goals</strong><p>Total money kept in active saving goals. It is separate from money you can spend.</p></div>
                 </div>
 
                 <h3>Activity, reminders, and coming up</h3>
@@ -140,8 +139,8 @@
                 <div class="feature-list">
                     <div><strong>Bank and cash accounts</strong><p>Create an account with a name and its current balance. Income, expenses, and transfers update this balance automatically.</p></div>
                     <div><strong>Included accounts</strong><p>Use these for money available to your monthly budget. Their balances and connected plans affect Overview.</p></div>
-                    <div><strong>Tracking-only accounts</strong><p>Turn off Include in monthly budget for cash, investments, or other money you want to record without changing free-to-spend or monthly forecasts.</p></div>
-                    <div><strong>Goal accounts</strong><p>Each saving goal has its own separate balance and appears in Accounts. It is funded by transfers, not counted as spendable bank money.</p></div>
+                    <div><strong>Tracking-only accounts</strong><p>Turn off Include in monthly budget for money you want to record but do not want Darith to use in safe-to-spend checks.</p></div>
+                    <div><strong>Goal accounts</strong><p>Each saving goal has its own balance in Accounts. Money in a saving goal is not counted as money you can spend.</p></div>
                 </div>
                 <p>Select the three-dot button on an account to rename it, correct its current balance, change its budget inclusion, or remove it. Removing a bank account keeps transaction history, but an account still used by a transfer or goal may need those links changed first.</p>
             </section>
@@ -153,31 +152,31 @@
                 <div class="feature-list">
                     <div><strong>Income</strong><p>Add money that has already arrived. Choose its description, amount, date, category, and destination bank account.</p></div>
                     <div><strong>Expense</strong><p>Record money already spent. Darith subtracts it from the selected bank account.</p></div>
-                    <div><strong>Transfer</strong><p>Move money between bank accounts, from a bank account to a goal, from a goal back to a bank, or between eligible accounts. The source must have enough money.</p></div>
+                    <div><strong>Transfer</strong><p>Move money between bank accounts and saving goals. The source must have enough money.</p></div>
                     <div><strong>Export CSV</strong><p>Download your Darith data in a spreadsheet-friendly file for your own records or analysis.</p></div>
                 </div>
                 <div class="note note-info"><strong>Past and future dates</strong><p>Manual transactions and transfers represent completed activity, so they cannot be dated in the future. Use Monthly plans for future income and charges.</p></div>
                 <h3>Editing and deleting</h3>
-                <p>Select a transaction to edit or remove it. Editing reverses the old balance effect and applies the new values. In Settings &gt; Behavior, choose what deletion does:</p>
+                <p>Select a transaction to edit or remove it. When you edit a transaction, Darith removes the old change and applies the new one. In Settings &gt; Transactions, choose what deletion does:</p>
                 <ul class="plain-list">
                     <li><b>Update balances automatically:</b> deleting an expense restores its amount; deleting income removes its amount; deleting a transfer restores both sides.</li>
                     <li><b>Leave balances unchanged:</b> only the activity record is removed, and you correct account balances yourself if needed.</li>
                 </ul>
-                <p>Deleting one posted occurrence from a repeating plan skips only that occurrence. Future months remain scheduled.</p>
+                <p>Deleting one item from a monthly plan skips only that item. Future months stay planned.</p>
             </section>
 
             <section class="tutorial-section" id="monthly-plans">
                 <div class="section-number">06</div>
                 <p class="section-kicker">What should repeat</p>
                 <h2>Monthly plans</h2>
-                <p class="section-lead">Plans are for known future activity. They affect forecasts before their due date, then become normal transactions when due.</p>
+                <p class="section-lead">Plans are for income, expenses, and savings you know will happen later. Darith uses them before their date, then records them when they happen.</p>
                 <div class="feature-list">
-                    <div><strong>Recurring income</strong><p>Add salary or other monthly income. Choose the first payment date, optional final date, category, and receiving bank account.</p></div>
-                    <div><strong>Recurring expenses</strong><p>Add rent, bills, subscriptions, or other monthly charges. Choose the first charge date, optional final date, category, and paying bank account.</p></div>
+                    <div><strong>Monthly income</strong><p>Add salary or other monthly income. Choose the first payment date, optional final date, category, and receiving bank account.</p></div>
+                    <div><strong>Monthly expenses</strong><p>Add rent, bills, subscriptions, or other monthly charges. Choose the first charge date, optional final date, category, and paying bank account.</p></div>
                     <div><strong>Date handling</strong><p>The day in the first date becomes the monthly due day. A date such as the 31st is moved to the last valid day in shorter months.</p></div>
-                    <div><strong>Automatic posting</strong><p>On or after the due date, Darith posts each occurrence once and updates the account. Due items are checked when the dashboard opens and can also be processed by the server's scheduled task.</p></div>
+                    <div><strong>Automatic posting</strong><p>On or after the date, Darith adds each planned item once and updates the account. Darith checks due items when the dashboard opens and the server can also check them automatically.</p></div>
                 </div>
-                <p>Editing a plan changes future postings. Transactions already posted remain as they were. Deleting a plan stops future occurrences while keeping posted activity and its balance history.</p>
+                <p>Editing a plan changes future items. Past transactions stay the same. Deleting a plan stops future items but keeps past activity.</p>
             </section>
 
             <section class="tutorial-section" id="saving-goals">
@@ -218,23 +217,30 @@
                     <div><strong>Theme</strong><p>Ocean, Forest, Graphite, or Purple. The choice is saved only for your user.</p></div>
                     <div><strong>Currency</strong><p>EUR, USD, GBP, CHF, CAD, AUD, or Iranian Toman (IRT). This is display formatting, not currency conversion.</p></div>
                     <div><strong>Language</strong><p>Choose English, Persian, Italian, French, Spanish, or Dutch. Darith saves the choice to your account, and Persian uses a right-to-left layout.</p></div>
-                    <div><strong>Status GIFs</strong><p>Optionally upload one private GIF for On track, Warning, and Out of budget. Each is limited to 2 MB, 1200 by 1200 pixels, and 300 frames. A new upload replaces the previous file, and Remove GIF clears it.</p></div>
+                    <div><strong>Status GIFs</strong><p>You can add one private GIF for Good, Tight, and Not enough. Each is limited to 2 MB, 1200 by 1200 pixels, and 300 frames. A new upload replaces the previous file, and Remove GIF clears it.</p></div>
                 </div>
 
-                <h3>Behavior</h3>
-                <p>Choose whether deleting a transaction automatically reverses its effect on balances or leaves balances unchanged for manual correction.</p>
+                <h3>Planning</h3>
+                <div class="feature-list compact">
+                    <div><strong>Emergency buffer</strong><p>Money Darith always keeps aside. The default is 0.</p></div>
+                    <div><strong>Months to check</strong><p>Choose 1, 2, or 3 months ahead. One month is the default.</p></div>
+                    <div><strong>Money timeline</strong><p>Choose if the day-by-day slider is shown on Overview.</p></div>
+                </div>
+
+                <h3>Transactions</h3>
+                <p>Choose if deleting a transaction changes the account balance back, or leaves the balance as it is.</p>
 
                 <h3>Security</h3>
                 <div class="feature-list compact">
-                    <div><strong>Inactivity lock</strong><p>Choose Off, 1, 5, 15, or 30 minutes. Darith locks after no activity for that period.</p></div>
+                    <div><strong>Auto lock</strong><p>Choose Off, 1, 5, 15, or 30 minutes. Darith locks after you do not use it for that time.</p></div>
                     <div><strong>Darith PIN</strong><p>Create a 4 to 8 digit PIN for unlocking. The saved value is securely hashed rather than stored as readable digits.</p></div>
                     <div><strong>Passkey</strong><p>Add a passkey to unlock with your device's fingerprint, Face ID, screen lock, or security key. Passkeys require HTTPS and a supported browser.</p></div>
-                    <div><strong>Biometric privacy</strong><p>Your device performs the biometric check. Darith receives proof that it succeeded, not your fingerprint or face data.</p></div>
+                    <div><strong>Fingerprint and Face ID privacy</strong><p>Your device checks your fingerprint or face. Darith only receives a yes/no result, not your fingerprint or face data.</p></div>
                 </div>
-                <p>Before enabling inactivity lock, add at least one unlock method. Keep a working PIN or passkey before removing your last available method.</p>
+                <p>Before turning on auto lock, add at least one way to unlock Darith. Keep a working PIN or passkey before removing your last available method.</p>
 
                 <h3>Account</h3>
-                <p>The Account tab can permanently delete your Darith user and live data. Deletion requires your current password, an acknowledgement, the exact signature phrase shown on screen, and a final confirmation. This action cannot be undone; encrypted historical backups may remain until normal backup rotation removes them.</p>
+                <p>The Account tab can permanently delete your Darith user and live data. To delete your account, enter your password, tick the confirmation box, type the text shown on screen, and confirm one last time. This action cannot be undone; encrypted historical backups may remain until normal backup rotation removes them.</p>
             </section>
 
             <section class="tutorial-section" id="privacy">
@@ -245,9 +251,9 @@
                     <div><strong>No bank credentials</strong><p>Darith never asks for your online banking username, password, card number, or bank API access. You enter only the financial information you choose.</p></div>
                     <div><strong>Private by user</strong><p>Accounts, transactions, categories, goals, settings, profile images, and GIFs are scoped to the signed-in user. Other users cannot view them.</p></div>
                     <div><strong>Limited admin screens</strong><p>The normal admin interface manages usernames, email addresses, passwords, subscriptions, and submitted feedback without listing users' financial records.</p></div>
-                    <div><strong>Protected connection and backups</strong><p>darith.app uses HTTPS for data in transit and supports encrypted database and media backups. The server operator still has technical access for maintenance; Darith is not end-to-end encrypted.</p></div>
+                    <div><strong>Safe connection and backups</strong><p>darith.app uses HTTPS for data in transit and supports encrypted database and media backups. The server operator still has technical access for maintenance; Darith is not end-to-end encrypted.</p></div>
                 </div>
-                <p>Use <b>Export CSV</b> when you want a portable copy of your data. Use <b>Feedback</b> in the dashboard to send a comment to the operator; only the message, page context, and your account identity are sent.</p>
+                <p>Use <b>Export CSV</b> when you want a copy of your data. Use <b>Feedback</b> in the dashboard to send a comment to the operator; only the message, page context, and your account identity are sent.</p>
             </section>
 
             <section class="tutorial-section" id="subscription">

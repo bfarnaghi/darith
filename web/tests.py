@@ -443,7 +443,7 @@ class FinanceTestCase(TestCase):
         self.assertContains(response, "Personal money, made clear")
         self.assertContains(response, "No bank credentials")
         self.assertContains(response, "Private by account")
-        self.assertContains(response, "Protected data storage")
+        self.assertContains(response, "Safe data storage")
         self.assertContains(response, "Limited admin view")
         self.assertContains(response, "Know what's safe to spend today.")
         self.assertContains(response, "See your safe-to-spend amount instantly.")
@@ -1049,7 +1049,7 @@ class FinanceTestCase(TestCase):
         response = self.client.get(reverse("dashboard"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Safe to spend today")
-        self.assertContains(response, "Your money timeline")
+        self.assertContains(response, "Money by day")
         self.assertContains(response, "1,000.00")
 
     def test_create_update_and_delete_expense_adjusts_balance(self):
@@ -1441,7 +1441,7 @@ class FinanceTestCase(TestCase):
         with patch("web.views.timezone.localdate", return_value=date(2026, 8, 14)):
             response = self.client.get(reverse("dashboard"))
         self.assertContains(response, "€0.00 received so far")
-        self.assertContains(response, "€1,300.00 still due")
+        self.assertContains(response, "€1,300.00 still to come")
         self.assertContains(response, "First payment date")
         self.assertContains(response, "First charge date")
 
@@ -1457,7 +1457,63 @@ class FinanceTestCase(TestCase):
         budget = build_monthly_budget(self.user, date(2026, 8, 14))
         self.assertEqual(budget["free_to_spend"], Decimal("-700.00"))
         self.assertEqual(budget["status"], "danger")
-        self.assertIn("projected", budget["warning"])
+        self.assertIn("may be", budget["warning"])
+
+    def test_emergency_buffer_reduces_safe_to_spend_without_changing_balance(self):
+        BudgetPreference.objects.create(
+            user=self.user,
+            expected_daily_expense=Decimal("0.00"),
+            emergency_buffer=Decimal("200.00"),
+        )
+
+        forecast = build_daily_forecast(self.user, date(2026, 8, 18))
+        budget = build_monthly_budget(
+            self.user, date(2026, 8, 18), daily_forecast=forecast
+        )
+
+        self.assertEqual(forecast["emergency_buffer"], Decimal("200.00"))
+        self.assertEqual(forecast["rows"][0]["safe_to_spend"], Decimal("800.00"))
+        self.assertEqual(budget["projected_balance"], Decimal("1000.00"))
+
+    def test_forecast_month_setting_changes_timeline_end(self):
+        BudgetPreference.objects.create(
+            user=self.user,
+            forecast_months=3,
+        )
+
+        forecast = build_daily_forecast(self.user, date(2026, 8, 18))
+
+        self.assertEqual(forecast["end_date"], date(2026, 11, 30))
+
+    def test_planning_settings_can_hide_money_timeline(self):
+        BudgetPreference.objects.create(
+            user=self.user,
+            show_money_timeline=False,
+        )
+
+        with patch("web.views.timezone.localdate", return_value=date(2026, 8, 18)):
+            response = self.client.get(reverse("dashboard"))
+
+        self.assertNotContains(response, "Money by day")
+        self.assertNotContains(response, 'id="forecast-timeline-data"')
+
+    def test_planning_settings_update_buffer_months_and_timeline(self):
+        BudgetPreference.objects.create(user=self.user)
+
+        response = self.client.post(
+            reverse("update_planning_settings"),
+            {
+                "emergency_buffer": "125.50",
+                "forecast_months": "2",
+                "show_money_timeline": "on",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        preference = BudgetPreference.objects.get(user=self.user)
+        self.assertEqual(preference.emergency_buffer, Decimal("125.50"))
+        self.assertEqual(preference.forecast_months, 2)
+        self.assertTrue(preference.show_money_timeline)
 
     def test_user_cannot_edit_another_users_account(self):
         private_account = BankAccount.objects.create(
@@ -1590,7 +1646,7 @@ class FinanceTestCase(TestCase):
         self.assertEqual(budget["remaining_daily_expenses"], Decimal("90.00"))
         self.assertEqual(budget["free_to_spend"], Decimal("-190.00"))
         self.assertEqual(budget["status"], "danger")
-        self.assertIn("projected", budget["warning"])
+        self.assertIn("may be", budget["warning"])
 
     def test_bank_transfer_create_update_and_delete_reverses_balances(self):
         second = BankAccount.objects.create(
@@ -2043,7 +2099,7 @@ class ManualSubscriptionTests(TestCase):
         self.assertContains(response, "free for individuals")
         self.assertContains(response, "https://github.com/bfarnaghi/darith")
         self.assertContains(response, "https://buymeacoffee.com/darith")
-        self.assertContains(response, "automatically recurring monthly contributions")
+        self.assertContains(response, "one-time and monthly payments")
 
         subscription.status = UserSubscription.STATUS_ACTIVE
         subscription.access_until = timezone.localdate() + timedelta(days=30)

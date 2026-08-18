@@ -40,6 +40,7 @@ from .forms import (
     FeedbackForm,
     IncomeForm,
     MonthlyExpenseForm,
+    PlanningSettingsForm,
     RecurringIncomeForm,
     RegistrationForm,
     SavingsGoalForm,
@@ -116,9 +117,9 @@ def _display_money(amount, preference, sign=""):
 
 def _forecast_timeline_payload(daily_forecast, preference):
     status_labels = {
-        "healthy": _("Comfortable"),
+        "healthy": _("Good"),
         "warning": _("Tight"),
-        "danger": _("Shortfall"),
+        "danger": _("Not enough"),
     }
     rows = []
     for row in daily_forecast["rows"]:
@@ -140,13 +141,20 @@ def _forecast_timeline_payload(daily_forecast, preference):
                 "dateLong": date_format(row["date"], "l, j F Y"),
                 "safe": _display_money(row["safe_to_spend"], preference),
                 "balance": _display_money(row["opening_balance"], preference),
-                "protected": _display_money(row["protected_amount"], preference),
+                "incomeLeft": _display_money(
+                    row["remaining_income"], preference, "+"
+                ),
+                "expensesLeft": _display_money(
+                    row["remaining_expenses"], preference, "−"
+                ),
+                "savingsLeft": _display_money(
+                    row["remaining_savings"], preference, "−"
+                ),
                 "dailyRemaining": _display_money(
-                    row["remaining_daily_costs"], preference
+                    row["remaining_daily_costs"], preference, "−"
                 ),
-                "uncovered": _display_money(
-                    row["uncovered_commitments"], preference
-                ),
+                "buffer": _display_money(row["emergency_buffer"], preference),
+                "hasBuffer": row["emergency_buffer"] > 0,
                 "incomeToday": _display_money(row["income"], preference, "+"),
                 "expensesToday": _display_money(row["expenses"], preference, "−"),
                 "savingsToday": _display_money(row["savings"], preference, "−"),
@@ -582,6 +590,7 @@ def dashboard(request):
         "account_form": BankAccountForm(),
         "budget_preference_form": BudgetPreferenceForm(instance=preference),
         "dashboard_animation_form": DashboardAnimationForm(instance=preference),
+        "planning_settings_form": PlanningSettingsForm(instance=preference),
         "security_settings_form": SecuritySettingsForm(instance=preference),
         "account_deletion_form": AccountDeletionForm(user=request.user),
         "feedback_form": FeedbackForm(),
@@ -1050,6 +1059,19 @@ def update_budget_preference(request):
     if form.is_valid():
         form.save()
         messages.success(request, _("Daily spending expectation updated."))
+    else:
+        _show_form_errors(request, form)
+    return _dashboard_redirect("overview")
+
+
+@require_POST
+@login_required
+def update_planning_settings(request):
+    preference, _created = BudgetPreference.objects.get_or_create(user=request.user)
+    form = PlanningSettingsForm(request.POST, instance=preference)
+    if form.is_valid():
+        form.save()
+        messages.success(request, _("Planning settings saved."))
     else:
         _show_form_errors(request, form)
     return _dashboard_redirect("overview")

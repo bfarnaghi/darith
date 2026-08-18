@@ -76,25 +76,25 @@
                 <div class="budget-main">
                     <p>{% translate "Safe to spend today" %}</p>
                     <strong>{{ budget.free_to_spend|money:budget_preference }}</strong>
-                    <span>{% blocktranslate count days=budget.days_remaining with amount=budget.daily_allowance|money:budget_preference end=budget.forecast_horizon_end|date:"j M" %}{{ amount }} extra per day for {{ days }} day · protected through {{ end }}{% plural %}{{ amount }} extra per day for {{ days }} days · protected through {{ end }}{% endblocktranslate %}</span>
+                    <span>{% blocktranslate count days=budget.days_remaining with amount=budget.daily_allowance|money:budget_preference end=budget.forecast_horizon_end|date:"j M" %}{{ amount }} extra per day for {{ days }} day · plan checked to {{ end }}{% plural %}{{ amount }} extra per day for {{ days }} days · plan checked to {{ end }}{% endblocktranslate %}</span>
                 </div>
                 {% if active_budget_animation %}<div class="budget-animation" aria-hidden="true"><img src="{% url 'dashboard_animation' budget.status %}" alt=""></div>{% endif %}
                 <div class="budget-meter" aria-label="{% translate 'Current balance and monthly outlook' %}">
                     <span class="status-dot status-{{ budget.status }}"></span>
                     <div class="budget-summary">
                         <span><small>{% translate "Current bank balance" %}</small><strong>{{ budget.current_balance|money:budget_preference }}</strong></span>
-                        <span><small>{% blocktranslate with date=budget.month_end|date:"j M" %}Projected balance on {{ date }}{% endblocktranslate %}</small><strong>{{ budget.projected_balance|money:budget_preference }}</strong></span>
-                        <span class="next-month-summary"><small>{% blocktranslate with date=next_budget.month_start|date:"j M" %}Safe to spend on {{ date }}{% endblocktranslate %}</small><strong><i class="status-dot status-{{ next_budget.status }}"></i>{{ next_budget.free_to_spend|money:budget_preference }}</strong><em>{% blocktranslate with amount=next_budget.projected_balance|money:budget_preference month=next_budget.month_start|date:"F" %}{{ amount }} projected at the end of {{ month }}{% endblocktranslate %}</em></span>
+                        <span><small>{% blocktranslate with date=budget.month_end|date:"j M" %}Balance expected on {{ date }}{% endblocktranslate %}</small><strong>{{ budget.projected_balance|money:budget_preference }}</strong></span>
                     </div>
                 </div>
             </div>
 
-            <section class="forecast-timeline" aria-labelledby="forecast-timeline-title" data-timeline-root data-no-events="{% translate 'No scheduled income, bills, or saving transfers on this day.' %}">
+            {% if budget_preference.show_money_timeline %}
+            <section class="forecast-timeline" aria-labelledby="forecast-timeline-title" data-timeline-root data-no-events="{% translate 'Nothing else is planned for this day.' %}">
                 <div class="forecast-timeline-head">
                     <div>
                         <p class="eyebrow">{% translate "Plan ahead" %}</p>
-                        <h2 id="forecast-timeline-title">{% translate "Your money timeline" %}</h2>
-                        <p>{% blocktranslate with end=forecast_end|date:"j M" %}Drag through each day to see what is genuinely safe for optional spending while your plans stay protected through {{ end }}.{% endblocktranslate %}</p>
+                        <h2 id="forecast-timeline-title">{% translate "Money by day" %}</h2>
+                        <p>{% translate "Move the slider to see how much extra money you can safely spend on each day." %}</p>
                     </div>
                     <button class="button button-secondary button-small timeline-today" type="button" data-timeline-today>{% translate "Today" %}</button>
                 </div>
@@ -103,13 +103,13 @@
                     <button class="timeline-step" type="button" data-timeline-prev aria-label="{% translate 'Previous day' %}">‹</button>
                     <div>
                         <strong data-timeline-date>{{ forecast_start|date:"D, j M" }}</strong>
-                        <span data-timeline-status>{% translate "Loading forecast..." %}</span>
+                        <span data-timeline-status>{% translate "Loading..." %}</span>
                     </div>
                     <button class="timeline-step" type="button" data-timeline-next aria-label="{% translate 'Next day' %}">›</button>
                 </div>
 
                 <div class="timeline-slider-wrap">
-                    <label class="sr-only" for="money-timeline-slider">{% translate "Choose a forecast date" %}</label>
+                    <label class="sr-only" for="money-timeline-slider">{% translate "Choose a day" %}</label>
                     <input id="money-timeline-slider" class="timeline-slider" type="range" min="0" max="0" value="0" step="1" data-timeline-slider>
                     <div class="timeline-event-rail" data-timeline-event-rail aria-hidden="true"></div>
                     <div class="timeline-range-labels"><span>{{ forecast_start|date:"j M" }}</span><span>{{ forecast_end|date:"j M" }}</span></div>
@@ -117,43 +117,50 @@
 
                 <div class="timeline-metrics" aria-live="polite">
                     <article class="timeline-metric timeline-primary-metric">
-                        <span>{% translate "Safe for extras" %}</span>
+                        <span>{% translate "Safe to spend" %}</span>
                         <strong data-timeline-safe>—</strong>
-                        <small>{% translate "One-time optional spending that keeps the future plan safe." %}</small>
+                        <small>{% translate "You can spend this extra amount on this day and still keep your plan on track." %}</small>
                     </article>
                     <article class="timeline-metric">
-                        <span>{% translate "Projected bank balance" %}</span>
+                        <span>{% translate "Bank balance" %}</span>
                         <strong data-timeline-balance>—</strong>
-                        <small>{% translate "Expected spendable cash at the start of this day." %}</small>
+                        <small>{% translate "Money expected in your included accounts at the start of this day." %}</small>
                     </article>
-                    <article class="timeline-metric">
-                        <span>{% translate "Protected" %}</span>
-                        <strong data-timeline-protected>—</strong>
-                        <small class="timeline-protected-breakdown"><span>{% translate "Daily costs left" %}: <b data-timeline-daily-remaining>—</b></span><span>{% translate "Uncovered bills + savings" %}: <b data-timeline-uncovered>—</b></span></small>
-                    </article>
+                </div>
+
+                <div class="timeline-plan-left">
+                    <h3>{% translate "Still in your plan" %}</h3>
+                    <div class="timeline-plan-grid">
+                        <span><small>{% translate "Income coming" %}</small><strong class="positive" data-timeline-income-left>—</strong></span>
+                        <span><small>{% translate "Expenses left" %}</small><strong class="negative" data-timeline-expenses-left>—</strong></span>
+                        <span><small>{% translate "Savings left" %}</small><strong class="negative" data-timeline-savings-left>—</strong></span>
+                        <span><small>{% translate "Daily spending left" %}</small><strong class="negative" data-timeline-daily-remaining>—</strong></span>
+                        <span data-timeline-buffer-wrap hidden><small>{% translate "Emergency buffer" %}</small><strong data-timeline-buffer>—</strong></span>
+                    </div>
                 </div>
 
                 <div class="timeline-detail-grid">
                     <div class="timeline-day-flows">
-                        <h3>{% translate "Planned on this day" %}</h3>
+                        <h3>{% translate "Planned for this day" %}</h3>
                         <div class="timeline-flow-grid">
                             <span><small>{% translate "Income" %}</small><strong class="positive" data-timeline-income>—</strong></span>
-                            <span><small>{% translate "Bills" %}</small><strong class="negative" data-timeline-expenses>—</strong></span>
+                            <span><small>{% translate "Expenses" %}</small><strong class="negative" data-timeline-expenses>—</strong></span>
                             <span><small>{% translate "Savings" %}</small><strong class="negative" data-timeline-savings>—</strong></span>
-                            <span><small>{% translate "Daily cost" %}</small><strong class="negative" data-timeline-daily>—</strong></span>
+                            <span><small>{% translate "Daily spending" %}</small><strong class="negative" data-timeline-daily>—</strong></span>
                         </div>
                     </div>
                     <div class="timeline-events">
-                        <h3>{% translate "Events" %}</h3>
+                        <h3>{% translate "Details" %}</h3>
                         <div data-timeline-events></div>
                     </div>
                 </div>
             </section>
             {{ forecast_timeline|json_script:"forecast-timeline-data" }}
+            {% endif %}
 
             <div class="notice notice-{{ budget.status }}">
                 <span class="notice-symbol" aria-hidden="true">{% if budget.status == 'healthy' %}✓{% else %}!{% endif %}</span>
-                <div><strong>{% if budget.status == 'healthy' %}{% translate "Comfortable" %}{% elif budget.status == 'warning' %}{% translate "Tight" %}{% else %}{% translate "Shortfall" %}{% endif %}</strong><p>{% if budget_preference.hide_financial_values and budget.status != 'healthy' %}{% translate "Your budget needs attention. Show amounts for the detailed shortfall." %}{% else %}{{ budget.warning }}{% endif %}</p></div>
+                <div><strong>{% if budget.status == 'healthy' %}{% translate "Good" %}{% elif budget.status == 'warning' %}{% translate "Tight" %}{% else %}{% translate "Not enough" %}{% endif %}</strong><p>{% if budget_preference.hide_financial_values and budget.status != 'healthy' %}{% translate "Your plan needs attention. Show amounts to see the details." %}{% else %}{{ budget.warning }}{% endif %}</p></div>
             </div>
 
             {% if goal_reminders %}
@@ -174,11 +181,11 @@
 
             <div class="metric-grid">
                 <article class="metric"><span>{% translate "Current bank balance" %}</span><strong>{{ budget.current_balance|money:budget_preference }}</strong><small>{% blocktranslate count count=budget.included_account_count %}Across {{ count }} included account{% plural %}Across {{ count }} included accounts{% endblocktranslate %}</small></article>
-                <article class="metric"><span>{% translate "Income this month" %}</span><strong class="positive">{{ budget.income_month_total|money_plus:budget_preference }}</strong><small>{% blocktranslate with received=budget.actual_income|money:budget_preference due=budget.expected_income|money:budget_preference %}{{ received }} received so far · {{ due }} still due{% endblocktranslate %}</small></article>
-                <article class="metric"><span>{% translate "Expenses this month" %}</span><strong class="negative">{{ budget.expense_month_total|money_minus:budget_preference }}</strong><small>{% blocktranslate with paid=budget.actual_expenses|money:budget_preference due=budget.expected_expenses|money:budget_preference %}{{ paid }} paid so far · {{ due }} still due{% endblocktranslate %}</small></article>
-                <article class="metric metric-action"><span>{% translate "Expected daily costs" %}</span><strong>{% blocktranslate with amount=budget.expected_daily_expense|money:budget_preference %}{{ amount }} / day{% endblocktranslate %}</strong><small>{% blocktranslate with amount=budget.remaining_daily_expenses|money:budget_preference %}{{ amount }} for remaining days{% endblocktranslate %}</small><button class="text-button" type="button" data-dialog-open="daily-spending-edit">{% translate "Edit" %}</button></article>
-                <article class="metric"><span>{% translate "Saving due" %}</span><strong>{{ budget.savings_target|money:budget_preference }}</strong><small>{% translate "Not yet funded this month" %}</small></article>
-                <article class="metric"><span>{% translate "Saved in goals" %}</span><strong>{{ budget.savings_balance|money:budget_preference }}</strong><small>{% translate "Separate from spendable money" %}</small></article>
+                <article class="metric"><span>{% translate "Income this month" %}</span><strong class="positive">{{ budget.income_month_total|money_plus:budget_preference }}</strong><small>{% blocktranslate with received=budget.actual_income|money:budget_preference due=budget.expected_income|money:budget_preference %}{{ received }} received so far · {{ due }} still to come{% endblocktranslate %}</small></article>
+                <article class="metric"><span>{% translate "Expenses this month" %}</span><strong class="negative">{{ budget.expense_month_total|money_minus:budget_preference }}</strong><small>{% blocktranslate with paid=budget.actual_expenses|money:budget_preference due=budget.expected_expenses|money:budget_preference %}{{ paid }} paid so far · {{ due }} still to pay{% endblocktranslate %}</small></article>
+                <article class="metric metric-action"><span>{% translate "Daily spending plan" %}</span><strong>{% blocktranslate with amount=budget.expected_daily_expense|money:budget_preference %}{{ amount }} / day{% endblocktranslate %}</strong><small>{% blocktranslate with amount=budget.remaining_daily_expenses|money:budget_preference %}{{ amount }} for remaining days{% endblocktranslate %}</small><button class="text-button" type="button" data-dialog-open="daily-spending-edit">{% translate "Edit" %}</button></article>
+                <article class="metric"><span>{% translate "Savings to add now" %}</span><strong>{{ budget.savings_target|money:budget_preference }}</strong><small>{% if budget.later_savings_target > 0 %}{% blocktranslate with amount=budget.later_savings_target|money:budget_preference %}{{ amount }} planned later this month{% endblocktranslate %}{% else %}{% translate "No more savings planned this month" %}{% endif %}</small></article>
+                <article class="metric"><span>{% translate "Saved in goals" %}</span><strong>{{ budget.savings_balance|money:budget_preference }}</strong><small>{% translate "Kept separate from money you can spend" %}</small></article>
             </div>
 
             <div class="overview-grid">
@@ -226,19 +233,19 @@
             <div class="section-heading page-heading"><div><p class="eyebrow">{% translate "Automatic monthly entries" %}</p><h2>{% translate "Income, expenses and savings" %}</h2></div><div class="quick-actions"><button class="button button-secondary" type="button" data-dialog-open="recurring-income-create">+ {% translate "Income plan" %}</button><button class="button button-primary" type="button" data-dialog-open="monthly-expense-create">+ {% translate "Expense plan" %}</button></div></div>
             <div class="plan-grid">
                 <section class="content-block">
-                    <div class="section-heading"><h3>{% translate "Recurring income" %}</h3><span class="count-badge">{{ recurring_incomes|length }}</span></div>
+                    <div class="section-heading"><h3>{% translate "Monthly income" %}</h3><span class="count-badge">{{ recurring_incomes|length }}</span></div>
                     <div class="plan-list">
                         {% for item, form in recurring_income_edit_forms %}
                         <button class="plan-row" type="button" data-dialog-open="recurring-income-edit-{{ item.id }}"><span class="transaction-mark income">+</span><span><strong>{{ item.name }}</strong><small>{% blocktranslate with day=item.day_of_month account=item.bank_account.name %}Monthly on day {{ day }} · {{ account }}{% endblocktranslate %}</small></span><b class="positive">{{ item.amount|money:budget_preference }}</b></button>
-                        {% empty %}<div class="empty-state"><strong>{% translate "No recurring income" %}</strong><span>{% translate "Add salary or other regular income." %}</span></div>{% endfor %}
+                        {% empty %}<div class="empty-state"><strong>{% translate "No monthly income" %}</strong><span>{% translate "Add salary or other regular income." %}</span></div>{% endfor %}
                     </div>
                 </section>
                 <section class="content-block">
-                    <div class="section-heading"><h3>{% translate "Recurring expenses" %}</h3><span class="count-badge">{{ recurring_expenses|length }}</span></div>
+                    <div class="section-heading"><h3>{% translate "Monthly expenses" %}</h3><span class="count-badge">{{ recurring_expenses|length }}</span></div>
                     <div class="plan-list">
                         {% for item, form in monthly_expense_edit_forms %}
                         <button class="plan-row" type="button" data-dialog-open="monthly-expense-edit-{{ item.id }}"><span class="transaction-mark expense">−</span><span><strong>{{ item.name }}</strong><small>{% blocktranslate with day=item.day_of_month account=item.bank_account.name %}Monthly on day {{ day }} · {{ account }}{% endblocktranslate %}</small></span><b class="negative">{{ item.amount|money:budget_preference }}</b></button>
-                        {% empty %}<div class="empty-state"><strong>{% translate "No recurring expenses" %}</strong><span>{% translate "Add rent, subscriptions, or bills." %}</span></div>{% endfor %}
+                        {% empty %}<div class="empty-state"><strong>{% translate "No monthly expenses" %}</strong><span>{% translate "Add rent, subscriptions, or bills." %}</span></div>{% endfor %}
                     </div>
                 </section>
             </div>
@@ -290,7 +297,8 @@
     <div class="dialog-head"><h2>{% translate "Settings" %}</h2><button class="icon-button" type="button" data-dialog-close aria-label="{% translate 'Close' %}">×</button></div>
     <div class="settings-tabs" role="tablist" aria-label="{% translate 'Settings sections' %}">
         <button class="settings-tab" id="settings-tab-appearance" type="button" role="tab" data-settings-tab="appearance" aria-controls="settings-panel-appearance" aria-selected="true">{% translate "Appearance" %}</button>
-        <button class="settings-tab" id="settings-tab-behavior" type="button" role="tab" data-settings-tab="behavior" aria-controls="settings-panel-behavior" aria-selected="false" tabindex="-1">{% translate "Behavior" %}</button>
+        <button class="settings-tab" id="settings-tab-planning" type="button" role="tab" data-settings-tab="planning" aria-controls="settings-panel-planning" aria-selected="false" tabindex="-1">{% translate "Planning" %}</button>
+        <button class="settings-tab" id="settings-tab-behavior" type="button" role="tab" data-settings-tab="behavior" aria-controls="settings-panel-behavior" aria-selected="false" tabindex="-1">{% translate "Transactions" %}</button>
         <button class="settings-tab" id="settings-tab-security" type="button" role="tab" data-settings-tab="security" aria-controls="settings-panel-security" aria-selected="false" tabindex="-1">{% translate "Security" %}</button>
         <button class="settings-tab" id="settings-tab-account" type="button" role="tab" data-settings-tab="account" aria-controls="settings-panel-account" aria-selected="false" tabindex="-1">{% translate "Account" %}</button>
     </div>
@@ -317,19 +325,19 @@
             <div class="appearance-setting"><label for="{{ dashboard_animation_form.language.id_for_label }}">{% translate "Language" %}</label>{{ dashboard_animation_form.language }}<small>{% translate "The new language is applied after you save." %}</small></div>
             <p class="animation-intro">{% translate "Choose one private GIF for each budget state. Each file can be up to 2 MB, 1200 x 1200 pixels, and 300 frames." %}</p>
             <section class="animation-option">
-                <div class="animation-copy"><span class="status-dot"></span><strong>{% translate "On track" %}</strong><small>{% translate "Shown when bills, daily costs, and goals are covered." %}</small></div>
+                <div class="animation-copy"><span class="status-dot"></span><strong>{% translate "Good" %}</strong><small>{% translate "Shown when your plan looks good." %}</small></div>
                 <div class="animation-preview">{% if budget_preference.healthy_gif %}<img src="{% url 'dashboard_animation' 'healthy' %}" alt="{% translate 'Current on-track GIF' %}">{% else %}<span>{% translate "No GIF" %}</span>{% endif %}</div>
                 <label for="{{ dashboard_animation_form.healthy_gif.id_for_label }}">{% translate "Choose GIF" %}</label>{{ dashboard_animation_form.healthy_gif }}
                 {% if budget_preference.healthy_gif %}<button class="remove-gif-button" type="submit" formaction="{% url 'remove_dashboard_gif' 'healthy' %}" formnovalidate>{% translate "Remove GIF" %}</button>{% endif %}
             </section>
             <section class="animation-option">
-                <div class="animation-copy"><span class="status-dot status-warning"></span><strong>{% translate "Warning" %}</strong><small>{% translate "Shown when daily costs are covered but saving goals are short." %}</small></div>
+                <div class="animation-copy"><span class="status-dot status-warning"></span><strong>{% translate "Tight" %}</strong><small>{% translate "Shown when there is only a small safe-to-spend amount." %}</small></div>
                 <div class="animation-preview">{% if budget_preference.warning_gif %}<img src="{% url 'dashboard_animation' 'warning' %}" alt="{% translate 'Current warning GIF' %}">{% else %}<span>{% translate "No GIF" %}</span>{% endif %}</div>
                 <label for="{{ dashboard_animation_form.warning_gif.id_for_label }}">{% translate "Choose GIF" %}</label>{{ dashboard_animation_form.warning_gif }}
                 {% if budget_preference.warning_gif %}<button class="remove-gif-button" type="submit" formaction="{% url 'remove_dashboard_gif' 'warning' %}" formnovalidate>{% translate "Remove GIF" %}</button>{% endif %}
             </section>
             <section class="animation-option">
-                <div class="animation-copy"><span class="status-dot status-danger"></span><strong>{% translate "Out of budget" %}</strong><small>{% translate "Shown when spendable accounts cannot cover expected daily costs." %}</small></div>
+                <div class="animation-copy"><span class="status-dot status-danger"></span><strong>{% translate "Not enough" %}</strong><small>{% translate "Shown when Darith expects your money to become too low." %}</small></div>
                 <div class="animation-preview">{% if budget_preference.danger_gif %}<img src="{% url 'dashboard_animation' 'danger' %}" alt="{% translate 'Current out-of-budget GIF' %}">{% else %}<span>{% translate "No GIF" %}</span>{% endif %}</div>
                 <label for="{{ dashboard_animation_form.danger_gif.id_for_label }}">{% translate "Choose GIF" %}</label>{{ dashboard_animation_form.danger_gif }}
                 {% if budget_preference.danger_gif %}<button class="remove-gif-button" type="submit" formaction="{% url 'remove_dashboard_gif' 'danger' %}" formnovalidate>{% translate "Remove GIF" %}</button>{% endif %}
@@ -337,19 +345,38 @@
             <div class="dialog-actions"><button class="button button-secondary" type="button" data-dialog-close>{% translate "Cancel" %}</button><button class="button button-primary" type="submit">{% translate "Save appearance" %}</button></div>
         </form>
     </section>
+    <section class="settings-panel planning-settings" id="settings-panel-planning" role="tabpanel" data-settings-panel="planning" aria-labelledby="settings-tab-planning" hidden>
+        <div class="settings-section-heading"><h3>{% translate "Planning" %}</h3><p>{% translate "Choose how much money Darith keeps aside and how far ahead it checks your plan." %}</p></div>
+        <form method="post" action="{% url 'update_planning_settings' %}" class="planning-form">
+            {% csrf_token %}
+            <div class="appearance-setting">
+                <div><label for="{{ planning_settings_form.emergency_buffer.id_for_label }}">{% translate "Emergency buffer" %}</label><small>{% translate "Money Darith always keeps aside. Set 0 if you do not want a buffer." %}</small></div>
+                {{ planning_settings_form.emergency_buffer }}
+            </div>
+            <div class="appearance-setting">
+                <div><label for="{{ planning_settings_form.forecast_months.id_for_label }}">{% translate "Months to check" %}</label><small>{% translate "Darith checks your plan until the end of this many future months." %}</small></div>
+                {{ planning_settings_form.forecast_months }}
+            </div>
+            <div class="appearance-setting planning-toggle">
+                <div><label for="{{ planning_settings_form.show_money_timeline.id_for_label }}">{% translate "Show money timeline" %}</label><small>{% translate "Turn this off if you want a simpler Overview page." %}</small></div>
+                {{ planning_settings_form.show_money_timeline }}
+            </div>
+            <div class="dialog-actions"><button class="button button-secondary" type="button" data-dialog-close>{% translate "Cancel" %}</button><button class="button button-primary" type="submit">{% translate "Save planning" %}</button></div>
+        </form>
+    </section>
     <section class="settings-panel behavior-settings" id="settings-panel-behavior" role="tabpanel" data-settings-panel="behavior" aria-labelledby="settings-tab-behavior" hidden>
-        <div class="settings-section-heading"><h3>{% translate "Transaction behavior" %}</h3><p>{% translate "Control what happens to an account balance when you remove a transaction." %}</p></div>
+        <div class="settings-section-heading"><h3>{% translate "Transactions" %}</h3><p>{% translate "Choose what Darith does when you delete a transaction." %}</p></div>
         <form method="post" action="{% url 'update_dashboard_animations' %}" class="behavior-form">
             {% csrf_token %}
             <div class="appearance-setting deletion-setting">
-                <div><label for="{{ dashboard_animation_form.transaction_deletion_mode.id_for_label }}">{% translate "When deleting a transaction" %}</label><small>{% translate "Choose whether Darith reverses its balance change or leaves balances for you to edit." %}</small></div>
+                <div><label for="{{ dashboard_animation_form.transaction_deletion_mode.id_for_label }}">{% translate "When deleting a transaction" %}</label><small>{% translate "Choose if Darith changes the account balance back, or leaves it as it is." %}</small></div>
                 {{ dashboard_animation_form.transaction_deletion_mode }}
             </div>
-            <div class="dialog-actions"><button class="button button-secondary" type="button" data-dialog-close>{% translate "Cancel" %}</button><button class="button button-primary" type="submit">{% translate "Save behavior" %}</button></div>
+            <div class="dialog-actions"><button class="button button-secondary" type="button" data-dialog-close>{% translate "Cancel" %}</button><button class="button button-primary" type="submit">{% translate "Save" %}</button></div>
         </form>
     </section>
     <section class="settings-panel security-settings" id="settings-panel-security" role="tabpanel" data-settings-panel="security" aria-labelledby="settings-tab-security" hidden>
-        <div class="settings-section-heading"><h3 id="security-settings-title">{% translate "App lock" %}</h3><p>{% translate "Lock Darith after inactivity. Your device checks Face ID, fingerprint, or screen lock; Darith never receives biometric data." %}</p></div>
+        <div class="settings-section-heading"><h3 id="security-settings-title">{% translate "App lock" %}</h3><p>{% translate "Lock Darith after you stop using it. Your device checks Face ID, fingerprint, or screen lock. Darith never receives your face or fingerprint data." %}</p></div>
         <form method="post" action="{% url 'update_security_settings' %}" class="security-form">
             {% csrf_token %}
             <div class="appearance-setting"><label for="{{ security_settings_form.lock_timeout_minutes.id_for_label }}">{% translate "Lock after" %}</label>{{ security_settings_form.lock_timeout_minutes }}</div>
@@ -389,15 +416,15 @@
 </dialog>
 {% include "partials/form_dialog.html" with dialog_id="expense-create" title="Add expense" form=expense_form action_url="create_expense" submit_label="Add expense" %}
 {% include "partials/form_dialog.html" with dialog_id="income-create" title="Add income" form=income_form action_url="create_income" submit_label="Add income" %}
-{% include "partials/form_dialog.html" with dialog_id="recurring-income-create" title="Add recurring income" form=recurring_income_form action_url="create_recurring_income" submit_label="Add income plan" %}
-{% include "partials/form_dialog.html" with dialog_id="monthly-expense-create" title="Add recurring expense" form=monthly_expense_form action_url="create_monthly_expense" submit_label="Add expense plan" %}
+{% include "partials/form_dialog.html" with dialog_id="recurring-income-create" title="Add monthly income" form=recurring_income_form action_url="create_recurring_income" submit_label="Add income plan" %}
+{% include "partials/form_dialog.html" with dialog_id="monthly-expense-create" title="Add monthly expense" form=monthly_expense_form action_url="create_monthly_expense" submit_label="Add expense plan" %}
 {% include "partials/form_dialog.html" with dialog_id="saving-create" title="Add savings goal" form=savings_goal_form action_url="create_savings_goal" submit_label="Add goal" %}
 
 {% for item, form in account_edit_forms %}{% url 'update_bank_account' item.id as edit_url %}{% url 'delete_bank_account' item.id as delete_url %}{% include "partials/form_dialog.html" with dialog_prefix="account-edit-" dialog_object_id=item.id title="Edit bank account" form=form direct_action=edit_url delete_action=delete_url submit_label="Save changes" %}{% endfor %}
 {% for item, form in expense_edit_forms %}{% url 'update_expense' item.id as edit_url %}{% url 'delete_expense' item.id as delete_url %}{% include "partials/form_dialog.html" with dialog_prefix="expense-edit-" dialog_object_id=item.id title="Edit expense" form=form direct_action=edit_url delete_action=delete_url submit_label="Save changes" %}{% endfor %}
 {% for item, form in income_edit_forms %}{% url 'update_income' item.id as edit_url %}{% url 'delete_income' item.id as delete_url %}{% include "partials/form_dialog.html" with dialog_prefix="income-edit-" dialog_object_id=item.id title="Edit income" form=form direct_action=edit_url delete_action=delete_url submit_label="Save changes" %}{% endfor %}
-{% for item, form in recurring_income_edit_forms %}{% url 'update_recurring_income' item.id as edit_url %}{% url 'delete_recurring_income' item.id as delete_url %}{% include "partials/form_dialog.html" with dialog_prefix="recurring-income-edit-" dialog_object_id=item.id title="Edit recurring income" form=form direct_action=edit_url delete_action=delete_url submit_label="Save changes" %}{% endfor %}
-{% for item, form in monthly_expense_edit_forms %}{% url 'update_monthly_expense' item.id as edit_url %}{% url 'delete_monthly_expense' item.id as delete_url %}{% include "partials/form_dialog.html" with dialog_prefix="monthly-expense-edit-" dialog_object_id=item.id title="Edit recurring expense" form=form direct_action=edit_url delete_action=delete_url submit_label="Save changes" %}{% endfor %}
+{% for item, form in recurring_income_edit_forms %}{% url 'update_recurring_income' item.id as edit_url %}{% url 'delete_recurring_income' item.id as delete_url %}{% include "partials/form_dialog.html" with dialog_prefix="recurring-income-edit-" dialog_object_id=item.id title="Edit monthly income" form=form direct_action=edit_url delete_action=delete_url submit_label="Save changes" %}{% endfor %}
+{% for item, form in monthly_expense_edit_forms %}{% url 'update_monthly_expense' item.id as edit_url %}{% url 'delete_monthly_expense' item.id as delete_url %}{% include "partials/form_dialog.html" with dialog_prefix="monthly-expense-edit-" dialog_object_id=item.id title="Edit monthly expense" form=form direct_action=edit_url delete_action=delete_url submit_label="Save changes" %}{% endfor %}
 {% for item, form in savings_goal_edit_forms %}{% url 'update_savings_goal' item.id as edit_url %}{% url 'delete_savings_goal' item.id as delete_url %}{% include "partials/form_dialog.html" with dialog_prefix="saving-edit-" dialog_object_id=item.id title="Edit savings goal" form=form direct_action=edit_url delete_action=delete_url submit_label="Save changes" %}{% endfor %}
 {% for item, form in transfer_edit_forms %}{% url 'update_transfer' item.id as edit_url %}{% url 'delete_transfer' item.id as delete_url %}{% include "partials/form_dialog.html" with dialog_prefix="transfer-edit-" dialog_object_id=item.id title="Edit transfer" form=form direct_action=edit_url delete_action=delete_url submit_label="Save changes" %}{% endfor %}
 

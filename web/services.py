@@ -328,10 +328,13 @@ def _goal_target_for_period(user, period_start, period_end):
     return target
 
 
-def _default_forecast_horizon(today):
-    """Forecast through the end of next month by default."""
-    next_month_start = add_month(today.replace(day=1))
-    return month_bounds(next_month_start)[1]
+def _default_forecast_horizon(today, months_ahead=1):
+    """Return the end date for a 1-to-3-month planning window."""
+    months_ahead = max(1, min(int(months_ahead or 1), 3))
+    target_month = today.replace(day=1)
+    for _ in range(months_ahead):
+        target_month = add_month(target_month)
+    return month_bounds(target_month)[1]
 
 
 def _goal_saving_events(user, range_start, range_end):
@@ -404,7 +407,7 @@ def _timeline_status(safe_to_spend, daily_expense, currency_symbol, horizon_end)
         return (
             "danger",
             _(
-                "You are projected to be %(amount)s short before %(date)s if no plan changes."
+                "You may be %(amount)s short before %(date)s. Check your plans."
             )
             % {
                 "amount": f"{currency_symbol}{shortfall:,.2f}",
@@ -417,7 +420,7 @@ def _timeline_status(safe_to_spend, daily_expense, currency_symbol, horizon_end)
         return (
             "warning",
             _(
-                "Your plan is covered, but only %(amount)s is safe for optional spending through %(date)s."
+                "Your plan is okay, but only %(amount)s is safe to spend until %(date)s."
             )
             % {
                 "amount": f"{currency_symbol}{safe_to_spend:,.2f}",
@@ -428,7 +431,7 @@ def _timeline_status(safe_to_spend, daily_expense, currency_symbol, horizon_end)
     return (
         "healthy",
         _(
-            "Planned bills, savings, and everyday costs stay protected through %(date)s."
+            "Your plan looks good until %(date)s."
         )
         % {
             "date": date_format(horizon_end, "j M"),
@@ -452,14 +455,16 @@ def build_daily_forecast(user, today, horizon_end=None):
     This deliberately prevents future income from becoming spendable before it
     arrives while still allowing future income to cover future known bills.
     """
-    horizon_end = horizon_end or _default_forecast_horizon(today)
+    preference = BudgetPreference.objects.filter(user=user).first()
+    months_ahead = preference.forecast_months if preference else 1
+    horizon_end = horizon_end or _default_forecast_horizon(today, months_ahead)
     if horizon_end < today:
         horizon_end = today
 
     accounts = BankAccount.objects.filter(user=user, include_in_budget=True)
     current_balance = _sum(accounts, "balance")
-    preference = BudgetPreference.objects.filter(user=user).first()
     daily_expense = preference.expected_daily_expense if preference else ZERO
+    emergency_buffer = preference.emergency_buffer if preference else ZERO
     currency_symbol = (
         preference.currency_symbol
         if preference
@@ -564,7 +569,9 @@ def build_daily_forecast(user, today, horizon_end=None):
             remaining_expenses + remaining_savings - remaining_income,
             ZERO,
         )
-        protected_amount = remaining_daily_costs + uncovered_commitments
+        protected_amount = (
+            remaining_daily_costs + uncovered_commitments + emergency_buffer
+        )
         row.update(
             {
                 "remaining_income": remaining_income,
@@ -572,6 +579,7 @@ def build_daily_forecast(user, today, horizon_end=None):
                 "remaining_savings": remaining_savings,
                 "remaining_daily_costs": remaining_daily_costs,
                 "uncovered_commitments": uncovered_commitments,
+                "emergency_buffer": emergency_buffer,
                 "protected_amount": protected_amount,
                 "day_headroom": row["opening_balance"] - protected_amount,
             }
@@ -600,6 +608,7 @@ def build_daily_forecast(user, today, horizon_end=None):
         "start_date": today,
         "end_date": horizon_end,
         "daily_expense": daily_expense,
+        "emergency_buffer": emergency_buffer,
         "current_balance": current_balance,
         "rows": rows,
     }
@@ -701,6 +710,7 @@ def build_monthly_budget(user, today, daily_forecast=None):
     # in this month, even when their first saving date has not arrived yet.
     savings_target = sum((item["amount"] for item in budget_reminders), ZERO)
     month_end_savings_target = _goal_target_for_period(user, month_start, month_end)
+    later_savings_target = max(month_end_savings_target - savings_target, ZERO)
     current_balance = _sum(accounts, "balance")
     included_account_count = accounts.count()
     savings_balance = _sum(
@@ -756,6 +766,7 @@ def build_monthly_budget(user, today, daily_forecast=None):
         "uncovered_future_expenses": uncovered_future_expenses,
         "savings_target": savings_target,
         "month_end_savings_target": month_end_savings_target,
+        "later_savings_target": later_savings_target,
         "projected_balance": projected_balance,
         "free_to_spend": free_to_spend,
         "free_to_spend_abs": abs(free_to_spend),

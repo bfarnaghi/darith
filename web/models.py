@@ -156,6 +156,11 @@ class BudgetPreference(models.Model):
         ("es", _("Spanish")),
         ("nl", _("Dutch")),
     ]
+    FORECAST_MONTH_CHOICES = [
+        (1, _("1 month ahead")),
+        (2, _("2 months ahead")),
+        (3, _("3 months ahead")),
+    ]
 
     user = models.OneToOneField(
         User, on_delete=models.CASCADE, related_name="budget_preference"
@@ -182,6 +187,17 @@ class BudgetPreference(models.Model):
         default="en",
     )
     hide_financial_values = models.BooleanField(default=False)
+    emergency_buffer = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(Decimal("0.00"))],
+    )
+    forecast_months = models.PositiveSmallIntegerField(
+        choices=FORECAST_MONTH_CHOICES,
+        default=1,
+    )
+    show_money_timeline = models.BooleanField(default=True)
     lock_timeout_minutes = models.PositiveSmallIntegerField(
         choices=LOCK_TIMEOUT_CHOICES,
         default=0,

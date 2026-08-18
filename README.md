@@ -4,7 +4,7 @@
 
 # Darith
 
-Darith is a multilingual, responsive personal-finance app that tracks accounts, recurring plans, and savings goals while showing what is safe to spend on mobile or desktop.
+Darith is a multilingual personal-finance app for mobile and desktop. It tracks accounts, monthly plans, and saving goals, and shows how much is safe to spend.
 
 **Website:** [https://darith.app](https://darith.app)
 
@@ -29,20 +29,27 @@ Open `http://127.0.0.1:8000`, create a user account, and sign in.
 5. Add salary, rent, bills, and subscriptions under **Monthly plans**. The first payment or charge date sets the monthly day; the optional stop date does not create another transaction.
 6. Create an ongoing savings goal with a monthly amount, or enter a target amount and target date. Choose the bank that will fund it.
 7. When a monthly savings reminder appears, press **Mark saved**. Darith transfers the calculated amount from the selected bank into that goal once for the month.
-8. Check **Safe to spend today** for the maximum one-time optional amount you can spend now while Darith keeps planned daily costs, bills, and savings protected on every forecast day through the end of next month. Future income is not treated as spendable before its scheduled arrival date.
-9. Use **Your money timeline** on the Overview to move day by day from today through the end of next month. It separates projected bank balance from money that is safe for extras and shows the planned income, bills, savings, and daily cost for the selected date.
+8. Check **Safe to spend today** to see how much extra money you can spend now without breaking your future plan. Darith does not use future income before the date it arrives.
+9. If enabled, use **Money by day** on Overview to move through future days. It shows the bank balance, safe-to-spend amount, and the income, expenses, savings, and daily spending still in your plan.
 10. Use **Export CSV** above the transaction list to download your accounts, goals, plans, transactions, and transfers.
 11. Use **Settings → Appearance** to choose English, Persian, Italian, French, Spanish, or Dutch. The choice is saved to your user; Persian automatically uses a right-to-left layout.
 12. In the same section, choose a theme, display currency, profile picture, and budget-state GIFs. Iranian Toman is shown as `IRT`. Currency changes labels only and does not convert stored amounts.
 13. Press the eye button in **Safe to spend today** to hide or show dashboard amounts. Darith remembers this choice for your user account.
 14. In Settings, you can upload and remove a GIF for each budget state. Profile pictures and GIFs are limited to 2 MB and 1200 x 1200 pixels; GIFs are also limited to 300 frames.
-15. Under **Settings → Security**, add a passkey or Darith PIN and choose an inactivity timeout. Passkeys use the security built into your phone or computer; Darith does not receive your fingerprint or face data.
+15. Under **Settings → Security**, add a passkey or Darith PIN and choose an auto-lock time. Your phone or computer checks your fingerprint or Face ID; Darith does not receive this data.
 16. Use **Feedback** in the account menu to send a comment to the Darith administrator.
 17. Use **Settings → Account** to permanently delete your user account and live data. Darith requires your current password, an acknowledgement, an exact typed signature, and a final confirmation.
 
 Editing a transaction always updates its account balance. Deleting a transaction or transfer reverses its previous balance change by default; choose **Leave balances unchanged** under **Settings → Behavior** when you prefer to correct balances manually. A bank or goal with transfer history is kept to protect the ledger.
 
-Due recurring items are processed whenever the dashboard opens. A server can also run them daily without a login:
+
+Planning settings:
+
+- **Emergency buffer**: money Darith always keeps aside. Default: `0`.
+- **Months to check**: choose `1`, `2`, or `3` future months. Default: `1`.
+- **Show money timeline**: show or hide the day-by-day slider. Default: on.
+
+Monthly plan items are processed whenever the dashboard opens. A server can also run them daily without a login:
 
 ~~~bash
 python manage.py process_scheduled_transactions

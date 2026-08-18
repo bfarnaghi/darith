@@ -75,6 +75,23 @@ class BudgetPreferenceForm(StyledFormMixin, forms.ModelForm):
         }
 
 
+
+
+class PlanningSettingsForm(StyledFormMixin, forms.ModelForm):
+    class Meta:
+        model = BudgetPreference
+        fields = ["emergency_buffer", "forecast_months", "show_money_timeline"]
+        labels = {
+            "emergency_buffer": _("Emergency buffer"),
+            "forecast_months": _("Months to check"),
+            "show_money_timeline": _("Show money timeline"),
+        }
+        widgets = {
+            "emergency_buffer": forms.NumberInput(
+                attrs={"step": "0.01", "min": "0"}
+            ),
+        }
+
 class DashboardAnimationForm(StyledFormMixin, forms.ModelForm):
     class Meta:
         model = BudgetPreference
