@@ -2254,12 +2254,21 @@ class FinanceTestCase(TestCase):
         self.assertEqual(adjustment.end_date, date(2026, 8, 24))
         self.assertLess(adjustment.daily_amount, Decimal("50.00"))
 
-    def test_public_home_shows_saashub_approval_badge(self):
+    def test_public_home_shows_saashub_approval_badge_below_daric_explanation(self):
         self.client.logout()
         response = self.client.get(reverse("home"))
+        self.assertContains(response, "From the Daric")
         self.assertContains(response, "Darith around the web")
         self.assertContains(response, "saashub.com/darith-app")
         self.assertContains(response, "approved-color.png")
+        content = response.content.decode()
+        self.assertLess(content.index("From the Daric"), content.index("Darith around the web"))
+
+    def test_dashboard_does_not_show_public_approval_badge(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("dashboard"))
+        self.assertNotContains(response, "saashub.com/darith-app")
+        self.assertNotContains(response, "approved-color.png")
 
     def test_scheduled_command_is_passive_and_does_not_change_balances(self):
         RecurringIncome.objects.create(

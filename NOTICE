@@ -1,9 +1,16 @@
-Required Notice: Copyright 2026 Behnam <b.farnaghi@gmail.com>
+Copyright © 2026 Behnam Farnaghinejad
 
 Darith is source-available under the PolyForm Noncommercial License 1.0.0.
-Commercial use requires a separate written license from the copyright holder.
+Commercial use of the public Darith source code requires separate permission from the copyright holder.
 Commercial licensing contact: b.farnaghi@gmail.com
 
+Hosted Premium features
+-----------------------
+Some features offered to Premium users on darith.app are private/proprietary and are not included in the public source repository.
+A Premium subscription gives access to those hosted app features; it does not grant access to, or a license for, their private source code.
+
+Third-party attribution
+-----------------------
 The landing page includes "Achaemenid coin daric 420BC front" by Deflim,
 released into the public domain and obtained from Wikimedia Commons:
 https://commons.wikimedia.org/wiki/File:Achaemenid_coin_daric_420BC_front.jpg

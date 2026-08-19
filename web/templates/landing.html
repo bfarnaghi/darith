@@ -59,7 +59,7 @@
             <div>
                 <p>{% translate "Use it your way" %}</p>
                 <h2 id="local-title">{% translate "Free for your own local setup." %}</h2>
-                <span>{% translate "Darith is open source for individual use. You can run it on your own computer, keep the data under your control, and use the same budgeting workflow without a hosted subscription." %}</span>
+                <span>{% translate "Darith's public source is available for personal, noncommercial use under the PolyForm Noncommercial License. You can run the public version on your own computer and keep the data under your control." %}</span>
             </div>
             <a href="https://github.com/bfarnaghi/darith" target="_blank" rel="noopener noreferrer">{% translate "Get Darith on GitHub" %}</a>
         </div>
@@ -72,22 +72,29 @@
         </div>
     </section>
 
-    <section class="badge-section" aria-labelledby="badge-title">
-        <div class="section-inner badge-inner">
-            <div><p>{% translate "Listed and reviewed" %}</p><h2 id="badge-title">{% translate "Darith around the web" %}</h2><span>{% translate "Independent listing badges and approvals for Darith." %}</span></div>
-            <div class="public-badges">
-                <a href="https://www.saashub.com/darith-app?utm_source=badge&amp;utm_campaign=badge&amp;utm_content=darith-app&amp;badge_variant=color&amp;badge_kind=approved" target="_blank" rel="noopener noreferrer"><img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Darith.app SaaSHub approved badge" loading="lazy"></a>
-            </div>
-        </div>
-    </section>
-
     <section class="origin-section" aria-labelledby="origin-title">
         <div class="section-inner origin-note">
             <figure>
                 <img src="{% static 'images/daric-coin.jpg' %}" alt="{% translate 'Ancient Persian gold Daric coin' %}">
                 <figcaption><a href="https://commons.wikimedia.org/wiki/File:Achaemenid_coin_daric_420BC_front.jpg" target="_blank" rel="noopener noreferrer">{% translate "Public-domain image by Deflim" %}</a></figcaption>
             </figure>
-            <div><p>{% translate "Name origin" %}</p><h2 id="origin-title">{% translate "From the Daric" %}</h2><span>{% translate "Darith takes its name from the Daric, a gold coin used in the ancient Persian Achaemenid Empire. The name is a small nod to money with history: durable, counted carefully, and meant to make value clear." %}</span></div>
+            <div>
+                <p>{% translate "Name origin" %}</p>
+                <h2 id="origin-title">{% translate "From the Daric" %}</h2>
+                <div class="origin-copy">
+                    <span>{% translate "Darith takes its name from the Daric, a gold coin introduced under Darius I in the Achaemenid Persian Empire near the end of the sixth century BCE. A Daric weighed about 8.4 grams and commonly showed a royal archer." %}</span>
+                    <span>{% translate "The coin became well known beyond the empire and was valued as a stable gold currency in trade. Darith uses the name as a link between that long history of money and a modern goal: making everyday financial choices easier to understand." %}</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="badge-section" aria-labelledby="badge-title">
+        <div class="section-inner badge-inner">
+            <div><p>{% translate "Listed and reviewed" %}</p><h2 id="badge-title">{% translate "Darith around the web" %}</h2><span>{% translate "Independent listing badges and approvals for Darith." %}</span></div>
+            <div class="public-badges">
+                <a href="https://www.saashub.com/darith-app?utm_source=badge&amp;utm_campaign=badge&amp;utm_content=darith-app&amp;badge_variant=color&amp;badge_kind=approved" target="_blank" rel="noopener noreferrer"><img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Darith.app SaaSHub approved badge" loading="lazy"></a>
+            </div>
         </div>
     </section>
 </main>

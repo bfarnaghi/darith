@@ -84,11 +84,25 @@ Both values are required; when either is missing, Telegram notifications remain 
 Alerts include only the username and the minimum event details. Feedback text and personal financial data are not sent to Telegram. Telegram errors are logged and do not prevent registration, feedback, or payment reporting.
 
 
-## License
+## Licensing
 
-Darith is publicly available as **source-available software** under the [PolyForm Noncommercial License 1.0.0](LICENSE). Academic research, education, evaluation, and other permitted noncommercial uses are welcome. Commercial use by anyone other than the copyright holder requires a separate written license; contact `b.farnaghi@gmail.com`.
+Copyright © 2026 Behnam Farnaghinejad.
 
-See [NOTICE](NOTICE) for attribution and [CONTRIBUTING.md](CONTRIBUTING.md) before contributing. PolyForm Noncommercial is not an OSI-approved open-source license.
+### Public source
+
+The code published in this repository is **source-available** under the [PolyForm Noncommercial License 1.0.0](LICENSE). It may be used as allowed by that license for personal, academic, educational, evaluation, and other permitted noncommercial purposes. PolyForm Noncommercial is not an OSI-approved open-source license.
+
+The `LICENSE` file is the standard PolyForm Noncommercial License text. Its `Copyright Yoyodyne, Inc. (http://example.com)` line appears only inside PolyForm's example of a required notice; it is not Darith's copyright notice. Darith's actual copyright notice is kept separately in [NOTICE](NOTICE).
+
+### Hosted Premium features
+
+The public repository is not the complete source code for every feature offered by the hosted Darith service. Some features available to **Premium users on darith.app** may be private/proprietary and are not published in this repository. A Premium subscription gives the user access to those features inside the hosted app; it does **not** provide the private source code or a license to redistribute it.
+
+### Commercial use
+
+Commercial use of the public Darith source code requires separate permission from the copyright holder. For commercial licensing, contact `b.farnaghi@gmail.com`.
+
+See [NOTICE](NOTICE) for Darith's copyright notice and third-party attribution, and [CONTRIBUTING.md](CONTRIBUTING.md) before contributing.
 
 ## Tests
 
