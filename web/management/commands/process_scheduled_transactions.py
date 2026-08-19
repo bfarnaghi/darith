@@ -6,17 +6,20 @@ from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
-from web.services import fund_due_savings_goals, post_due_recurring
+from web.services import pending_plan_occurrences
 
 
 class Command(BaseCommand):
-    help = "Post recurring entries and fund saving goals due through a date."
+    help = (
+        "Report planned items that need confirmation. Darith is passive and "
+        "does not change balances automatically."
+    )
 
     def add_arguments(self, parser):
         parser.add_argument(
             "--date",
             dest="through_date",
-            help="Process through YYYY-MM-DD (defaults to today).",
+            help="Check through YYYY-MM-DD (defaults to today).",
         )
 
     def handle(self, *args, **options):
@@ -27,14 +30,12 @@ class Command(BaseCommand):
             except ValueError as error:
                 raise CommandError("Date must use YYYY-MM-DD.") from error
 
-        posted = 0
-        funded_goals = 0
+        waiting = 0
         for user in User.objects.iterator():
-            posted += post_due_recurring(user, through_date)
-            funded_goals += fund_due_savings_goals(user, through_date)
+            waiting += len(pending_plan_occurrences(user, through_date))
         self.stdout.write(
             self.style.SUCCESS(
-                f"Posted {posted} scheduled transaction(s) and funded "
-                f"{funded_goals} saving goal(s) through {through_date}."
+                f"Found {waiting} planned item(s) waiting for confirmation "
+                f"through {through_date}. No balances were changed."
             )
         )

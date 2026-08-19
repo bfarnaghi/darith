@@ -4,7 +4,7 @@
 
 # Darith
 
-Darith is a multilingual personal-finance app for mobile and desktop. It tracks accounts, monthly plans, and saving goals, and shows how much is safe to spend.
+Darith is a multilingual personal-finance app for mobile and desktop. It tracks accounts, flexible plans, and saving goals, and shows how much is safe to spend.
 
 **Website:** [https://darith.app](https://darith.app)
 
@@ -22,38 +22,29 @@ Open `http://127.0.0.1:8000`, create a user account, and sign in.
 
 ## How to use it
 
-1. Add each real bank account and its current balance under **Accounts**. Turn off **Include in monthly budget** for cash or other accounts that you only want to track separately.
-2. Set **Expected daily costs** from the Overview. Darith reserves that amount for every remaining day of the month.
-3. Record manual income and expenses. Their selected bank balance updates immediately.
-4. Use **Transfer** to move money between banks, from a bank to a goal, or from a goal back to a bank.
-5. Add salary, rent, bills, and subscriptions under **Monthly plans**. The first payment or charge date sets the monthly day; the optional stop date does not create another transaction.
-6. Create an ongoing savings goal with a monthly amount, or enter a target amount and target date. Choose the bank that will fund it.
-7. When a monthly savings reminder appears, press **Mark saved**. Darith transfers the calculated amount from the selected bank into that goal once for the month.
-8. Check **Safe to spend today** to see how much extra money you can spend now without breaking your future plan. Darith does not use future income before the date it arrives.
-9. If enabled, use **Money by day** on Overview to move through future days. It shows the bank balance, safe-to-spend amount, and the income, expenses, savings, and daily spending still in your plan.
-10. Use **Export CSV** above the transaction list to download your accounts, goals, plans, transactions, and transfers.
-11. Use **Settings → Appearance** to choose English, Persian, Italian, French, Spanish, or Dutch. The choice is saved to your user; Persian automatically uses a right-to-left layout.
-12. In the same section, choose a theme, display currency, profile picture, and budget-state GIFs. Iranian Toman is shown as `IRT`. Currency changes labels only and does not convert stored amounts.
-13. Press the eye button in **Safe to spend today** to hide or show dashboard amounts. Darith remembers this choice for your user account.
-14. In Settings, you can upload and remove a GIF for each budget state. Profile pictures and GIFs are limited to 2 MB and 1200 x 1200 pixels; GIFs are also limited to 300 frames.
-15. Under **Settings → Security**, add a passkey or Darith PIN and choose an auto-lock time. Your phone or computer checks your fingerprint or Face ID; Darith does not receive this data.
-16. Use **Feedback** in the account menu to send a comment to the Darith administrator.
-17. Use **Settings → Account** to permanently delete your user account and live data. Darith requires your current password, an acknowledgement, an exact typed signature, and a final confirmation.
-
-Editing a transaction always updates its account balance. Deleting a transaction or transfer reverses its previous balance change by default; choose **Leave balances unchanged** under **Settings → Behavior** when you prefer to correct balances manually. A bank or goal with transfer history is kept to protect the ledger.
-
+1. Add each real bank account and its current balance under **Accounts**. Darith shows when included balances were last updated. Saving an account also confirms that its balance is current.
+2. Set **Daily spending** and an optional **Emergency buffer** in **Settings → Planning**.
+3. Add future income and expenses under **Plans**. Each plan can happen **Once**, **Daily**, **Weekly**, or **Monthly**.
+4. When a planned date arrives, Darith asks what happened. Mark it done to update the real account, move only that occurrence to another date, change its amount, or skip only that occurrence. Darith is passive: it never changes a balance just because a planned date passed.
+5. Record manual income and expenses when they have already happened. Their selected account balance updates immediately.
+6. Use **Transfer** to move money between banks, from a bank to a goal, or from a goal back to a bank.
+7. Create an ongoing saving goal with a monthly amount, or enter a target amount and target date. When a saving date arrives, confirm it, change only that month's amount/date, or skip that month.
+8. Check **Safe to spend today** to see how much extra money you can spend now while keeping the rest of the current month on track.
+9. If enabled, use **Money by day** on Overview to check future dates. **Months to show** changes only how far the slider goes; it does not change today's blue-card result.
+10. Use **Can I spend more?** to enter an extra amount and a number of days. If needed, Darith suggests a temporary daily-spending amount. Choose **Add to my plan** to add the one-time expense and the temporary daily-spending change.
+11. Use **Export CSV** to download your records.
+12. Use **Settings → Appearance** for language, theme, currency, profile picture, and private status GIFs. Currency changes labels only and does not convert stored amounts.
+13. Use **Settings → Security** for a passkey, Darith PIN, and auto lock.
+14. Use **Settings → Account** to change your username or password, or permanently delete your account.
 
 Planning settings:
 
+- **Daily spending**: the amount you normally expect to spend each day.
 - **Emergency buffer**: money Darith always keeps aside. Default: `0`.
-- **Months to check**: choose `1`, `2`, or `3` future months. Default: `1`.
+- **Months to show**: show `1`, `2`, or `3` future months in Money by day. Default: `1`.
 - **Show money timeline**: show or hide the day-by-day slider. Default: on.
 
-Monthly plan items are processed whenever the dashboard opens. A server can also run them daily without a login:
-
-~~~bash
-python manage.py process_scheduled_transactions
-~~~
+Darith is passive. The legacy `process_scheduled_transactions` command now only reports items waiting for confirmation and does not change balances.
 
 ## Security
 

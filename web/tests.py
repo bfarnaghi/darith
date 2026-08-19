@@ -18,6 +18,7 @@ from django.contrib import admin
 from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.management import call_command
 from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -26,12 +27,14 @@ from PIL import Image
 from .models import (
     BankAccount,
     BudgetPreference,
+    DailySpendingAdjustment,
     Expense,
     ExpenseCategory,
     Income,
     IncomeCategory,
     MonthlyExpense,
     PasskeyCredential,
+    PlanOccurrence,
     RecurringIncome,
     SavingsGoal,
     SubscriptionPlan,
@@ -45,9 +48,12 @@ from .services import (
     build_daily_forecast,
     build_monthly_budget,
     build_next_month_forecast,
+    calculate_spending_tradeoff,
     fund_due_savings_goals,
     goal_funding_reminders,
     goal_monthly_contribution,
+    occurrence_dates,
+    pending_plan_occurrences,
     post_due_recurring,
 )
 from .subscriptions import initialize_user_subscription, report_manual_payment
@@ -102,7 +108,7 @@ class TutorialPageTests(SimpleTestCase):
         self.assertContains(response, "Why Darith checks every future day")
         self.assertContains(response, "Money timeline")
         self.assertContains(response, "Tracking-only accounts")
-        self.assertContains(response, "Automatic posting")
+        self.assertContains(response, "Check what happened")
         self.assertContains(response, "Saving goals")
         self.assertContains(response, "Passkey")
         self.assertContains(response, "No bank credentials")
@@ -366,6 +372,7 @@ class AdminPrivacyTests(TestCase):
     private_finance_models = (
         BankAccount,
         BudgetPreference,
+    DailySpendingAdjustment,
         Expense,
         ExpenseCategory,
         Income,
@@ -376,6 +383,7 @@ class AdminPrivacyTests(TestCase):
         Transfer,
         Token,
         PasskeyCredential,
+    PlanOccurrence,
     )
 
     def test_private_finance_models_are_not_registered_in_admin(self):
@@ -1997,6 +2005,279 @@ class FinanceTestCase(TestCase):
         self.account.refresh_from_db()
         self.assertEqual(goal.current_balance, Decimal("220.00"))
         self.assertEqual(self.account.balance, Decimal("1080.00"))
+
+
+    def test_plan_frequencies_generate_expected_dates(self):
+        plan = MonthlyExpense.objects.create(
+            user=self.user,
+            name="Flexible",
+            amount=Decimal("10.00"),
+            frequency="once",
+            start_date=date(2026, 8, 19),
+            bank_account=self.account,
+        )
+        self.assertEqual(
+            occurrence_dates(plan, date(2026, 8, 1), date(2026, 9, 30)),
+            [date(2026, 8, 19)],
+        )
+
+        plan.frequency = "daily"
+        plan.end_date = date(2026, 8, 21)
+        plan.save(update_fields=["frequency", "end_date"])
+        self.assertEqual(
+            occurrence_dates(plan, date(2026, 8, 19), date(2026, 8, 25)),
+            [date(2026, 8, 19), date(2026, 8, 20), date(2026, 8, 21)],
+        )
+
+        plan.frequency = "weekly"
+        plan.end_date = date(2026, 9, 9)
+        plan.save(update_fields=["frequency", "end_date"])
+        self.assertEqual(
+            occurrence_dates(plan, date(2026, 8, 19), date(2026, 9, 9)),
+            [date(2026, 8, 19), date(2026, 8, 26), date(2026, 9, 2), date(2026, 9, 9)],
+        )
+
+        plan.frequency = "monthly"
+        plan.start_date = date(2026, 8, 31)
+        plan.end_date = date(2026, 10, 31)
+        plan.save(update_fields=["frequency", "start_date", "end_date"])
+        self.assertEqual(
+            occurrence_dates(plan, date(2026, 8, 1), date(2026, 10, 31)),
+            [date(2026, 8, 31), date(2026, 9, 30), date(2026, 10, 31)],
+        )
+
+    def test_dashboard_does_not_post_due_plan_until_user_confirms_it(self):
+        plan = RecurringIncome.objects.create(
+            user=self.user,
+            name="Salary",
+            amount=Decimal("200.00"),
+            frequency="monthly",
+            start_date=date(2026, 8, 19),
+            category=self.income_category,
+            bank_account=self.account,
+        )
+
+        with patch("web.views.timezone.localdate", return_value=date(2026, 8, 19)):
+            response = self.client.get(reverse("dashboard"))
+
+        self.account.refresh_from_db()
+        self.assertEqual(self.account.balance, Decimal("1000.00"))
+        self.assertFalse(Income.objects.filter(recurring_income=plan).exists())
+        self.assertContains(response, "Did these happen?")
+        self.assertContains(response, "Salary")
+
+        response = self.client.post(
+            reverse(
+                "manage_plan_occurrence",
+                args=["income", plan.pk, "2026-08-19"],
+            ),
+            {
+                "action": "confirm",
+                "amount": "200.00",
+                "date": "2026-08-19",
+                "return_tab": "overview",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.account.refresh_from_db()
+        self.assertEqual(self.account.balance, Decimal("1200.00"))
+        self.assertTrue(
+            Income.objects.filter(
+                recurring_income=plan, date=date(2026, 8, 19), amount=Decimal("200.00")
+            ).exists()
+        )
+
+    def test_one_occurrence_can_move_without_changing_the_main_plan(self):
+        plan = RecurringIncome.objects.create(
+            user=self.user,
+            name="Salary",
+            amount=Decimal("1000.00"),
+            frequency="monthly",
+            start_date=date(2026, 8, 19),
+            category=self.income_category,
+            bank_account=self.account,
+        )
+
+        with patch("web.views.timezone.localdate", return_value=date(2026, 8, 19)):
+            response = self.client.post(
+                reverse(
+                    "manage_plan_occurrence",
+                    args=["income", plan.pk, "2026-08-19"],
+                ),
+                {
+                    "action": "move",
+                    "amount": "1000.00",
+                    "date": "2026-08-20",
+                    "return_tab": "plans",
+                },
+            )
+        self.assertEqual(response.status_code, 302)
+        plan.refresh_from_db()
+        self.assertEqual(plan.start_date, date(2026, 8, 19))
+        self.assertEqual(plan.frequency, "monthly")
+        change = PlanOccurrence.objects.get(recurring_income=plan)
+        self.assertEqual(change.scheduled_date, date(2026, 8, 19))
+        self.assertEqual(change.effective_date, date(2026, 8, 20))
+        self.assertEqual(change.status, PlanOccurrence.STATUS_PENDING)
+        self.assertEqual(
+            occurrence_dates(plan, date(2026, 9, 1), date(2026, 9, 30)),
+            [date(2026, 9, 19)],
+        )
+
+    def test_one_expense_occurrence_can_be_skipped_without_stopping_future_dates(self):
+        plan = MonthlyExpense.objects.create(
+            user=self.user,
+            name="Rent",
+            amount=Decimal("300.00"),
+            frequency="monthly",
+            start_date=date(2026, 8, 19),
+            category=self.expense_category,
+            bank_account=self.account,
+        )
+        with patch("web.views.timezone.localdate", return_value=date(2026, 8, 19)):
+            response = self.client.post(
+                reverse(
+                    "manage_plan_occurrence",
+                    args=["expense", plan.pk, "2026-08-19"],
+                ),
+                {
+                    "action": "skip",
+                    "amount": "300.00",
+                    "date": "2026-08-19",
+                    "return_tab": "plans",
+                },
+            )
+        self.assertEqual(response.status_code, 302)
+        change = PlanOccurrence.objects.get(monthly_expense=plan)
+        self.assertEqual(change.status, PlanOccurrence.STATUS_SKIPPED)
+        self.assertFalse(Expense.objects.filter(monthly_expense=plan).exists())
+        self.assertEqual(
+            occurrence_dates(plan, date(2026, 9, 1), date(2026, 9, 30)),
+            [date(2026, 9, 19)],
+        )
+
+    def test_saving_can_be_moved_for_only_one_month(self):
+        goal = SavingsGoal.objects.create(
+            user=self.user,
+            name="Travel",
+            monthly_amount=Decimal("100.00"),
+            start_date=date(2026, 8, 19),
+            current_balance=Decimal("0.00"),
+            bank_account=self.account,
+        )
+        with patch("web.views.timezone.localdate", return_value=date(2026, 8, 19)):
+            response = self.client.post(
+                reverse(
+                    "manage_plan_occurrence",
+                    args=["saving", goal.pk, "2026-08-19"],
+                ),
+                {
+                    "action": "move",
+                    "amount": "80.00",
+                    "date": "2026-08-21",
+                    "return_tab": "plans",
+                },
+            )
+        self.assertEqual(response.status_code, 302)
+        change = PlanOccurrence.objects.get(savings_goal=goal)
+        self.assertEqual(change.amount, Decimal("80.00"))
+        self.assertEqual(change.effective_date, date(2026, 8, 21))
+        self.assertEqual(goal.monthly_amount, Decimal("100.00"))
+
+        forecast = build_daily_forecast(
+            self.user, date(2026, 8, 19), horizon_end=date(2026, 9, 30)
+        )
+        aug_21 = next(row for row in forecast["rows"] if row["date"] == date(2026, 8, 21))
+        sep_19 = next(row for row in forecast["rows"] if row["date"] == date(2026, 9, 19))
+        self.assertEqual(aug_21["savings"], Decimal("80.00"))
+        self.assertEqual(sep_19["savings"], Decimal("100.00"))
+
+    def test_account_balance_last_updated_changes_when_balance_is_confirmed(self):
+        old = timezone.now() - timedelta(days=5)
+        BankAccount.objects.filter(pk=self.account.pk).update(balance_updated_at=old)
+        with patch("web.views.timezone.now", return_value=timezone.now()):
+            response = self.client.post(
+                reverse("update_bank_account", args=[self.account.pk]),
+                {
+                    "name": self.account.name,
+                    "balance": "1000.00",
+                    "include_in_budget": "on",
+                },
+            )
+        self.assertEqual(response.status_code, 302)
+        self.account.refresh_from_db()
+        self.assertGreater(self.account.balance_updated_at, old)
+
+    def test_can_i_spend_can_add_once_plan_and_temporary_daily_change(self):
+        BudgetPreference.objects.create(
+            user=self.user,
+            expected_daily_expense=Decimal("50.00"),
+            emergency_buffer=Decimal("0.00"),
+        )
+        # Keep cash deliberately tight until a later income arrives, so the
+        # extra spend is possible only with a temporary daily cut.
+        self.account.balance = Decimal("160.00")
+        self.account.save(update_fields=["balance"])
+        RecurringIncome.objects.create(
+            user=self.user,
+            name="Later income",
+            amount=Decimal("500.00"),
+            frequency="once",
+            start_date=date(2026, 8, 25),
+            category=self.income_category,
+            bank_account=self.account,
+        )
+
+        result = calculate_spending_tradeoff(
+            self.user, date(2026, 8, 19), Decimal("60.00"), 5
+        )
+        self.assertTrue(result["possible"])
+        self.assertTrue(result["needs_change"])
+        self.assertLess(result["suggested_daily"], Decimal("50.00"))
+
+        self.client.post(
+            reverse("check_extra_spending"),
+            {
+                "amount": "60.00",
+                "days": "5",
+                "name": "Dinner",
+                "bank_account": self.account.pk,
+            },
+        )
+        response = self.client.post(reverse("apply_extra_spending_plan"))
+        self.assertEqual(response.status_code, 302)
+        expense = MonthlyExpense.objects.get(name="Dinner")
+        self.assertEqual(expense.frequency, "once")
+        self.assertEqual(expense.start_date, date(2026, 8, 19))
+        adjustment = DailySpendingAdjustment.objects.get(reason="Dinner")
+        self.assertEqual(adjustment.start_date, date(2026, 8, 20))
+        self.assertEqual(adjustment.end_date, date(2026, 8, 24))
+        self.assertLess(adjustment.daily_amount, Decimal("50.00"))
+
+    def test_public_home_shows_saashub_approval_badge(self):
+        self.client.logout()
+        response = self.client.get(reverse("home"))
+        self.assertContains(response, "Darith around the web")
+        self.assertContains(response, "saashub.com/darith-app")
+        self.assertContains(response, "approved-color.png")
+
+    def test_scheduled_command_is_passive_and_does_not_change_balances(self):
+        RecurringIncome.objects.create(
+            user=self.user,
+            name="Salary",
+            amount=Decimal("200.00"),
+            frequency="once",
+            start_date=date(2026, 8, 19),
+            category=self.income_category,
+            bank_account=self.account,
+        )
+        output = io.StringIO()
+        with patch("web.management.commands.process_scheduled_transactions.timezone.localdate", return_value=date(2026, 8, 19)):
+            call_command("process_scheduled_transactions", stdout=output)
+        self.account.refresh_from_db()
+        self.assertEqual(self.account.balance, Decimal("1000.00"))
+        self.assertFalse(Income.objects.filter(text="Salary").exists())
+        self.assertIn("No balances were changed", output.getvalue())
 
 
 class RegistrationTests(TestCase):

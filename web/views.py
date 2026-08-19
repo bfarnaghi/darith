@@ -3,6 +3,8 @@
 import json
 import mimetypes
 import time
+from datetime import date
+from decimal import Decimal
 
 from django.conf import settings
 from django.contrib import messages
@@ -41,10 +43,12 @@ from .forms import (
     IncomeForm,
     MonthlyExpenseForm,
     PlanningSettingsForm,
+    PlanOccurrenceForm,
     RecurringIncomeForm,
     RegistrationForm,
     SavingsGoalForm,
     SecuritySettingsForm,
+    SpendingCheckForm,
     TransferForm,
     UsernameChangeForm,
     UserPasswordChangeForm,
@@ -53,12 +57,14 @@ from .exports import build_user_csv_response
 from .models import (
     BankAccount,
     BudgetPreference,
+    DailySpendingAdjustment,
     Expense,
     ExpenseCategory,
     Income,
     IncomeCategory,
     MonthlyExpense,
     PasskeyCredential,
+    PlanOccurrence,
     RecurringIncome,
     SavingsGoal,
     Transfer,
@@ -78,15 +84,21 @@ from .security import (
 )
 from .services import (
     InsufficientFunds,
+    apply_plan_occurrence_action,
+    apply_spending_tradeoff,
     build_daily_forecast,
     build_monthly_budget,
     build_next_month_forecast,
+    calculate_spending_tradeoff,
     delete_transaction,
     delete_transfer,
     fund_due_savings_goals,
     fund_goal_for_month,
     goal_funding_reminders,
-    post_due_recurring,
+    next_plan_occurrence,
+    occurrence_initial,
+    pending_plan_occurrences,
+    plan_for_occurrence,
     save_transaction,
     save_transfer,
 )
@@ -458,26 +470,6 @@ def _seed_categories(user):
 def dashboard(request):
     today = timezone.localdate()
     _seed_categories(request.user)
-    posted_count = post_due_recurring(request.user, today)
-    if posted_count:
-        messages.info(
-            request,
-            ngettext(
-                "Posted %(count)d scheduled transaction.",
-                "Posted %(count)d scheduled transactions.",
-                posted_count,
-            ) % {"count": posted_count},
-        )
-    funded_goal_count = fund_due_savings_goals(request.user, today)
-    if funded_goal_count:
-        messages.info(
-            request,
-            ngettext(
-                "Funded %(count)d saving goal.",
-                "Funded %(count)d saving goals.",
-                funded_goal_count,
-            ) % {"count": funded_goal_count},
-        )
 
     accounts = list(BankAccount.objects.filter(user=request.user))
     preference, _created = BudgetPreference.objects.get_or_create(user=request.user)
@@ -546,7 +538,62 @@ def dashboard(request):
             user=request.user, is_archived=False
         ).select_related("bank_account")
     )
-    goal_reminders = goal_funding_reminders(request.user, today)
+    pending_occurrences = pending_plan_occurrences(request.user, today)
+
+    def occurrence_dialog(kind, plan, occurrence):
+        scheduled_date = occurrence["scheduled_date"]
+        initial = occurrence_initial(request.user, kind, plan, scheduled_date)
+        return {
+            "kind": kind,
+            "plan": plan,
+            "scheduled_date": scheduled_date,
+            "date": occurrence["date"],
+            "amount": occurrence["amount"],
+            "form": PlanOccurrenceForm(initial=initial, today=today),
+            "dialog_id": f"occurrence-{kind}-{plan.pk}-{scheduled_date.isoformat()}",
+            "can_confirm": occurrence["date"] <= today,
+        }
+
+    occurrence_dialog_map = {}
+    pending_occurrence_rows = []
+    for occurrence in pending_occurrences:
+        item = occurrence_dialog(occurrence["kind"], occurrence["plan"], occurrence)
+        occurrence_dialog_map[item["dialog_id"]] = item
+        pending_occurrence_rows.append(item)
+
+    income_plan_rows = []
+    for plan in recurring_incomes:
+        next_occurrence = next_plan_occurrence(
+            request.user, PlanOccurrence.KIND_INCOME, plan, today
+        )
+        dialog = None
+        if next_occurrence:
+            dialog = occurrence_dialog(PlanOccurrence.KIND_INCOME, plan, next_occurrence)
+            occurrence_dialog_map.setdefault(dialog["dialog_id"], dialog)
+        income_plan_rows.append({"plan": plan, "next": next_occurrence, "dialog": dialog})
+
+    expense_plan_rows = []
+    for plan in recurring_expenses:
+        next_occurrence = next_plan_occurrence(
+            request.user, PlanOccurrence.KIND_EXPENSE, plan, today
+        )
+        dialog = None
+        if next_occurrence:
+            dialog = occurrence_dialog(PlanOccurrence.KIND_EXPENSE, plan, next_occurrence)
+            occurrence_dialog_map.setdefault(dialog["dialog_id"], dialog)
+        expense_plan_rows.append({"plan": plan, "next": next_occurrence, "dialog": dialog})
+
+    saving_plan_rows = []
+    for plan in savings_goals:
+        next_occurrence = next_plan_occurrence(
+            request.user, PlanOccurrence.KIND_SAVING, plan, today
+        )
+        dialog = None
+        if next_occurrence:
+            dialog = occurrence_dialog(PlanOccurrence.KIND_SAVING, plan, next_occurrence)
+            occurrence_dialog_map.setdefault(dialog["dialog_id"], dialog)
+        saving_plan_rows.append({"plan": plan, "next": next_occurrence, "dialog": dialog})
+
     daily_forecast = build_daily_forecast(request.user, today)
     budget = build_monthly_budget(
         request.user, today, daily_forecast=daily_forecast
@@ -558,6 +605,42 @@ def dashboard(request):
         daily_forecast=daily_forecast,
     )
     active_animation = getattr(preference, f"{budget['status']}_gif")
+    included_accounts = [account for account in accounts if account.include_in_budget]
+    oldest_balance_update = min(
+        (account.balance_updated_at for account in included_accounts),
+        default=None,
+    )
+    balance_update_days = (
+        (today - timezone.localtime(oldest_balance_update).date()).days
+        if oldest_balance_update
+        else None
+    )
+    spending_check_result = request.session.get("spending_check_result")
+    if spending_check_result:
+        for key in (
+            "amount",
+            "current_daily",
+            "suggested_daily",
+            "daily_reduction",
+            "safe_before",
+            "safe_after",
+        ):
+            spending_check_result[key] = Decimal(spending_check_result[key])
+        for key in ("start_date", "end_date"):
+            spending_check_result[key] = date.fromisoformat(spending_check_result[key])
+    active_daily_adjustments = list(
+        DailySpendingAdjustment.objects.filter(user=request.user, end_date__gte=today)
+    )
+    spending_check_initial = {"days": 30}
+    if spending_check_result:
+        spending_check_initial.update(
+            {
+                "amount": spending_check_result["amount"],
+                "days": spending_check_result["days"],
+                "name": spending_check_result.get("name", ""),
+                "bank_account": spending_check_result.get("bank_account_id"),
+            }
+        )
 
     context = {
         "active_tab": request.GET.get("tab", "overview"),
@@ -568,7 +651,15 @@ def dashboard(request):
         "recurring_incomes": recurring_incomes,
         "recurring_expenses": recurring_expenses,
         "savings_goals": savings_goals,
-        "goal_reminders": goal_reminders,
+        "pending_occurrences": pending_occurrence_rows,
+        "occurrence_dialogs": list(occurrence_dialog_map.values()),
+        "income_plan_rows": income_plan_rows,
+        "expense_plan_rows": expense_plan_rows,
+        "saving_plan_rows": saving_plan_rows,
+        "balance_update_days": balance_update_days,
+        "oldest_balance_update": oldest_balance_update,
+        "spending_check_result": spending_check_result,
+        "active_daily_adjustments": active_daily_adjustments,
         "subscriptions_enabled": settings.SUBSCRIPTIONS_ENABLED,
         "user_subscription": (
             get_user_subscription(request.user)
@@ -598,6 +689,7 @@ def dashboard(request):
         "password_change_form": UserPasswordChangeForm(request.user),
         "account_deletion_form": AccountDeletionForm(user=request.user),
         "feedback_form": FeedbackForm(),
+        "spending_check_form": SpendingCheckForm(user=request.user, initial=spending_check_initial),
         "transfer_form": TransferForm(user=request.user, initial={"date": today}),
         "expense_form": ExpenseForm(user=request.user, initial={"date": today}),
         "income_form": IncomeForm(user=request.user, initial={"date": today}),
@@ -735,7 +827,9 @@ def update_bank_account(request, account_id):
     form = BankAccountForm(request.POST, instance=account)
     if form.is_valid():
         try:
-            form.save()
+            updated_account = form.save()
+            updated_account.balance_updated_at = timezone.now()
+            updated_account.save(update_fields=["balance_updated_at"])
             messages.success(request, _("Bank account updated."))
         except IntegrityError:
             messages.error(request, _("You already have an account with that name."))
@@ -1078,6 +1172,120 @@ def update_planning_settings(request):
         messages.success(request, _("Planning settings saved."))
     else:
         _show_form_errors(request, form)
+    return _dashboard_redirect("overview")
+
+
+@require_POST
+@login_required
+def manage_plan_occurrence(request, kind, plan_id, scheduled_date):
+    today = timezone.localdate()
+    try:
+        scheduled = date.fromisoformat(scheduled_date)
+        plan = plan_for_occurrence(request.user, kind, plan_id)
+    except (ValueError, ValidationError, RecurringIncome.DoesNotExist, MonthlyExpense.DoesNotExist, SavingsGoal.DoesNotExist):
+        raise Http404("Unknown planned item.")
+
+    action = request.POST.get("action", "")
+    form = PlanOccurrenceForm(
+        request.POST,
+        today=today,
+        allow_past=action in {"confirm", "skip"},
+    )
+    if form.is_valid():
+        try:
+            apply_plan_occurrence_action(
+                request.user,
+                kind,
+                plan,
+                scheduled,
+                action,
+                form.cleaned_data["date"],
+                form.cleaned_data["amount"],
+                today,
+            )
+            if action == "confirm":
+                messages.success(request, _("Planned item recorded."))
+            elif action == "move":
+                messages.success(request, _("This planned item was moved."))
+            elif action == "skip":
+                messages.success(request, _("This planned item was skipped."))
+        except (ValidationError, InsufficientFunds, IntegrityError) as error:
+            messages.error(request, "; ".join(getattr(error, "messages", [str(error)])))
+    else:
+        _show_form_errors(request, form)
+    return _dashboard_redirect(request.POST.get("return_tab", "overview"))
+
+
+@require_POST
+@login_required
+def check_extra_spending(request):
+    today = timezone.localdate()
+    form = SpendingCheckForm(request.POST, user=request.user)
+    if not form.is_valid():
+        _show_form_errors(request, form)
+        return _dashboard_redirect("overview")
+
+    result = calculate_spending_tradeoff(
+        request.user,
+        today,
+        form.cleaned_data["amount"],
+        form.cleaned_data["days"],
+    )
+    result.update(
+        {
+            "name": form.cleaned_data.get("name") or _("Extra spending"),
+            "bank_account_id": form.cleaned_data["bank_account"].pk,
+            "bank_account_name": form.cleaned_data["bank_account"].name,
+        }
+    )
+    request.session["spending_check_result"] = {
+        key: (
+            value.isoformat()
+            if isinstance(value, date)
+            else str(value)
+            if isinstance(value, Decimal)
+            else value
+        )
+        for key, value in result.items()
+    }
+    return _dashboard_redirect("overview")
+
+
+@require_POST
+@login_required
+def apply_extra_spending_plan(request):
+    stored = request.session.get("spending_check_result")
+    if not stored or not stored.get("possible"):
+        messages.error(request, _("Check the amount first."))
+        return _dashboard_redirect("overview")
+    account = get_object_or_404(
+        BankAccount, pk=stored["bank_account_id"], user=request.user
+    )
+    today = timezone.localdate()
+    try:
+        apply_spending_tradeoff(
+            request.user,
+            today,
+            stored.get("name") or _("Extra spending"),
+            Decimal(stored["amount"]),
+            int(stored["days"]),
+            account,
+            Decimal(stored["suggested_daily"]),
+        )
+    except (ValidationError, IntegrityError) as error:
+        messages.error(request, "; ".join(getattr(error, "messages", [str(error)])))
+    else:
+        request.session.pop("spending_check_result", None)
+        messages.success(request, _("Added to your plan."))
+    return _dashboard_redirect("overview")
+
+
+@require_POST
+@login_required
+def remove_daily_spending_adjustment(request, item_id):
+    item = get_object_or_404(DailySpendingAdjustment, pk=item_id, user=request.user)
+    item.delete()
+    messages.success(request, _("Temporary daily spending change removed."))
     return _dashboard_redirect("overview")
 
 

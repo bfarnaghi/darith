@@ -120,7 +120,7 @@ def build_user_csv_response(user):
             currency=currency_code,
             category=item.category.name if item.category else "",
             account=item.bank_account.name,
-            recurring="monthly",
+            recurring=item.frequency,
         )
 
     for item in MonthlyExpense.objects.filter(user=user).select_related(
@@ -137,7 +137,7 @@ def build_user_csv_response(user):
             currency=currency_code,
             category=item.category.name if item.category else "",
             account=item.bank_account.name,
-            recurring="monthly",
+            recurring=item.frequency,
         )
 
     for item in Income.objects.filter(user=user, is_skipped=False).select_related(

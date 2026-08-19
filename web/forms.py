@@ -17,6 +17,7 @@ from .models import (
     Income,
     IncomeCategory,
     MonthlyExpense,
+    PlanOccurrence,
     RecurringIncome,
     SavingsGoal,
     Transfer,
@@ -300,7 +301,7 @@ class TransactionForm(UserScopedFormMixin, StyledFormMixin, forms.ModelForm):
     def clean_date(self):
         value = self.cleaned_data["date"]
         if value > timezone.localdate():
-            raise forms.ValidationError(_("Use a recurring plan for future transactions."))
+            raise forms.ValidationError(_("Use a plan for future transactions."))
         return value
 
     def clean_bank_account(self):
@@ -345,22 +346,34 @@ class IncomeForm(TransactionForm):
 
 
 class DateRangeForm(UserScopedFormMixin, StyledFormMixin, forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if "frequency" in self.fields:
+            self.fields["frequency"].required = False
+            self.fields["frequency"].initial = self.instance.frequency or "monthly"
+
+    def clean_frequency(self):
+        return self.cleaned_data.get("frequency") or "monthly"
+
     def clean(self):
         cleaned_data = super().clean()
         start_date = cleaned_data.get("start_date")
         end_date = cleaned_data.get("end_date")
         if start_date and end_date and end_date < start_date:
             self.add_error("end_date", _("End date must be on or after the first date."))
+        if cleaned_data.get("frequency") == "once":
+            cleaned_data["end_date"] = None
         return cleaned_data
 
 
 class RecurringIncomeForm(DateRangeForm):
     class Meta:
         model = RecurringIncome
-        fields = ["name", "amount", "start_date", "end_date", "category", "bank_account"]
+        fields = ["name", "amount", "frequency", "start_date", "end_date", "category", "bank_account"]
         labels = {
             "name": _("Name"),
             "amount": _("Amount"),
+            "frequency": _("Repeat"),
             "start_date": _("First payment date"),
             "end_date": _("Stop repeating after (optional)"),
             "category": _("Category"),
@@ -376,10 +389,11 @@ class RecurringIncomeForm(DateRangeForm):
 class MonthlyExpenseForm(DateRangeForm):
     class Meta:
         model = MonthlyExpense
-        fields = ["name", "amount", "start_date", "end_date", "category", "bank_account"]
+        fields = ["name", "amount", "frequency", "start_date", "end_date", "category", "bank_account"]
         labels = {
             "name": _("Name"),
             "amount": _("Amount"),
+            "frequency": _("Repeat"),
             "start_date": _("First charge date"),
             "end_date": _("Stop repeating after (optional)"),
             "category": _("Category"),
@@ -390,6 +404,53 @@ class MonthlyExpenseForm(DateRangeForm):
             "start_date": forms.DateInput(attrs={"type": "date"}),
             "end_date": forms.DateInput(attrs={"type": "date"}),
         }
+
+
+class PlanOccurrenceForm(StyledFormMixin, forms.Form):
+    amount = forms.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        min_value=Decimal("0.01"),
+        label=_("Amount"),
+        widget=forms.NumberInput(attrs={"step": "0.01", "min": "0.01"}),
+    )
+    date = forms.DateField(
+        label=_("Date"), widget=forms.DateInput(attrs={"type": "date"})
+    )
+
+    def __init__(self, *args, today=None, allow_past=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.today = today or timezone.localdate()
+        self.allow_past = allow_past
+
+    def clean_date(self):
+        value = self.cleaned_data["date"]
+        if not self.allow_past and value < self.today:
+            raise forms.ValidationError(_("Choose today or a future date."))
+        return value
+
+
+class SpendingCheckForm(UserScopedFormMixin, StyledFormMixin, forms.Form):
+    amount = forms.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        min_value=Decimal("0.01"),
+        label=_("Extra amount"),
+        widget=forms.NumberInput(attrs={"step": "0.01", "min": "0.01"}),
+    )
+    days = forms.IntegerField(
+        min_value=1,
+        max_value=365,
+        initial=30,
+        label=_("Days to spread it over"),
+        widget=forms.NumberInput(attrs={"min": "1", "max": "365"}),
+    )
+    name = forms.CharField(
+        max_length=100, required=False, label=_("Name"), initial=_("Extra spending")
+    )
+    bank_account = forms.ModelChoiceField(
+        queryset=BankAccount.objects.none(), label=_("Bank account")
+    )
 
 
 class SavingsGoalForm(UserScopedFormMixin, StyledFormMixin, forms.ModelForm):

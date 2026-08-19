@@ -85,6 +85,7 @@ class BankAccount(models.Model):
             "Include this account in free-to-spend and monthly dashboard totals."
         ),
     )
+    balance_updated_at = models.DateTimeField(default=timezone.now)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="bank_accounts")
 
     class Meta:
@@ -94,6 +95,20 @@ class BankAccount(models.Model):
                 fields=["user", "name"], name="unique_bank_account_per_user"
             )
         ]
+
+    def save(self, *args, **kwargs):
+        balance_changed = self._state.adding
+        if self.pk and not self._state.adding:
+            previous_balance = (
+                type(self).objects.filter(pk=self.pk).values_list("balance", flat=True).first()
+            )
+            balance_changed = previous_balance is not None and previous_balance != self.balance
+        if balance_changed:
+            self.balance_updated_at = timezone.now()
+            update_fields = kwargs.get("update_fields")
+            if update_fields is not None:
+                kwargs["update_fields"] = set(update_fields) | {"balance_updated_at"}
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.name} - {self.balance}"
@@ -312,9 +327,23 @@ def delete_budget_animation_files(sender, instance, **kwargs):
 
 
 class RecurringItem(models.Model):
+    FREQUENCY_ONCE = "once"
+    FREQUENCY_DAILY = "daily"
+    FREQUENCY_WEEKLY = "weekly"
+    FREQUENCY_MONTHLY = "monthly"
+    FREQUENCY_CHOICES = [
+        (FREQUENCY_ONCE, _("Once")),
+        (FREQUENCY_DAILY, _("Daily")),
+        (FREQUENCY_WEEKLY, _("Weekly")),
+        (FREQUENCY_MONTHLY, _("Monthly")),
+    ]
+
     name = models.CharField(max_length=100)
     amount = models.DecimalField(
         max_digits=14, decimal_places=2, validators=MONEY_VALIDATORS
+    )
+    frequency = models.CharField(
+        max_length=12, choices=FREQUENCY_CHOICES, default=FREQUENCY_MONTHLY
     )
     start_date = models.DateField()
     end_date = models.DateField(blank=True, null=True)
@@ -465,6 +494,133 @@ class SavingsGoal(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.monthly_amount}"
+
+
+class PlanOccurrence(models.Model):
+    KIND_INCOME = "income"
+    KIND_EXPENSE = "expense"
+    KIND_SAVING = "saving"
+    KIND_CHOICES = [
+        (KIND_INCOME, _("Income")),
+        (KIND_EXPENSE, _("Expense")),
+        (KIND_SAVING, _("Saving")),
+    ]
+
+    STATUS_PENDING = "pending"
+    STATUS_CONFIRMED = "confirmed"
+    STATUS_SKIPPED = "skipped"
+    STATUS_CHOICES = [
+        (STATUS_PENDING, _("Waiting")),
+        (STATUS_CONFIRMED, _("Done")),
+        (STATUS_SKIPPED, _("Skipped")),
+    ]
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="plan_occurrences"
+    )
+    kind = models.CharField(max_length=12, choices=KIND_CHOICES)
+    recurring_income = models.ForeignKey(
+        RecurringIncome,
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True,
+        related_name="occurrence_changes",
+    )
+    monthly_expense = models.ForeignKey(
+        MonthlyExpense,
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True,
+        related_name="occurrence_changes",
+    )
+    savings_goal = models.ForeignKey(
+        SavingsGoal,
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True,
+        related_name="occurrence_changes",
+    )
+    scheduled_date = models.DateField()
+    effective_date = models.DateField()
+    amount = models.DecimalField(
+        max_digits=14, decimal_places=2, validators=MONEY_VALIDATORS
+    )
+    status = models.CharField(
+        max_length=12, choices=STATUS_CHOICES, default=STATUS_PENDING
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["effective_date", "kind", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["recurring_income", "scheduled_date"],
+                condition=Q(recurring_income__isnull=False),
+                name="unique_income_plan_occurrence",
+            ),
+            models.UniqueConstraint(
+                fields=["monthly_expense", "scheduled_date"],
+                condition=Q(monthly_expense__isnull=False),
+                name="unique_expense_plan_occurrence",
+            ),
+            models.UniqueConstraint(
+                fields=["savings_goal", "scheduled_date"],
+                condition=Q(savings_goal__isnull=False),
+                name="unique_saving_plan_occurrence",
+            ),
+        ]
+
+    @property
+    def plan(self):
+        return self.recurring_income or self.monthly_expense or self.savings_goal
+
+    @property
+    def name(self):
+        return self.plan.name if self.plan else ""
+
+    def clean(self):
+        super().clean()
+        plans = [self.recurring_income, self.monthly_expense, self.savings_goal]
+        if sum(plan is not None for plan in plans) != 1:
+            raise ValidationError(_("Choose exactly one plan for this date."))
+        expected_kind = (
+            self.KIND_INCOME
+            if self.recurring_income_id
+            else self.KIND_EXPENSE
+            if self.monthly_expense_id
+            else self.KIND_SAVING
+        )
+        if self.kind != expected_kind:
+            raise ValidationError(_("The plan type does not match this item."))
+        if self.plan and self.plan.user_id != self.user_id:
+            raise ValidationError(_("This plan does not belong to this user."))
+
+
+class DailySpendingAdjustment(models.Model):
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="daily_spending_adjustments"
+    )
+    start_date = models.DateField()
+    end_date = models.DateField()
+    daily_amount = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.00"))],
+    )
+    reason = models.CharField(max_length=120, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-start_date", "-id"]
+
+    def clean(self):
+        super().clean()
+        if self.end_date < self.start_date:
+            raise ValidationError(_("The end date must be on or after the start date."))
+
+    def __str__(self):
+        return f"{self.user} - {self.daily_amount}/day until {self.end_date}"
 
 
 class SubscriptionPlan(models.Model):

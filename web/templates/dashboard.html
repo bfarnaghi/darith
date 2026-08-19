@@ -8,7 +8,7 @@
 {% block language_switcher %}{% endblock %}
 
 {% block body %}
-<div class="app-shell" data-active-tab="{{ active_tab }}" data-theme="{{ budget_preference.theme }}" data-values-hidden="{{ budget_preference.hide_financial_values|yesno:'true,false' }}" data-lock-timeout-seconds="{% widthratio budget_preference.lock_timeout_minutes 1 60 %}" data-lock-url="{% url 'security_lock' %}" data-activity-url="{% url 'security_activity' %}" data-locked-url="{% url 'session_locked' %}" data-passkey-options-url="{% url 'passkey_registration_options' %}" data-passkey-verify-url="{% url 'passkey_registration_verify' %}" data-title-overview="{% translate 'Overview' %}" data-title-accounts="{% translate 'Accounts' %}" data-title-transactions="{% translate 'Transactions' %}" data-title-plans="{% translate 'Monthly plans' %}" data-title-categories="{% translate 'Categories' %}" data-passkey-unsupported="{% translate 'Passkeys need HTTPS and a supported browser.' %}" data-security-error="{% translate 'The security request failed.' %}" data-passkey-waiting="{% translate 'Waiting for your device...' %}" data-passkey-choose="{% translate 'Choose your passkey...' %}" data-passkey-added="{% translate 'Passkey added.' %}" data-passkey-unlocked="{% translate 'Unlocked.' %}" data-passkey-canceled="{% translate 'Passkey request canceled.' %}" data-default-passkey-name="{% translate 'My passkey' %}">
+<div class="app-shell" data-active-tab="{{ active_tab }}" data-theme="{{ budget_preference.theme }}" data-values-hidden="{{ budget_preference.hide_financial_values|yesno:'true,false' }}" data-lock-timeout-seconds="{% widthratio budget_preference.lock_timeout_minutes 1 60 %}" data-lock-url="{% url 'security_lock' %}" data-activity-url="{% url 'security_activity' %}" data-locked-url="{% url 'session_locked' %}" data-passkey-options-url="{% url 'passkey_registration_options' %}" data-passkey-verify-url="{% url 'passkey_registration_verify' %}" data-title-overview="{% translate 'Overview' %}" data-title-accounts="{% translate 'Accounts' %}" data-title-transactions="{% translate 'Transactions' %}" data-title-plans="{% translate 'Plans' %}" data-title-categories="{% translate 'Categories' %}" data-passkey-unsupported="{% translate 'Passkeys need HTTPS and a supported browser.' %}" data-security-error="{% translate 'The security request failed.' %}" data-passkey-waiting="{% translate 'Waiting for your device...' %}" data-passkey-choose="{% translate 'Choose your passkey...' %}" data-passkey-added="{% translate 'Passkey added.' %}" data-passkey-unlocked="{% translate 'Unlocked.' %}" data-passkey-canceled="{% translate 'Passkey request canceled.' %}" data-default-passkey-name="{% translate 'My passkey' %}">
     <aside class="sidebar">
         <a class="brand" href="{% url 'dashboard' %}" aria-label="{% translate 'Darith dashboard' %}">
             <img class="brand-logo" src="{% static 'images/logo.png' %}" alt="">
@@ -18,7 +18,7 @@
             <button class="nav-item" type="button" data-tab-target="overview"><span aria-hidden="true">⌂</span>{% translate "Overview" %}</button>
             <button class="nav-item" type="button" data-tab-target="accounts"><span aria-hidden="true">▣</span>{% translate "Accounts" %}</button>
             <button class="nav-item" type="button" data-tab-target="transactions"><span aria-hidden="true">↕</span>{% translate "Transactions" %}</button>
-            <button class="nav-item" type="button" data-tab-target="plans"><span aria-hidden="true">↻</span>{% translate "Monthly plans" %}</button>
+            <button class="nav-item" type="button" data-tab-target="plans"><span aria-hidden="true">↻</span>{% translate "Plans" %}</button>
             <button class="nav-item" type="button" data-tab-target="categories"><span aria-hidden="true">#</span>{% translate "Categories" %}</button>
             <a class="nav-item" href="{% url 'tutorial' %}"><span aria-hidden="true">i</span>{% translate "Tutorial" %}</a>
         </nav>
@@ -82,11 +82,63 @@
                 <div class="budget-meter" aria-label="{% translate 'Current balance and monthly outlook' %}">
                     <span class="status-dot status-{{ budget.status }}"></span>
                     <div class="budget-summary">
-                        <span><small>{% translate "Current bank balance" %}</small><strong>{{ budget.current_balance|money:budget_preference }}</strong></span>
+                        <span><small>{% translate "Current bank balance" %}</small><strong>{{ budget.current_balance|money:budget_preference }}</strong>{% if balance_update_days is not None %}<em class="balance-age">{% if balance_update_days == 0 %}{% translate "Balances updated today" %}{% elif balance_update_days == 1 %}{% translate "A balance was last updated yesterday" %}{% else %}{% blocktranslate with days=balance_update_days %}A balance was last updated {{ days }} days ago{% endblocktranslate %}{% endif %}</em>{% endif %}</span>
                         <span><small>{% blocktranslate with date=budget.month_end|date:"j M" %}Balance expected on {{ date }}{% endblocktranslate %}</small><strong>{{ budget.projected_balance|money:budget_preference }}</strong></span>
                     </div>
                 </div>
             </div>
+
+            {% if pending_occurrences %}
+            <section class="plan-checks" aria-labelledby="plan-checks-title">
+                <div class="section-heading">
+                    <div><p class="eyebrow">{% translate "Needs a check" %}</p><h2 id="plan-checks-title">{% translate "Did these happen?" %}</h2><p>{% translate "Darith will not change your balance until you confirm." %}</p></div>
+                    <span class="count-badge">{{ pending_occurrences|length }}</span>
+                </div>
+                <div class="plan-check-list">
+                    {% for item in pending_occurrences %}
+                    <article class="plan-check-item">
+                        <span class="transaction-mark {{ item.kind }}">{% if item.kind == 'income' %}+{% elif item.kind == 'expense' %}−{% else %}◎{% endif %}</span>
+                        <div><strong>{{ item.plan.name }}</strong><small>{{ item.date|date:"j M Y" }}{% if item.date < today %} · {% translate "Late" %}{% endif %}</small></div>
+                        <b class="{% if item.kind == 'income' %}positive{% else %}negative{% endif %}">{% if item.kind == 'income' %}{{ item.amount|money_plus:budget_preference }}{% else %}{{ item.amount|money_minus:budget_preference }}{% endif %}</b>
+                        <button class="button button-secondary button-small" type="button" data-dialog-open="{{ item.dialog_id }}">{% translate "Check" %}</button>
+                    </article>
+                    {% endfor %}
+                </div>
+            </section>
+            {% endif %}
+
+            <details class="spending-check"{% if spending_check_result %} open{% endif %}>
+                <summary>{% translate "Can I spend more?" %}</summary>
+                <div class="spending-check-body">
+                    <p>{% translate "Enter an extra amount. Darith can show how much you would need to lower your daily spending for a short time." %}</p>
+                    <form method="post" action="{% url 'check_extra_spending' %}" class="spending-check-form">
+                        {% csrf_token %}
+                        <p><label for="{{ spending_check_form.amount.id_for_label }}">{{ spending_check_form.amount.label }}</label>{{ spending_check_form.amount }}</p>
+                        <p><label for="{{ spending_check_form.days.id_for_label }}">{{ spending_check_form.days.label }}</label>{{ spending_check_form.days }}</p>
+                        <p><label for="{{ spending_check_form.name.id_for_label }}">{{ spending_check_form.name.label }}</label>{{ spending_check_form.name }}</p>
+                        <p><label for="{{ spending_check_form.bank_account.id_for_label }}">{{ spending_check_form.bank_account.label }}</label>{{ spending_check_form.bank_account }}</p>
+                        <button class="button button-primary" type="submit">{% translate "Check amount" %}</button>
+                    </form>
+                    {% if spending_check_result %}
+                    <div class="spending-check-result {% if spending_check_result.possible %}possible{% else %}not-possible{% endif %}">
+                        {% if spending_check_result.possible %}
+                            {% if spending_check_result.needs_change %}
+                            <strong>{% translate "You can make room for this." %}</strong>
+                            <p>{% blocktranslate with old=spending_check_result.current_daily|money:budget_preference new=spending_check_result.suggested_daily|money:budget_preference days=spending_check_result.days %}Change daily spending from {{ old }} to {{ new }} for {{ days }} days.{% endblocktranslate %}</p>
+                            {% else %}
+                            <strong>{% translate "This amount fits your plan." %}</strong>
+                            <p>{% translate "You do not need to lower your daily spending." %}</p>
+                            {% endif %}
+                            <small>{% blocktranslate with start=spending_check_result.start_date|date:"j M" end=spending_check_result.end_date|date:"j M" %}Temporary daily change: {{ start }} to {{ end }}.{% endblocktranslate %}</small>
+                            <form method="post" action="{% url 'apply_extra_spending_plan' %}">{% csrf_token %}<button class="button button-primary button-small" type="submit">{% translate "Add to my plan" %}</button></form>
+                        {% else %}
+                            <strong>{% translate "This does not fit yet." %}</strong>
+                            <p>{% translate "Try a smaller amount or spread it over more days." %}</p>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </details>
 
             {% if budget_preference.show_money_timeline %}
             <section class="forecast-timeline" aria-labelledby="forecast-timeline-title" data-timeline-root data-no-events="{% translate 'Nothing else is planned for this day.' %}">
@@ -163,24 +215,8 @@
                 <div><strong>{% if budget.status == 'healthy' %}{% translate "Good" %}{% elif budget.status == 'warning' %}{% translate "Tight" %}{% else %}{% translate "Not enough" %}{% endif %}</strong><p>{% if budget_preference.hide_financial_values and budget.status != 'healthy' %}{% translate "Your plan needs attention. Show amounts to see the details." %}{% else %}{{ budget.warning }}{% endif %}</p></div>
             </div>
 
-            {% if goal_reminders %}
-            <section class="funding-reminders" aria-label="{% translate 'Savings reminders' %}">
-                <div class="funding-reminder-head"><div><p class="eyebrow">{% translate "Monthly saving reminder" %}</p><h2>{% translate "Fund your goals" %}</h2></div><span class="count-badge">{{ goal_reminders|length }}</span></div>
-                <div class="funding-reminder-list">
-                    {% for reminder in goal_reminders %}
-                    <article class="funding-reminder">
-                        <span class="saving-icon">◎</span>
-                        <div><strong>{{ reminder.goal.name }}</strong><small>{% if reminder.source_account %}{% blocktranslate with account=reminder.source_account.name %}From {{ account }}{% endblocktranslate %}{% else %}{% translate "Choose a funding account in the goal" %}{% endif %}</small></div>
-                        <b>{{ reminder.amount|money:budget_preference }}</b>
-                        <form method="post" action="{% url 'fund_savings_goal' reminder.goal.id %}">{% csrf_token %}<button class="button button-primary button-small" type="submit" {% if not reminder.can_fund %}disabled title="{% translate 'The funding account has insufficient money or is missing' %}"{% endif %}>{% translate "Mark saved" %}</button></form>
-                    </article>
-                    {% endfor %}
-                </div>
-            </section>
-            {% endif %}
-
             <div class="metric-grid">
-                <article class="metric"><span>{% translate "Current bank balance" %}</span><strong>{{ budget.current_balance|money:budget_preference }}</strong><small>{% blocktranslate count count=budget.included_account_count %}Across {{ count }} included account{% plural %}Across {{ count }} included accounts{% endblocktranslate %}</small></article>
+                <article class="metric"><span>{% translate "Current bank balance" %}</span><strong>{{ budget.current_balance|money:budget_preference }}</strong><small>{% blocktranslate count count=budget.included_account_count %}Across {{ count }} included account{% plural %}Across {{ count }} included accounts{% endblocktranslate %}{% if balance_update_days is not None %} · {% if balance_update_days == 0 %}{% translate "balances updated today" %}{% elif balance_update_days == 1 %}{% translate "a balance updated yesterday" %}{% else %}{% blocktranslate with days=balance_update_days %}a balance updated {{ days }} days ago{% endblocktranslate %}{% endif %}{% endif %}</small></article>
                 <article class="metric"><span>{% translate "Income this month" %}</span><strong class="positive">{{ budget.income_month_total|money_plus:budget_preference }}</strong><small>{% blocktranslate with received=budget.actual_income|money:budget_preference due=budget.expected_income|money:budget_preference %}{{ received }} received so far · {{ due }} still to come{% endblocktranslate %}</small></article>
                 <article class="metric"><span>{% translate "Expenses this month" %}</span><strong class="negative">{{ budget.expense_month_total|money_minus:budget_preference }}</strong><small>{% blocktranslate with paid=budget.actual_expenses|money:budget_preference due=budget.expected_expenses|money:budget_preference %}{{ paid }} paid so far · {{ due }} still to pay{% endblocktranslate %}</small></article>
                 <article class="metric metric-action"><span>{% translate "Daily spending plan" %}</span><strong>{% blocktranslate with amount=budget.expected_daily_expense|money:budget_preference %}{{ amount }} / day{% endblocktranslate %}</strong><small>{% blocktranslate with amount=budget.remaining_daily_expenses|money:budget_preference %}{{ amount }} for remaining days{% endblocktranslate %}</small><button class="text-button" type="button" data-dialog-open="daily-spending-edit">{% translate "Edit" %}</button></article>
@@ -202,6 +238,11 @@
                     </div>
                 </section>
             </div>
+
+            <footer class="trust-badges" aria-label="{% translate 'Darith badges' %}">
+                <span>{% translate "Darith around the web" %}</span>
+                <a href="https://www.saashub.com/darith-app?utm_source=badge&amp;utm_campaign=badge&amp;utm_content=darith-app&amp;badge_variant=color&amp;badge_kind=approved" target="_blank" rel="noopener noreferrer"><img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Darith.app SaaSHub approved badge" loading="lazy"></a>
+            </footer>
         </section>
 
         <section class="panel" data-tab-panel="accounts" hidden>
@@ -210,7 +251,7 @@
                 {% for account, form in account_edit_forms %}
                 <article class="account-card">
                     <div class="account-card-top"><span class="account-icon">{{ account.name|first|upper }}</span><button class="icon-button" type="button" data-dialog-open="account-edit-{{ account.id }}" aria-label="{% blocktranslate with name=account.name %}Edit {{ name }}{% endblocktranslate %}" title="{% translate 'Edit account' %}">•••</button></div>
-                    <p>{{ account.name }}</p><strong>{{ account.balance|money:budget_preference }}</strong><small>{% translate "Current balance" %} · {% if account.include_in_budget %}{% translate "Included in monthly budget" %}{% else %}{% translate "Tracking only" %}{% endif %}</small>
+                    <p>{{ account.name }}</p><strong>{{ account.balance|money:budget_preference }}</strong><small>{% translate "Current balance" %} · {% if account.include_in_budget %}{% translate "Included in monthly budget" %}{% else %}{% translate "Tracking only" %}{% endif %} · {% blocktranslate with date=account.balance_updated_at|date:"j M" %}updated {{ date }}{% endblocktranslate %}</small>
                 </article>
                 {% empty %}<button class="empty-account" type="button" data-dialog-open="account-create"><span>+</span><strong>{% translate "Add your first bank account" %}</strong></button>{% endfor %}
                 {% for goal, form in savings_goal_edit_forms %}
@@ -230,37 +271,44 @@
         </section>
 
         <section class="panel" data-tab-panel="plans" hidden>
-            <div class="section-heading page-heading"><div><p class="eyebrow">{% translate "Automatic monthly entries" %}</p><h2>{% translate "Income, expenses and savings" %}</h2></div><div class="quick-actions"><button class="button button-secondary" type="button" data-dialog-open="recurring-income-create">+ {% translate "Income plan" %}</button><button class="button button-primary" type="button" data-dialog-open="monthly-expense-create">+ {% translate "Expense plan" %}</button></div></div>
+            <div class="section-heading page-heading"><div><p class="eyebrow">{% translate "Planned money" %}</p><h2>{% translate "Income, expenses and savings" %}</h2></div><div class="quick-actions"><button class="button button-secondary" type="button" data-dialog-open="recurring-income-create">+ {% translate "Income plan" %}</button><button class="button button-primary" type="button" data-dialog-open="monthly-expense-create">+ {% translate "Expense plan" %}</button></div></div>
             <div class="plan-grid">
                 <section class="content-block">
-                    <div class="section-heading"><h3>{% translate "Monthly income" %}</h3><span class="count-badge">{{ recurring_incomes|length }}</span></div>
+                    <div class="section-heading"><h3>{% translate "Planned income" %}</h3><span class="count-badge">{{ recurring_incomes|length }}</span></div>
                     <div class="plan-list">
-                        {% for item, form in recurring_income_edit_forms %}
-                        <button class="plan-row" type="button" data-dialog-open="recurring-income-edit-{{ item.id }}"><span class="transaction-mark income">+</span><span><strong>{{ item.name }}</strong><small>{% blocktranslate with day=item.day_of_month account=item.bank_account.name %}Monthly on day {{ day }} · {{ account }}{% endblocktranslate %}</small></span><b class="positive">{{ item.amount|money:budget_preference }}</b></button>
-                        {% empty %}<div class="empty-state"><strong>{% translate "No monthly income" %}</strong><span>{% translate "Add salary or other regular income." %}</span></div>{% endfor %}
+                        {% for row in income_plan_rows %}
+                        <div class="plan-row-wrap">
+                            <button class="plan-row" type="button" data-dialog-open="recurring-income-edit-{{ row.plan.id }}"><span class="transaction-mark income">+</span><span><strong>{{ row.plan.name }}</strong><small>{{ row.plan.get_frequency_display }} · {{ row.plan.start_date|date:"j M Y" }} · {{ row.plan.bank_account.name }}</small></span><b class="positive">{{ row.plan.amount|money:budget_preference }}</b></button>
+                            {% if row.dialog %}<button class="plan-occurrence-button" type="button" data-dialog-open="{{ row.dialog.dialog_id }}">{% translate "Change next" %}<small>{{ row.dialog.date|date:"j M" }}</small></button>{% endif %}
+                        </div>
+                        {% empty %}<div class="empty-state"><strong>{% translate "No income plans" %}</strong><span>{% translate "Add salary or other planned income." %}</span></div>{% endfor %}
                     </div>
                 </section>
                 <section class="content-block">
-                    <div class="section-heading"><h3>{% translate "Monthly expenses" %}</h3><span class="count-badge">{{ recurring_expenses|length }}</span></div>
+                    <div class="section-heading"><h3>{% translate "Planned expenses" %}</h3><span class="count-badge">{{ recurring_expenses|length }}</span></div>
                     <div class="plan-list">
-                        {% for item, form in monthly_expense_edit_forms %}
-                        <button class="plan-row" type="button" data-dialog-open="monthly-expense-edit-{{ item.id }}"><span class="transaction-mark expense">−</span><span><strong>{{ item.name }}</strong><small>{% blocktranslate with day=item.day_of_month account=item.bank_account.name %}Monthly on day {{ day }} · {{ account }}{% endblocktranslate %}</small></span><b class="negative">{{ item.amount|money:budget_preference }}</b></button>
-                        {% empty %}<div class="empty-state"><strong>{% translate "No monthly expenses" %}</strong><span>{% translate "Add rent, subscriptions, or bills." %}</span></div>{% endfor %}
+                        {% for row in expense_plan_rows %}
+                        <div class="plan-row-wrap">
+                            <button class="plan-row" type="button" data-dialog-open="monthly-expense-edit-{{ row.plan.id }}"><span class="transaction-mark expense">−</span><span><strong>{{ row.plan.name }}</strong><small>{{ row.plan.get_frequency_display }} · {{ row.plan.start_date|date:"j M Y" }} · {{ row.plan.bank_account.name }}</small></span><b class="negative">{{ row.plan.amount|money:budget_preference }}</b></button>
+                            {% if row.dialog %}<button class="plan-occurrence-button" type="button" data-dialog-open="{{ row.dialog.dialog_id }}">{% translate "Change next" %}<small>{{ row.dialog.date|date:"j M" }}</small></button>{% endif %}
+                        </div>
+                        {% empty %}<div class="empty-state"><strong>{% translate "No expense plans" %}</strong><span>{% translate "Add rent, subscriptions, or other planned expenses." %}</span></div>{% endfor %}
                     </div>
                 </section>
             </div>
             <section class="content-block savings-block">
                 <div class="section-heading"><div><p class="eyebrow">{% translate "Separate goal accounts" %}</p><h3>{% translate "Savings goals" %}</h3></div><button class="button button-secondary" type="button" data-dialog-open="saving-create">+ {% translate "Add goal" %}</button></div>
                 <div class="saving-grid">
-                    {% for item, form in savings_goal_edit_forms %}
+                    {% for row in saving_plan_rows %}
                     <article class="saving-card">
-                        <button class="saving-card-main" type="button" data-dialog-open="saving-edit-{{ item.id }}">
+                        <button class="saving-card-main" type="button" data-dialog-open="saving-edit-{{ row.plan.id }}">
                             <span class="saving-icon">◎</span>
-                            <span><strong>{{ item.name }}</strong><small>{% blocktranslate with day=item.day_of_month %}Monthly on day {{ day }}{% endblocktranslate %}{% if item.bank_account %} · {% blocktranslate with account=item.bank_account.name %}from {{ account }}{% endblocktranslate %}{% endif %}{% if item.target_date %} · {% blocktranslate with date=item.target_date|date:"j M Y" %}by {{ date }}{% endblocktranslate %}{% endif %}</small></span>
-                            <b>{{ item.current_balance|money:budget_preference }}</b>
+                            <span><strong>{{ row.plan.name }}</strong><small>{% blocktranslate with day=row.plan.day_of_month %}Monthly on day {{ day }}{% endblocktranslate %}{% if row.plan.bank_account %} · {% blocktranslate with account=row.plan.bank_account.name %}from {{ account }}{% endblocktranslate %}{% endif %}{% if row.plan.target_date %} · {% blocktranslate with date=row.plan.target_date|date:"j M Y" %}by {{ date }}{% endblocktranslate %}{% endif %}</small></span>
+                            <b>{{ row.plan.current_balance|money:budget_preference }}</b>
                         </button>
-                        {% if item.target_amount %}<div class="saving-progress"><span style="width: {{ item.progress_percent }}%"></span></div>{% endif %}
-                        <small>{% blocktranslate with amount=item.current_balance|money:budget_preference %}{{ amount }} saved{% endblocktranslate %}{% if item.target_amount %} {% blocktranslate with amount=item.target_amount|money:budget_preference %}of {{ amount }}{% endblocktranslate %}{% else %} · {% blocktranslate with amount=item.monthly_amount|money:budget_preference %}{{ amount }} monthly{% endblocktranslate %}{% endif %}</small>
+                        {% if row.dialog %}<button class="saving-one-time-change" type="button" data-dialog-open="{{ row.dialog.dialog_id }}">{% translate "Change or skip this month" %} · {{ row.dialog.date|date:"j M" }}</button>{% endif %}
+                        {% if row.plan.target_amount %}<div class="saving-progress"><span style="width: {{ row.plan.progress_percent }}%"></span></div>{% endif %}
+                        <small>{% blocktranslate with amount=row.plan.current_balance|money:budget_preference %}{{ amount }} saved{% endblocktranslate %}{% if row.plan.target_amount %} {% blocktranslate with amount=row.plan.target_amount|money:budget_preference %}of {{ amount }}{% endblocktranslate %}{% else %} · {% blocktranslate with amount=row.plan.monthly_amount|money:budget_preference %}{{ amount }} monthly{% endblocktranslate %}{% endif %}</small>
                     </article>
                     {% empty %}<div class="empty-state"><strong>{% translate "No savings goal yet" %}</strong><span>{% translate "Create a target and Darith will calculate each monthly contribution." %}</span></div>{% endfor %}
                 </div>
@@ -367,6 +415,14 @@
             </div>
             <div class="dialog-actions"><button class="button button-secondary" type="button" data-dialog-close>{% translate "Cancel" %}</button><button class="button button-primary" type="submit">{% translate "Save planning" %}</button></div>
         </form>
+        {% if active_daily_adjustments %}
+        <div class="temporary-daily-list">
+            <h4>{% translate "Temporary daily changes" %}</h4>
+            {% for adjustment in active_daily_adjustments %}
+            <div class="temporary-daily-item"><span><strong>{{ adjustment.daily_amount|money:budget_preference }} / day</strong><small>{{ adjustment.start_date|date:"j M" }} – {{ adjustment.end_date|date:"j M" }}{% if adjustment.reason %} · {{ adjustment.reason }}{% endif %}</small></span><form method="post" action="{% url 'remove_daily_spending_adjustment' adjustment.id %}">{% csrf_token %}<button class="text-button danger-text" type="submit">{% translate "Remove" %}</button></form></div>
+            {% endfor %}
+        </div>
+        {% endif %}
     </section>
     <section class="settings-panel behavior-settings" id="settings-panel-behavior" role="tabpanel" data-settings-panel="behavior" aria-labelledby="settings-tab-behavior" hidden>
         <div class="settings-section-heading"><h3>{% translate "Transactions" %}</h3><p>{% translate "Choose what Darith does when you delete a transaction." %}</p></div>
@@ -424,6 +480,24 @@
         </div>
     </section>
 </dialog>
+{% for item in occurrence_dialogs %}
+<dialog class="form-dialog occurrence-dialog" id="{{ item.dialog_id }}">
+    <div class="dialog-head"><h2>{% translate "Change this planned item" %}</h2><button class="icon-button" type="button" data-dialog-close aria-label="{% translate 'Close' %}">×</button></div>
+    <form method="post" action="{% url 'manage_plan_occurrence' item.kind item.plan.id item.scheduled_date|date:'Y-m-d' %}" class="dialog-form">
+        {% csrf_token %}
+        <div class="occurrence-summary"><strong>{{ item.plan.name }}</strong><small>{% blocktranslate with date=item.scheduled_date|date:"j M Y" %}Normal date: {{ date }}{% endblocktranslate %}</small></div>
+        {{ item.form.as_p }}
+        <input type="hidden" name="return_tab" value="plans">
+        <p class="dialog-help">{% translate "These changes apply only to this one date. Your main plan stays the same." %}</p>
+        <div class="dialog-actions occurrence-actions">
+            <button class="button button-danger" type="submit" name="action" value="skip">{% translate "Skip this one" %}</button>
+            <button class="button button-secondary" type="submit" name="action" value="move">{% translate "Save this change" %}</button>
+            {% if item.can_confirm %}<button class="button button-primary" type="submit" name="action" value="confirm">{% translate "Mark as done" %}</button>{% endif %}
+        </div>
+    </form>
+</dialog>
+{% endfor %}
+
 <dialog class="form-dialog feedback-dialog" id="feedback-dialog">
     <div class="dialog-head"><h2>{% translate "Send feedback" %}</h2><button class="icon-button" type="button" data-dialog-close aria-label="{% translate 'Close' %}">×</button></div>
     <form method="post" action="{% url 'submit_feedback' %}" class="dialog-form">
@@ -436,15 +510,15 @@
 </dialog>
 {% include "partials/form_dialog.html" with dialog_id="expense-create" title="Add expense" form=expense_form action_url="create_expense" submit_label="Add expense" %}
 {% include "partials/form_dialog.html" with dialog_id="income-create" title="Add income" form=income_form action_url="create_income" submit_label="Add income" %}
-{% include "partials/form_dialog.html" with dialog_id="recurring-income-create" title="Add monthly income" form=recurring_income_form action_url="create_recurring_income" submit_label="Add income plan" %}
-{% include "partials/form_dialog.html" with dialog_id="monthly-expense-create" title="Add monthly expense" form=monthly_expense_form action_url="create_monthly_expense" submit_label="Add expense plan" %}
+{% include "partials/form_dialog.html" with dialog_id="recurring-income-create" title="Add income plan" form=recurring_income_form action_url="create_recurring_income" submit_label="Add income plan" %}
+{% include "partials/form_dialog.html" with dialog_id="monthly-expense-create" title="Add expense plan" form=monthly_expense_form action_url="create_monthly_expense" submit_label="Add expense plan" %}
 {% include "partials/form_dialog.html" with dialog_id="saving-create" title="Add savings goal" form=savings_goal_form action_url="create_savings_goal" submit_label="Add goal" %}
 
 {% for item, form in account_edit_forms %}{% url 'update_bank_account' item.id as edit_url %}{% url 'delete_bank_account' item.id as delete_url %}{% include "partials/form_dialog.html" with dialog_prefix="account-edit-" dialog_object_id=item.id title="Edit bank account" form=form direct_action=edit_url delete_action=delete_url submit_label="Save changes" %}{% endfor %}
 {% for item, form in expense_edit_forms %}{% url 'update_expense' item.id as edit_url %}{% url 'delete_expense' item.id as delete_url %}{% include "partials/form_dialog.html" with dialog_prefix="expense-edit-" dialog_object_id=item.id title="Edit expense" form=form direct_action=edit_url delete_action=delete_url submit_label="Save changes" %}{% endfor %}
 {% for item, form in income_edit_forms %}{% url 'update_income' item.id as edit_url %}{% url 'delete_income' item.id as delete_url %}{% include "partials/form_dialog.html" with dialog_prefix="income-edit-" dialog_object_id=item.id title="Edit income" form=form direct_action=edit_url delete_action=delete_url submit_label="Save changes" %}{% endfor %}
-{% for item, form in recurring_income_edit_forms %}{% url 'update_recurring_income' item.id as edit_url %}{% url 'delete_recurring_income' item.id as delete_url %}{% include "partials/form_dialog.html" with dialog_prefix="recurring-income-edit-" dialog_object_id=item.id title="Edit monthly income" form=form direct_action=edit_url delete_action=delete_url submit_label="Save changes" %}{% endfor %}
-{% for item, form in monthly_expense_edit_forms %}{% url 'update_monthly_expense' item.id as edit_url %}{% url 'delete_monthly_expense' item.id as delete_url %}{% include "partials/form_dialog.html" with dialog_prefix="monthly-expense-edit-" dialog_object_id=item.id title="Edit monthly expense" form=form direct_action=edit_url delete_action=delete_url submit_label="Save changes" %}{% endfor %}
+{% for item, form in recurring_income_edit_forms %}{% url 'update_recurring_income' item.id as edit_url %}{% url 'delete_recurring_income' item.id as delete_url %}{% include "partials/form_dialog.html" with dialog_prefix="recurring-income-edit-" dialog_object_id=item.id title="Edit income plan" form=form direct_action=edit_url delete_action=delete_url submit_label="Save changes" %}{% endfor %}
+{% for item, form in monthly_expense_edit_forms %}{% url 'update_monthly_expense' item.id as edit_url %}{% url 'delete_monthly_expense' item.id as delete_url %}{% include "partials/form_dialog.html" with dialog_prefix="monthly-expense-edit-" dialog_object_id=item.id title="Edit expense plan" form=form direct_action=edit_url delete_action=delete_url submit_label="Save changes" %}{% endfor %}
 {% for item, form in savings_goal_edit_forms %}{% url 'update_savings_goal' item.id as edit_url %}{% url 'delete_savings_goal' item.id as delete_url %}{% include "partials/form_dialog.html" with dialog_prefix="saving-edit-" dialog_object_id=item.id title="Edit savings goal" form=form direct_action=edit_url delete_action=delete_url submit_label="Save changes" %}{% endfor %}
 {% for item, form in transfer_edit_forms %}{% url 'update_transfer' item.id as edit_url %}{% url 'delete_transfer' item.id as delete_url %}{% include "partials/form_dialog.html" with dialog_prefix="transfer-edit-" dialog_object_id=item.id title="Edit transfer" form=form direct_action=edit_url delete_action=delete_url submit_label="Save changes" %}{% endfor %}
 

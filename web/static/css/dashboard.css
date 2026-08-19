@@ -605,6 +605,50 @@ button { color: inherit; }
 .feedback-dialog textarea { min-height: 130px; resize: vertical; }
 .client-locked { overflow: hidden; }
 .client-locked::after { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; color: #fff; background: var(--navy); content: "Darith is locking..."; font-size: 18px; font-weight: 750; }
+
+.balance-age { display: block; margin-top: 3px; color: #b8cee9; font-size: 10px; font-style: normal; font-weight: 500; }
+.plan-checks { margin-top: 14px; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+.plan-checks .section-heading { padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.plan-checks .section-heading p:last-child { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
+.plan-check-list { display: grid; }
+.plan-check-item { display: grid; min-height: 66px; grid-template-columns: 34px minmax(0, 1fr) auto auto; align-items: center; gap: 11px; padding: 9px 18px; border-bottom: 1px solid var(--line); }
+.plan-check-item:last-child { border-bottom: 0; }
+.plan-check-item > div { display: grid; gap: 2px; min-width: 0; }
+.plan-check-item > div strong, .plan-check-item > div small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plan-check-item > div small { color: var(--muted); font-size: 11px; }
+.plan-check-item > b { font-size: 13px; white-space: nowrap; }
+.spending-check { margin-top: 14px; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+.spending-check > summary { padding: 14px 18px; cursor: pointer; color: var(--ink); font-size: 14px; font-weight: 800; }
+.spending-check[open] > summary { border-bottom: 1px solid var(--line); }
+.spending-check-body { display: grid; gap: 14px; padding: 16px 18px; }
+.spending-check-body > p { margin: 0; color: var(--muted); font-size: 12px; }
+.spending-check-form { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; align-items: end; gap: 10px; }
+.spending-check-form p { display: grid; gap: 5px; margin: 0; }
+.spending-check-form label { color: var(--muted); font-size: 11px; font-weight: 700; }
+.spending-check-result { display: grid; gap: 6px; padding: 13px 14px; border: 1px solid var(--line); border-radius: 7px; background: #f7faff; }
+.spending-check-result.possible { border-color: #a9dfc9; background: #f3fbf8; }
+.spending-check-result.not-possible { border-color: #e5c2c2; background: #fff7f7; }
+.spending-check-result p, .spending-check-result small { margin: 0; }
+.spending-check-result p { font-size: 12px; }
+.spending-check-result small { color: var(--muted); font-size: 11px; }
+.spending-check-result form { margin-top: 4px; }
+.plan-row-wrap { display: grid; grid-template-columns: minmax(0, 1fr) auto; border-bottom: 1px solid #e8eef6; }
+.plan-row-wrap:last-child { border-bottom: 0; }
+.plan-row-wrap .plan-row { border-bottom: 0; }
+.plan-occurrence-button { min-width: 94px; padding: 8px 12px; border: 0; border-left: 1px solid var(--line); color: var(--primary); background: transparent; cursor: pointer; font-size: 11px; font-weight: 750; }
+.plan-occurrence-button small { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; font-weight: 500; }
+.saving-one-time-change { width: 100%; padding: 8px 14px; border: 0; border-top: 1px solid var(--line); color: var(--primary); background: transparent; cursor: pointer; text-align: left; font-size: 11px; font-weight: 750; }
+.occurrence-summary { display: grid; grid-column: 1 / -1; gap: 3px; padding: 10px 12px; border-radius: 6px; background: #f5f8fc; }
+.occurrence-summary small, .dialog-help { color: var(--muted); font-size: 11px; }
+.dialog-help { grid-column: 1 / -1; margin: 0; }
+.occurrence-actions { gap: 8px; }
+.temporary-daily-list { display: grid; gap: 8px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.temporary-daily-list h4 { margin: 0; font-size: 13px; }
+.temporary-daily-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.temporary-daily-item > span { display: grid; gap: 2px; }
+.temporary-daily-item small { color: var(--muted); font-size: 11px; }
+.trust-badges { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 24px; padding: 20px 0 6px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+.trust-badges img { display: block; max-width: 150px; max-height: 54px; }
 .mobile-nav { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -675,6 +719,14 @@ button { color: inherit; }
     .transaction-date { display: none; }
     .transaction-amount { font-size: 12px; }
     .upcoming-block { display: none; }
+    .plan-check-item { grid-template-columns: 32px minmax(0, 1fr) auto; padding-inline: 13px; }
+    .plan-check-item > b { grid-column: 2; }
+    .plan-check-item .button { grid-column: 3; grid-row: 1 / span 2; }
+    .spending-check-form { grid-template-columns: 1fr 1fr; }
+    .spending-check-form .button { grid-column: 1 / -1; }
+    .plan-row-wrap { grid-template-columns: 1fr; }
+    .plan-occurrence-button { min-height: 36px; border-top: 1px solid var(--line); border-left: 0; text-align: left; }
+    .trust-badges { align-items: flex-start; flex-direction: column; }
     .dialog-form { grid-template-columns: 1fr; }
     .dialog-form p { grid-column: 1; }
     .dialog-actions { grid-column: 1; }
