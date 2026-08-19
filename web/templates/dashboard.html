@@ -76,7 +76,7 @@
                 <div class="budget-main">
                     <p>{% translate "Safe to spend today" %}</p>
                     <strong>{{ budget.free_to_spend|money:budget_preference }}</strong>
-                    <span>{% blocktranslate count days=budget.days_remaining with amount=budget.daily_allowance|money:budget_preference end=budget.forecast_horizon_end|date:"j M" %}{{ amount }} extra per day for {{ days }} day · plan checked to {{ end }}{% plural %}{{ amount }} extra per day for {{ days }} days · plan checked to {{ end }}{% endblocktranslate %}</span>
+                    <span>{% blocktranslate count days=budget.days_remaining with amount=budget.daily_allowance|money:budget_preference %}{{ amount }} extra per day for {{ days }} day{% plural %}{{ amount }} extra per day for {{ days }} days{% endblocktranslate %}</span>
                 </div>
                 {% if active_budget_animation %}<div class="budget-animation" aria-hidden="true"><img src="{% url 'dashboard_animation' budget.status %}" alt=""></div>{% endif %}
                 <div class="budget-meter" aria-label="{% translate 'Current balance and monthly outlook' %}">
@@ -102,7 +102,7 @@
                 <div class="timeline-date-control">
                     <button class="timeline-step" type="button" data-timeline-prev aria-label="{% translate 'Previous day' %}">‹</button>
                     <div>
-                        <strong data-timeline-date>{{ forecast_start|date:"D, j M" }}</strong>
+                        <strong data-timeline-date>{{ forecast_start|date:"D, j/m/Y" }}</strong>
                         <span data-timeline-status>{% translate "Loading..." %}</span>
                     </div>
                     <button class="timeline-step" type="button" data-timeline-next aria-label="{% translate 'Next day' %}">›</button>
@@ -296,13 +296,13 @@
 <dialog class="form-dialog animation-dialog" id="dashboard-animation-edit">
     <div class="dialog-head"><h2>{% translate "Settings" %}</h2><button class="icon-button" type="button" data-dialog-close aria-label="{% translate 'Close' %}">×</button></div>
     <div class="settings-tabs" role="tablist" aria-label="{% translate 'Settings sections' %}">
-        <button class="settings-tab" id="settings-tab-appearance" type="button" role="tab" data-settings-tab="appearance" aria-controls="settings-panel-appearance" aria-selected="true">{% translate "Appearance" %}</button>
-        <button class="settings-tab" id="settings-tab-planning" type="button" role="tab" data-settings-tab="planning" aria-controls="settings-panel-planning" aria-selected="false" tabindex="-1">{% translate "Planning" %}</button>
+        <button class="settings-tab" id="settings-tab-planning" type="button" role="tab" data-settings-tab="planning" aria-controls="settings-panel-planning" aria-selected="true">{% translate "Planning" %}</button>
         <button class="settings-tab" id="settings-tab-behavior" type="button" role="tab" data-settings-tab="behavior" aria-controls="settings-panel-behavior" aria-selected="false" tabindex="-1">{% translate "Transactions" %}</button>
         <button class="settings-tab" id="settings-tab-security" type="button" role="tab" data-settings-tab="security" aria-controls="settings-panel-security" aria-selected="false" tabindex="-1">{% translate "Security" %}</button>
+        <button class="settings-tab" id="settings-tab-appearance" type="button" role="tab" data-settings-tab="appearance" aria-controls="settings-panel-appearance" aria-selected="false" tabindex="-1">{% translate "Appearance" %}</button>
         <button class="settings-tab" id="settings-tab-account" type="button" role="tab" data-settings-tab="account" aria-controls="settings-panel-account" aria-selected="false" tabindex="-1">{% translate "Account" %}</button>
     </div>
-    <section class="settings-panel" id="settings-panel-appearance" role="tabpanel" data-settings-panel="appearance" aria-labelledby="settings-tab-appearance">
+    <section class="settings-panel" id="settings-panel-appearance" role="tabpanel" data-settings-panel="appearance" aria-labelledby="settings-tab-appearance" hidden>
         <form method="post" action="{% url 'update_dashboard_animations' %}" enctype="multipart/form-data" class="animation-form">
             {% csrf_token %}
             <section class="profile-setting">
@@ -345,16 +345,20 @@
             <div class="dialog-actions"><button class="button button-secondary" type="button" data-dialog-close>{% translate "Cancel" %}</button><button class="button button-primary" type="submit">{% translate "Save appearance" %}</button></div>
         </form>
     </section>
-    <section class="settings-panel planning-settings" id="settings-panel-planning" role="tabpanel" data-settings-panel="planning" aria-labelledby="settings-tab-planning" hidden>
-        <div class="settings-section-heading"><h3>{% translate "Planning" %}</h3><p>{% translate "Choose how much money Darith keeps aside and how far ahead it checks your plan." %}</p></div>
+    <section class="settings-panel planning-settings" id="settings-panel-planning" role="tabpanel" data-settings-panel="planning" aria-labelledby="settings-tab-planning">
+        <div class="settings-section-heading"><h3>{% translate "Planning" %}</h3><p>{% translate "Choose your daily spending, extra buffer, and how many months you want to see." %}</p></div>
         <form method="post" action="{% url 'update_planning_settings' %}" class="planning-form">
             {% csrf_token %}
+            <div class="appearance-setting">
+                <div><label for="{{ planning_settings_form.expected_daily_expense.id_for_label }}">{% translate "Daily spending" %}</label><small>{% translate "The amount you normally expect to spend each day." %}</small></div>
+                {{ planning_settings_form.expected_daily_expense }}
+            </div>
             <div class="appearance-setting">
                 <div><label for="{{ planning_settings_form.emergency_buffer.id_for_label }}">{% translate "Emergency buffer" %}</label><small>{% translate "Money Darith always keeps aside. Set 0 if you do not want a buffer." %}</small></div>
                 {{ planning_settings_form.emergency_buffer }}
             </div>
             <div class="appearance-setting">
-                <div><label for="{{ planning_settings_form.forecast_months.id_for_label }}">{% translate "Months to check" %}</label><small>{% translate "Darith checks your plan until the end of this many future months." %}</small></div>
+                <div><label for="{{ planning_settings_form.forecast_months.id_for_label }}">{% translate "Months to show" %}</label><small>{% translate "Choose how many future months you want to see in Money by day." %}</small></div>
                 {{ planning_settings_form.forecast_months }}
             </div>
             <div class="appearance-setting planning-toggle">
@@ -392,6 +396,22 @@
     </section>
     <section class="settings-panel account-settings" id="settings-panel-account" role="tabpanel" data-settings-panel="account" aria-labelledby="settings-tab-account" hidden>
         <div class="settings-section-heading"><h3>{% translate "Darith account" %}</h3><p>{% blocktranslate with username=request.user.username %}Signed in as <strong>{{ username }}</strong>{% endblocktranslate %}{% if request.user.email %} {% blocktranslate with email=request.user.email %}with {{ email }}{% endblocktranslate %}{% endif %}.</p></div>
+        <div class="account-edit-grid">
+            <form method="post" action="{% url 'update_username' %}" class="account-edit-form">
+                {% csrf_token %}
+                <div><h3>{% translate "Change username" %}</h3><small>{% translate "Your username must not already be used by another account." %}</small></div>
+                <p><label for="{{ username_change_form.username.id_for_label }}">{{ username_change_form.username.label }}</label>{{ username_change_form.username }}</p>
+                <button class="button button-primary button-small" type="submit">{% translate "Save username" %}</button>
+            </form>
+            <form method="post" action="{% url 'update_account_password' %}" class="account-edit-form">
+                {% csrf_token %}
+                <div><h3>{% translate "Change password" %}</h3><small>{% translate "Enter your current password, then choose a new one." %}</small></div>
+                <p><label for="{{ password_change_form.old_password.id_for_label }}">{{ password_change_form.old_password.label }}</label>{{ password_change_form.old_password }}</p>
+                <p><label for="{{ password_change_form.new_password1.id_for_label }}">{{ password_change_form.new_password1.label }}</label>{{ password_change_form.new_password1 }}</p>
+                <p><label for="{{ password_change_form.new_password2.id_for_label }}">{{ password_change_form.new_password2.label }}</label>{{ password_change_form.new_password2 }}</p>
+                <button class="button button-primary button-small" type="submit">{% translate "Save password" %}</button>
+            </form>
+        </div>
         <div class="account-danger-zone">
             <div><p class="eyebrow">{% translate "Permanent action" %}</p><h3>{% translate "Delete your account" %}</h3><p>{% translate "This removes your accounts, balances, transactions, plans, goals, categories, settings, passkeys, subscription record, feedback, profile picture, and private GIFs from the live Darith system. This cannot be undone." %}</p><small>{% translate "Encrypted historical backups may retain a copy until they are removed through the server's normal backup rotation." %}</small></div>
             <form method="post" action="{% url 'delete_user_account' %}" class="account-delete-form" data-confirm="{% translate 'This is the final confirmation. Permanently delete your Darith account and live data?' %}">

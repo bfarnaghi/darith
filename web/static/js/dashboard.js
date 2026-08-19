@@ -144,7 +144,7 @@ const settingsTabs = [...document.querySelectorAll("[data-settings-tab]")];
 const settingsPanels = [...document.querySelectorAll("[data-settings-panel]")];
 
 function activateSettingsTab(name) {
-    const selected = settingsPanels.some((panel) => panel.dataset.settingsPanel === name) ? name : "appearance";
+    const selected = settingsPanels.some((panel) => panel.dataset.settingsPanel === name) ? name : "planning";
     settingsTabs.forEach((button) => {
         const active = button.dataset.settingsTab === selected;
         button.setAttribute("aria-selected", active ? "true" : "false");
@@ -167,7 +167,7 @@ settingsTabs.forEach((button) => {
 document.querySelectorAll("[data-dialog-open]").forEach((button) => {
     button.addEventListener("click", () => {
         const dialog = document.getElementById(button.dataset.dialogOpen);
-        if (dialog === settingsDialog) activateSettingsTab("appearance");
+        if (dialog === settingsDialog) activateSettingsTab("planning");
         dialog?.showModal();
     });
 });

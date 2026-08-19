@@ -1455,7 +1455,7 @@ class FinanceTestCase(TestCase):
             start_date=date(2026, 1, 1),
         )
         budget = build_monthly_budget(self.user, date(2026, 8, 14))
-        self.assertEqual(budget["free_to_spend"], Decimal("-700.00"))
+        self.assertEqual(budget["free_to_spend"], Decimal("-300.00"))
         self.assertEqual(budget["status"], "danger")
         self.assertIn("may be", budget["warning"])
 
@@ -1485,6 +1485,26 @@ class FinanceTestCase(TestCase):
 
         self.assertEqual(forecast["end_date"], date(2026, 11, 30))
 
+    def test_forecast_month_setting_does_not_change_safe_amount_for_same_date(self):
+        self.account.balance = Decimal("144.89")
+        self.account.save(update_fields=["balance"])
+        preference = BudgetPreference.objects.create(
+            user=self.user,
+            expected_daily_expense=Decimal("10.00"),
+            forecast_months=1,
+        )
+
+        one_month = build_daily_forecast(self.user, date(2026, 8, 19))
+        one_month_safe = one_month["rows"][0]["safe_to_spend"]
+
+        preference.forecast_months = 3
+        preference.save(update_fields=["forecast_months"])
+        three_months = build_daily_forecast(self.user, date(2026, 8, 19))
+
+        self.assertEqual(one_month_safe, Decimal("14.89"))
+        self.assertEqual(three_months["rows"][0]["safe_to_spend"], one_month_safe)
+        self.assertEqual(three_months["end_date"], date(2026, 11, 30))
+
     def test_planning_settings_can_hide_money_timeline(self):
         BudgetPreference.objects.create(
             user=self.user,
@@ -1494,7 +1514,7 @@ class FinanceTestCase(TestCase):
         with patch("web.views.timezone.localdate", return_value=date(2026, 8, 18)):
             response = self.client.get(reverse("dashboard"))
 
-        self.assertNotContains(response, "Money by day")
+        self.assertNotContains(response, 'class="forecast-timeline"')
         self.assertNotContains(response, 'id="forecast-timeline-data"')
 
     def test_planning_settings_update_buffer_months_and_timeline(self):
@@ -1503,6 +1523,7 @@ class FinanceTestCase(TestCase):
         response = self.client.post(
             reverse("update_planning_settings"),
             {
+                "expected_daily_expense": "12.75",
                 "emergency_buffer": "125.50",
                 "forecast_months": "2",
                 "show_money_timeline": "on",
@@ -1511,9 +1532,42 @@ class FinanceTestCase(TestCase):
 
         self.assertEqual(response.status_code, 302)
         preference = BudgetPreference.objects.get(user=self.user)
+        self.assertEqual(preference.expected_daily_expense, Decimal("12.75"))
         self.assertEqual(preference.emergency_buffer, Decimal("125.50"))
         self.assertEqual(preference.forecast_months, 2)
         self.assertTrue(preference.show_money_timeline)
+
+    def test_account_username_can_be_changed_but_must_be_unique_case_insensitive(self):
+        response = self.client.post(
+            reverse("update_username"),
+            {"username": "ben-new"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.username, "ben-new")
+
+        response = self.client.post(
+            reverse("update_username"),
+            {"username": "OTHER"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.username, "ben-new")
+
+    def test_account_password_can_be_changed_without_logging_user_out(self):
+        response = self.client.post(
+            reverse("update_account_password"),
+            {
+                "old_password": "good-password-123",
+                "new_password1": "new-good-password-456",
+                "new_password2": "new-good-password-456",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.user.refresh_from_db()
+        self.assertTrue(check_password("new-good-password-456", self.user.password))
+        self.assertEqual(self.client.get(reverse("dashboard")).status_code, 200)
 
     def test_user_cannot_edit_another_users_account(self):
         private_account = BankAccount.objects.create(
@@ -1644,7 +1698,7 @@ class FinanceTestCase(TestCase):
 
         self.assertEqual(budget["days_remaining"], 18)
         self.assertEqual(budget["remaining_daily_expenses"], Decimal("90.00"))
-        self.assertEqual(budget["free_to_spend"], Decimal("-190.00"))
+        self.assertEqual(budget["free_to_spend"], Decimal("-40.00"))
         self.assertEqual(budget["status"], "danger")
         self.assertIn("may be", budget["warning"])
 
@@ -1772,7 +1826,7 @@ class FinanceTestCase(TestCase):
         self.assertEqual(budget["month_end_savings_target"], Decimal("50.00"))
         self.assertEqual(budget["remaining_daily_expenses"], Decimal("140.00"))
         self.assertEqual(budget["projected_balance"], Decimal("810.00"))
-        self.assertEqual(budget["free_to_spend"], Decimal("460.00"))
+        self.assertEqual(budget["free_to_spend"], Decimal("810.00"))
 
     def test_dated_goal_keeps_fixed_monthly_amount_in_later_months(self):
         response = self.client.post(

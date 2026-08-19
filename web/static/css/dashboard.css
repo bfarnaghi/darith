@@ -287,7 +287,7 @@ button { color: inherit; }
     text-align: center;
 }
 .timeline-date-control > div { display: grid; gap: 2px; }
-.timeline-date-control strong { font-size: 16px; }
+.timeline-date-control strong { font-size: 15px; line-height: 1.2; }
 .timeline-date-control span { color: var(--muted); font-size: 11px; }
 .timeline-step {
     display: grid;
@@ -561,6 +561,13 @@ button { color: inherit; }
 .settings-panel[hidden] { display: none; }
 .planning-settings, .behavior-settings, .security-settings, .account-settings { padding: 20px; }
 .planning-form, .behavior-form { display: grid; }
+.account-edit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 22px; }
+.account-edit-form { display: grid; align-content: start; gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); }
+.account-edit-form > div { display: grid; gap: 3px; }
+.account-edit-form h3, .account-edit-form p { margin: 0; }
+.account-edit-form p { display: grid; gap: 5px; }
+.account-edit-form small { color: var(--muted); line-height: 1.45; }
+.account-edit-form .button { justify-self: start; }
 .planning-toggle .form-check-input { justify-self: end; }
 .settings-section-heading { display: grid; gap: 5px; margin-bottom: 14px; }
 .settings-section-heading h3 { margin: 0; font-size: 16px; }
@@ -644,12 +651,14 @@ button { color: inherit; }
     .forecast-timeline-head { align-items: stretch; flex-direction: column; gap: 10px; }
     .timeline-today { align-self: flex-start; }
     .timeline-date-control { max-width: none; margin-top: 14px; }
+    .timeline-date-control strong { font-size: 14px; }
     .timeline-metrics { grid-template-columns: 1fr; }
     .timeline-plan-grid { grid-template-columns: 1fr 1fr; gap: 10px 16px; }
     .timeline-metric > strong { font-size: 22px; }
     .timeline-primary-metric > strong { font-size: 28px; }
     .timeline-flow-grid { grid-template-columns: 1fr 1fr; gap: 10px 16px; }
     .timeline-day-flows, .timeline-events { padding-inline: 4px; }
+    .account-edit-grid { grid-template-columns: 1fr; }
     .notice { align-items: flex-start; }
     .funding-reminder { grid-template-columns: 34px minmax(0, 1fr) auto; }
     .funding-reminder b { grid-column: 2; }

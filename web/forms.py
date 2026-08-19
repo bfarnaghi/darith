@@ -3,7 +3,7 @@
 from decimal import Decimal, ROUND_UP
 
 from django import forms
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import PasswordChangeForm, UserCreationForm
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -80,17 +80,34 @@ class BudgetPreferenceForm(StyledFormMixin, forms.ModelForm):
 class PlanningSettingsForm(StyledFormMixin, forms.ModelForm):
     class Meta:
         model = BudgetPreference
-        fields = ["emergency_buffer", "forecast_months", "show_money_timeline"]
+        fields = [
+            "expected_daily_expense",
+            "emergency_buffer",
+            "forecast_months",
+            "show_money_timeline",
+        ]
         labels = {
+            "expected_daily_expense": _("Daily spending"),
             "emergency_buffer": _("Emergency buffer"),
-            "forecast_months": _("Months to check"),
+            "forecast_months": _("Months to show"),
             "show_money_timeline": _("Show money timeline"),
         }
         widgets = {
+            "expected_daily_expense": forms.NumberInput(
+                attrs={"step": "0.01", "min": "0"}
+            ),
             "emergency_buffer": forms.NumberInput(
                 attrs={"step": "0.01", "min": "0"}
             ),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["forecast_months"].choices = [
+            (1, _("1 month")),
+            (2, _("2 months")),
+            (3, _("3 months")),
+        ]
 
 class DashboardAnimationForm(StyledFormMixin, forms.ModelForm):
     class Meta:
@@ -205,6 +222,31 @@ class SecuritySettingsForm(StyledFormMixin, forms.ModelForm):
         if commit:
             preference.save()
         return preference
+
+
+class UsernameChangeForm(StyledFormMixin, forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ["username"]
+        labels = {"username": _("Username")}
+
+    def clean_username(self):
+        username = self.cleaned_data["username"].strip()
+        if (
+            User.objects.filter(username__iexact=username)
+            .exclude(pk=self.instance.pk)
+            .exists()
+        ):
+            raise forms.ValidationError(_("That username is already in use."))
+        return username
+
+
+class UserPasswordChangeForm(StyledFormMixin, PasswordChangeForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["old_password"].label = _("Current password")
+        self.fields["new_password1"].label = _("New password")
+        self.fields["new_password2"].label = _("Confirm new password")
 
 
 class AccountDeletionForm(StyledFormMixin, forms.Form):

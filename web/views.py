@@ -6,7 +6,7 @@ import time
 
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import SetPasswordForm
 from django.contrib.auth.hashers import check_password
@@ -46,6 +46,8 @@ from .forms import (
     SavingsGoalForm,
     SecuritySettingsForm,
     TransferForm,
+    UsernameChangeForm,
+    UserPasswordChangeForm,
 )
 from .exports import build_user_csv_response
 from .models import (
@@ -138,7 +140,7 @@ def _forecast_timeline_payload(daily_forecast, preference):
             {
                 "date": row["date"].isoformat(),
                 "dateLabel": date_format(row["date"], "D, j M"),
-                "dateLong": date_format(row["date"], "l, j F Y"),
+                "dateLong": date_format(row["date"], "l, j/m/Y"),
                 "safe": _display_money(row["safe_to_spend"], preference),
                 "balance": _display_money(row["opening_balance"], preference),
                 "incomeLeft": _display_money(
@@ -592,6 +594,8 @@ def dashboard(request):
         "dashboard_animation_form": DashboardAnimationForm(instance=preference),
         "planning_settings_form": PlanningSettingsForm(instance=preference),
         "security_settings_form": SecuritySettingsForm(instance=preference),
+        "username_change_form": UsernameChangeForm(instance=request.user),
+        "password_change_form": UserPasswordChangeForm(request.user),
         "account_deletion_form": AccountDeletionForm(user=request.user),
         "feedback_form": FeedbackForm(),
         "transfer_form": TransferForm(user=request.user, initial={"date": today}),
@@ -1072,6 +1076,31 @@ def update_planning_settings(request):
     if form.is_valid():
         form.save()
         messages.success(request, _("Planning settings saved."))
+    else:
+        _show_form_errors(request, form)
+    return _dashboard_redirect("overview")
+
+
+@require_POST
+@login_required
+def update_username(request):
+    form = UsernameChangeForm(request.POST, instance=request.user)
+    if form.is_valid():
+        form.save()
+        messages.success(request, _("Username updated."))
+    else:
+        _show_form_errors(request, form)
+    return _dashboard_redirect("overview")
+
+
+@require_POST
+@login_required
+def update_account_password(request):
+    form = UserPasswordChangeForm(request.user, request.POST)
+    if form.is_valid():
+        user = form.save()
+        update_session_auth_hash(request, user)
+        messages.success(request, _("Password updated."))
     else:
         _show_form_errors(request, form)
     return _dashboard_redirect("overview")

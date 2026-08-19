@@ -5,7 +5,6 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
-from django.utils.formats import date_format
 from django.db import IntegrityError, transaction
 from django.db.models import Q, Sum
 from django.utils.translation import gettext as _
@@ -400,43 +399,25 @@ def _goal_saving_events(user, range_start, range_end):
     return events
 
 
-def _timeline_status(safe_to_spend, daily_expense, currency_symbol, horizon_end):
-    """Classify a day as comfortable, tight, or projected shortfall."""
+def _timeline_status(safe_to_spend, daily_expense, currency_symbol):
+    """Classify a day using the safe-to-spend amount for its calendar month."""
     if safe_to_spend < ZERO:
         shortfall = abs(safe_to_spend)
         return (
             "danger",
-            _(
-                "You may be %(amount)s short before %(date)s. Check your plans."
-            )
-            % {
-                "amount": f"{currency_symbol}{shortfall:,.2f}",
-                "date": date_format(horizon_end, "j M"),
-            },
+            _("You may be %(amount)s short this month. Check your plans.")
+            % {"amount": f"{currency_symbol}{shortfall:,.2f}"},
         )
 
     tight_threshold = daily_expense * Decimal("3")
     if daily_expense > ZERO and safe_to_spend < tight_threshold:
         return (
             "warning",
-            _(
-                "Your plan is okay, but only %(amount)s is safe to spend until %(date)s."
-            )
-            % {
-                "amount": f"{currency_symbol}{safe_to_spend:,.2f}",
-                "date": date_format(horizon_end, "j M"),
-            },
+            _("Your plan is okay. You have %(amount)s extra to spend this month.")
+            % {"amount": f"{currency_symbol}{safe_to_spend:,.2f}"},
         )
 
-    return (
-        "healthy",
-        _(
-            "Your plan looks good until %(date)s."
-        )
-        % {
-            "date": date_format(horizon_end, "j M"),
-        },
-    )
+    return ("healthy", _("Your plan looks good this month."))
 
 
 def build_daily_forecast(user, today, horizon_end=None):
@@ -444,8 +425,8 @@ def build_daily_forecast(user, today, horizon_end=None):
 
     Each row represents the start of one day. ``opening_balance`` is the bank
     balance expected before that day's planned movements. ``safe_to_spend`` is
-    the maximum optional amount that can be spent on that day without pushing
-    any later day in the forecast horizon below its protected commitments.
+    the maximum extra amount that can be spent on that day without pushing any
+    later day in the same calendar month below its planned commitments.
 
     Protected commitments are:
     * expected daily costs for the rest of the selected calendar month; and
@@ -585,12 +566,15 @@ def build_daily_forecast(user, today, horizon_end=None):
             }
         )
 
-    # Spending on a selected date affects every later balance. Therefore the
-    # safe optional amount is the lowest future headroom, not merely the cash
-    # visible on the selected day.
+    # Spending on a selected date affects every later balance in that month.
+    # Reset the minimum at every month boundary so the 1-to-3-month display
+    # range never changes the safe-to-spend result for the same date.
+    safe_month_key = None
     minimum_future_headroom = None
     for row in reversed(rows):
-        if minimum_future_headroom is None:
+        key = (row["date"].year, row["date"].month)
+        if key != safe_month_key:
+            safe_month_key = key
             minimum_future_headroom = row["day_headroom"]
         else:
             minimum_future_headroom = min(
@@ -601,7 +585,6 @@ def build_daily_forecast(user, today, horizon_end=None):
             minimum_future_headroom,
             daily_expense,
             currency_symbol,
-            horizon_end,
         )
 
     return {
@@ -780,5 +763,5 @@ def build_monthly_budget(user, today, daily_forecast=None):
         "income_month_total": income_month_total,
         "expense_month_total": expense_month_total,
         "upcoming": sorted(upcoming, key=lambda item: item["date"]),
-        "forecast_horizon_end": daily_forecast["end_date"],
+        "forecast_horizon_end": month_end,
     }
