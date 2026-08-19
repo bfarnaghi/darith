@@ -25,7 +25,7 @@
             <img src="{% static 'images/logo.png' %}" alt="">
             <p>{% translate "Simple choices" %}</p>
             <h1 id="pricing-title">{% translate "Use Darith locally for free, or keep it available online." %}</h1>
-            <span>{% translate "The personal finance tools are the same. Choose whether you want to operate Darith yourself or let darith.app handle the server." %}</span>
+            <span>{% translate "The public version includes Darith’s core money tools. Hosted Premium can also include extra privacy and convenience features." %}</span>
         </div>
     </section>
 
@@ -60,6 +60,7 @@
                         <li>{% blocktranslate with days=trial_days %}{{ days }}-day hosted trial with no card required{% endblocktranslate %}</li>
                         <li>{% translate "Access from your phone or desktop wherever darith.app is available" %}</li>
                         <li>{% translate "Server maintenance, app updates, and encrypted backups" %}</li>
+                        <li>{% translate "Premium features such as Private Numbers for password-protected financial amounts" %}</li>
                         <li>{% translate "Manual payment verification without sharing bank credentials" %}</li>
                     </ul>
                     {% if request.user.is_authenticated %}
@@ -98,8 +99,8 @@
     <section class="included-section" aria-labelledby="included-title">
         <div class="pricing-inner">
             <div class="section-heading">
-                <p>{% translate "Included either way" %}</p>
-                <h2 id="included-title">{% translate "The same core money tools." %}</h2>
+                <p>{% translate "Core tools" %}</p>
+                <h2 id="included-title">{% translate "The money tools you need to get started." %}</h2>
             </div>
             <div class="included-grid">
                 <div><strong>{% translate "Accounts and transfers" %}</strong><span>{% translate "Track included or tracking-only accounts and move money between banks and saving goals." %}</span></div>
@@ -114,7 +115,7 @@
         <div class="pricing-inner questions-layout">
             <div><p>{% translate "Clear answers" %}</p><h2 id="questions-title">{% translate "Before you choose." %}</h2></div>
             <div class="questions-list">
-                <details open><summary>{% translate "Does the free version have fewer budgeting features?" %}</summary><p>{% translate "No. The self-hosted repository provides the same core personal finance workflow. The difference is who operates and maintains the server." %}</p></details>
+                <details open><summary>{% translate "What is included in the public version?" %}</summary><p>{% translate "The public self-hosted version includes Darith’s core personal finance workflow. Hosted Premium may add extra features that are available only inside darith.app." %}</p></details>
                 <details><summary>{% translate "Will Darith ask for my card or bank login?" %}</summary><p>{% translate "No. Darith does not connect to your bank and does not collect card details. Hosted payment happens through the separate method shown in Billing." %}</p></details>
                 <details><summary>{% translate "What does the monthly contribution pay for?" %}</summary><p>{% translate "It supports online availability, server costs, application maintenance, updates, and backups for the hosted service." %}</p></details>
                 <details><summary>{% translate "How does the free trial work?" %}</summary><p>{% blocktranslate with days=trial_days %}A new hosted account receives {{ days }} days of access without entering a card. After the trial, hosted access requires a manually verified payment or administrator-granted access.{% endblocktranslate %}</p></details>
