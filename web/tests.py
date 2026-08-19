@@ -2254,6 +2254,44 @@ class FinanceTestCase(TestCase):
         self.assertEqual(adjustment.end_date, date(2026, 8, 24))
         self.assertLess(adjustment.daily_amount, Decimal("50.00"))
 
+    @override_settings(SESSION_SAVE_EVERY_REQUEST=True)
+    def test_spending_check_result_does_not_break_dashboard_session_serialization(self):
+        BudgetPreference.objects.create(
+            user=self.user,
+            expected_daily_expense=Decimal("10.00"),
+            emergency_buffer=Decimal("0.00"),
+        )
+        with patch("web.views.timezone.localdate", return_value=date(2026, 8, 19)):
+            response = self.client.post(
+                reverse("check_extra_spending"),
+                {
+                    "amount": "35.00",
+                    "days": "30",
+                    "name": "Extra plan",
+                    "bank_account": self.account.pk,
+                },
+            )
+            self.assertEqual(response.status_code, 302)
+            response = self.client.get(reverse("dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        stored = self.client.session["spending_check_result"]
+        self.assertIsInstance(stored["amount"], str)
+        self.assertIsInstance(stored["start_date"], str)
+        self.assertIsInstance(stored["end_date"], str)
+
+    @override_settings(SESSION_SAVE_EVERY_REQUEST=True)
+    def test_bad_spending_check_session_is_cleared_instead_of_breaking_dashboard(self):
+        session = self.client.session
+        session["spending_check_result"] = {"amount": "bad"}
+        session.save()
+
+        with patch("web.views.timezone.localdate", return_value=date(2026, 8, 19)):
+            response = self.client.get(reverse("dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("spending_check_result", self.client.session)
+
     def test_public_home_shows_saashub_approval_badge_below_daric_explanation(self):
         self.client.logout()
         response = self.client.get(reverse("home"))

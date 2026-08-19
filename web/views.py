@@ -466,6 +466,48 @@ def _seed_categories(user):
             IncomeCategory.objects.get_or_create(user=user, name=name)
 
 
+def _spending_check_result_from_session(request):
+    """Return a display-ready copy without putting Decimal/date objects in the session.
+
+    Django's default JSON session serializer cannot save Decimal or date objects.
+    The spending check is stored as plain JSON-safe strings, so the dashboard must
+    convert a copy for rendering instead of mutating the nested session dictionary.
+    Invalid or stale payloads are discarded so they cannot lock the user out of the
+    dashboard with a 500 error.
+    """
+    raw = request.session.get("spending_check_result")
+    if not raw:
+        return None
+    if not isinstance(raw, dict):
+        request.session.pop("spending_check_result", None)
+        return None
+
+    result = dict(raw)
+    try:
+        for key in (
+            "amount",
+            "current_daily",
+            "suggested_daily",
+            "daily_reduction",
+            "safe_before",
+            "safe_after",
+        ):
+            result[key] = Decimal(str(result[key]))
+        for key in ("start_date", "end_date"):
+            value = result[key]
+            result[key] = value if isinstance(value, date) else date.fromisoformat(str(value))
+        result["days"] = int(result["days"])
+        result["bank_account_id"] = int(result["bank_account_id"])
+        if not isinstance(result.get("possible"), bool):
+            raise TypeError("Invalid spending-check flag")
+        if not isinstance(result.get("needs_change"), bool):
+            raise TypeError("Invalid spending-check flag")
+    except (KeyError, TypeError, ValueError, ArithmeticError):
+        request.session.pop("spending_check_result", None)
+        return None
+    return result
+
+
 @login_required
 def dashboard(request):
     today = timezone.localdate()
@@ -615,19 +657,7 @@ def dashboard(request):
         if oldest_balance_update
         else None
     )
-    spending_check_result = request.session.get("spending_check_result")
-    if spending_check_result:
-        for key in (
-            "amount",
-            "current_daily",
-            "suggested_daily",
-            "daily_reduction",
-            "safe_before",
-            "safe_after",
-        ):
-            spending_check_result[key] = Decimal(spending_check_result[key])
-        for key in ("start_date", "end_date"):
-            spending_check_result[key] = date.fromisoformat(spending_check_result[key])
+    spending_check_result = _spending_check_result_from_session(request)
     active_daily_adjustments = list(
         DailySpendingAdjustment.objects.filter(user=request.user, end_date__gte=today)
     )
