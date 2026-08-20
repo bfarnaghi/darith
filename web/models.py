@@ -172,6 +172,7 @@ class BudgetPreference(models.Model):
         ("nl", _("Dutch")),
     ]
     FORECAST_MONTH_CHOICES = [
+        (0, _("Current month")),
         (1, _("1 month ahead")),
         (2, _("2 months ahead")),
         (3, _("3 months ahead")),
@@ -210,9 +211,9 @@ class BudgetPreference(models.Model):
     )
     forecast_months = models.PositiveSmallIntegerField(
         choices=FORECAST_MONTH_CHOICES,
-        default=1,
+        default=0,
     )
-    show_money_timeline = models.BooleanField(default=True)
+    show_money_timeline = models.BooleanField(default=False)
     lock_timeout_minutes = models.PositiveSmallIntegerField(
         choices=LOCK_TIMEOUT_CHOICES,
         default=0,

@@ -105,9 +105,10 @@ class PlanningSettingsForm(StyledFormMixin, forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["forecast_months"].choices = [
-            (1, _("1 month")),
-            (2, _("2 months")),
-            (3, _("3 months")),
+            (0, _("Current month")),
+            (1, _("1 month ahead")),
+            (2, _("2 months ahead")),
+            (3, _("3 months ahead")),
         ]
 
 class DashboardAnimationForm(StyledFormMixin, forms.ModelForm):

@@ -584,6 +584,7 @@ class FinanceTestCase(TestCase):
         BudgetPreference.objects.create(
             user=self.user,
             expected_daily_expense=Decimal("10.00"),
+            forecast_months=1,
         )
         RecurringIncome.objects.create(
             user=self.user,
@@ -629,6 +630,7 @@ class FinanceTestCase(TestCase):
         BudgetPreference.objects.create(
             user=self.user,
             expected_daily_expense=Decimal("10.00"),
+            forecast_months=1,
         )
         MonthlyExpense.objects.create(
             user=self.user,
@@ -699,6 +701,27 @@ class FinanceTestCase(TestCase):
         self.assertFalse(self.client.session["darith_locked"])
         preference.refresh_from_db()
         self.assertEqual(preference.lock_timeout_minutes, 1)
+
+    def test_lock_pin_is_hashed_and_passkey_stores_only_public_credential_data(self):
+        form_response = self.client.post(
+            reverse("update_security_settings"),
+            {"lock_timeout_minutes": "5", "new_pin": "4286", "confirm_pin": "4286"},
+        )
+        self.assertEqual(form_response.status_code, 302)
+        preference = BudgetPreference.objects.get(user=self.user)
+        self.assertNotEqual(preference.darith_pin_hash, "4286")
+        self.assertFalse(preference.darith_pin_hash.isdigit())
+        self.assertTrue(check_password("4286", preference.darith_pin_hash))
+
+        credential = PasskeyCredential.objects.create(
+            user=self.user,
+            name="Laptop",
+            credential_id=b"credential-id",
+            public_key=b"public-key-material",
+        )
+        self.assertEqual(credential.public_key, b"public-key-material")
+        self.assertFalse(hasattr(credential, "pin"))
+        self.assertFalse(hasattr(credential, "password"))
 
     def test_passkey_options_are_scoped_to_current_user(self):
         credential = PasskeyCredential.objects.create(
@@ -1057,7 +1080,7 @@ class FinanceTestCase(TestCase):
         response = self.client.get(reverse("dashboard"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Safe to spend today")
-        self.assertContains(response, "Money by day")
+        self.assertNotContains(response, "Money by day")
         self.assertContains(response, "1,000.00")
 
     def test_create_update_and_delete_expense_adjusts_balance(self):
@@ -1483,6 +1506,22 @@ class FinanceTestCase(TestCase):
         self.assertEqual(forecast["rows"][0]["safe_to_spend"], Decimal("800.00"))
         self.assertEqual(budget["projected_balance"], Decimal("1000.00"))
 
+    def test_planning_defaults_hide_timeline_and_use_current_month(self):
+        preference = BudgetPreference.objects.create(user=self.user)
+
+        self.assertEqual(preference.forecast_months, 0)
+        self.assertFalse(preference.show_money_timeline)
+
+        forecast = build_daily_forecast(self.user, date(2026, 8, 18))
+        self.assertEqual(forecast["end_date"], date(2026, 8, 31))
+
+        with patch("web.views.timezone.localdate", return_value=date(2026, 8, 18)):
+            response = self.client.get(reverse("dashboard"))
+        self.assertNotContains(response, 'class="forecast-timeline"')
+        self.assertContains(response, "How can I spend more?")
+        self.assertContains(response, 'id="spending-check-dialog"')
+        self.assertNotContains(response, '<details class="spending-check"')
+
     def test_forecast_month_setting_changes_timeline_end(self):
         BudgetPreference.objects.create(
             user=self.user,
@@ -1512,6 +1551,29 @@ class FinanceTestCase(TestCase):
         self.assertEqual(one_month_safe, Decimal("14.89"))
         self.assertEqual(three_months["rows"][0]["safe_to_spend"], one_month_safe)
         self.assertEqual(three_months["end_date"], date(2026, 11, 30))
+
+    def test_next_month_forecast_still_works_when_visible_range_is_current_month(self):
+        BudgetPreference.objects.create(
+            user=self.user,
+            expected_daily_expense=Decimal("0.00"),
+            forecast_months=0,
+        )
+        RecurringIncome.objects.create(
+            user=self.user,
+            name="Salary",
+            amount=Decimal("100.00"),
+            start_date=date(2026, 9, 30),
+            category=self.income_category,
+            bank_account=self.account,
+        )
+
+        visible_forecast = build_daily_forecast(self.user, date(2026, 8, 19))
+        next_month = build_next_month_forecast(
+            self.user, date(2026, 8, 19), daily_forecast=visible_forecast
+        )
+
+        self.assertEqual(visible_forecast["end_date"], date(2026, 8, 31))
+        self.assertEqual(next_month["expected_income"], Decimal("100.00"))
 
     def test_planning_settings_can_hide_money_timeline(self):
         BudgetPreference.objects.create(
@@ -2248,10 +2310,13 @@ class FinanceTestCase(TestCase):
         self.assertEqual(response.status_code, 302)
         expense = MonthlyExpense.objects.get(name="Dinner")
         self.assertEqual(expense.frequency, "once")
-        self.assertEqual(expense.start_date, date(2026, 8, 19))
+        self.assertEqual(expense.start_date, date.today())
         adjustment = DailySpendingAdjustment.objects.get(reason="Dinner")
-        self.assertEqual(adjustment.start_date, date(2026, 8, 20))
-        self.assertEqual(adjustment.end_date, date(2026, 8, 24))
+        self.assertEqual(adjustment.start_date, date.today() + timedelta(days=1))
+        self.assertEqual(
+            adjustment.end_date,
+            adjustment.start_date + timedelta(days=4),
+        )
         self.assertLess(adjustment.daily_amount, Decimal("50.00"))
 
     @override_settings(SESSION_SAVE_EVERY_REQUEST=True)

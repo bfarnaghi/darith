@@ -617,15 +617,12 @@ button { color: inherit; }
 .plan-check-item > div strong, .plan-check-item > div small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .plan-check-item > div small { color: var(--muted); font-size: 11px; }
 .plan-check-item > b { font-size: 13px; white-space: nowrap; }
-.spending-check { margin-top: 14px; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
-.spending-check > summary { padding: 14px 18px; cursor: pointer; color: var(--ink); font-size: 14px; font-weight: 800; }
-.spending-check[open] > summary { border-bottom: 1px solid var(--line); }
-.spending-check-body { display: grid; gap: 14px; padding: 16px 18px; }
-.spending-check-body > p { margin: 0; color: var(--muted); font-size: 12px; }
-.spending-check-form { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; align-items: end; gap: 10px; }
-.spending-check-form p { display: grid; gap: 5px; margin: 0; }
-.spending-check-form label { color: var(--muted); font-size: 11px; font-weight: 700; }
-.spending-check-result { display: grid; gap: 6px; padding: 13px 14px; border: 1px solid var(--line); border-radius: 7px; background: #f7faff; }
+.overview-tool-row { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+.spending-check-dialog { width: min(560px, calc(100vw - 30px)); }
+.spending-check-content { display: grid; gap: 14px; padding: 18px 20px 20px; }
+.spending-check-content .dialog-form { padding: 0; }
+.spending-check-intro { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.spending-check-result { display: grid; grid-column: 1 / -1; gap: 6px; padding: 13px 14px; border: 1px solid var(--line); border-radius: 7px; background: #f7faff; }
 .spending-check-result.possible { border-color: #a9dfc9; background: #f3fbf8; }
 .spending-check-result.not-possible { border-color: #e5c2c2; background: #fff7f7; }
 .spending-check-result p, .spending-check-result small { margin: 0; }
@@ -691,6 +688,8 @@ button { color: inherit; }
     .budget-meter { min-width: 0; padding: 17px 0 0; border-top: 1px solid var(--hero-line); border-left: 0; }
     .budget-summary { width: 100%; }
     .budget-summary { grid-template-columns: 1fr 1fr; gap: 12px 18px; }
+    .overview-tool-row { justify-content: stretch; }
+    .overview-tool-row .button { width: 100%; }
     .forecast-timeline { padding: 17px 14px; }
     .forecast-timeline-head { align-items: stretch; flex-direction: column; gap: 10px; }
     .timeline-today { align-self: flex-start; }

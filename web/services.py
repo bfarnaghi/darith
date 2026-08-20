@@ -631,9 +631,13 @@ def _goal_target_for_period(user, period_start, period_end):
     return target
 
 
-def _default_forecast_horizon(today, months_ahead=1):
-    """Return the end date for a 1-to-3-month planning window."""
-    months_ahead = max(1, min(int(months_ahead or 1), 3))
+def _default_forecast_horizon(today, months_ahead=0):
+    """Return the end date for the current month or up to 3 months ahead."""
+    try:
+        months_ahead = int(months_ahead)
+    except (TypeError, ValueError):
+        months_ahead = 0
+    months_ahead = max(0, min(months_ahead, 3))
     target_month = today.replace(day=1)
     for _ in range(months_ahead):
         target_month = add_month(target_month)
@@ -827,7 +831,7 @@ def _annotate_forecast_rows(rows, emergency_buffer, currency_symbol):
 def build_daily_forecast(user, today, horizon_end=None):
     """Build Darith's end-of-day plan without pretending planned items happened."""
     preference = BudgetPreference.objects.filter(user=user).first()
-    months_ahead = preference.forecast_months if preference else 1
+    months_ahead = preference.forecast_months if preference else 0
     horizon_end = horizon_end or _default_forecast_horizon(today, months_ahead)
     if horizon_end < today:
         horizon_end = today
@@ -1203,6 +1207,15 @@ def build_next_month_forecast(user, today, current_budget=None, daily_forecast=N
         for row in daily_forecast["rows"]
         if period_start <= row["date"] <= period_end
     ]
+    if not rows and daily_forecast is not None:
+        # The visible Money by day range may stop at the current month.
+        # Next-month calculations still need their own full month of rows.
+        daily_forecast = build_daily_forecast(user, today, horizon_end=period_end)
+        rows = [
+            row
+            for row in daily_forecast["rows"]
+            if period_start <= row["date"] <= period_end
+        ]
     if not rows:
         return {
             "month_start": period_start,

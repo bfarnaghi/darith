@@ -68,6 +68,9 @@
         {% endif %}
 
         <section class="panel" data-tab-panel="overview">
+            <div class="overview-tool-row">
+                <button class="button button-secondary" type="button" data-dialog-open="spending-check-dialog">{% translate "How can I spend more?" %}</button>
+            </div>
             <div class="budget-hero">
                 <div class="budget-tools">
                     <form method="post" action="{% url 'toggle_financial_visibility' %}">{% csrf_token %}<button class="budget-settings visibility-toggle{% if budget_preference.hide_financial_values %} values-hidden{% endif %}" type="submit" aria-label="{% if budget_preference.hide_financial_values %}{% translate 'Show amounts' %}{% else %}{% translate 'Hide amounts' %}{% endif %}" title="{% if budget_preference.hide_financial_values %}{% translate 'Show amounts' %}{% else %}{% translate 'Hide amounts' %}{% endif %}"><span aria-hidden="true">&#128065;</span></button></form>
@@ -106,39 +109,6 @@
                 </div>
             </section>
             {% endif %}
-
-            <details class="spending-check"{% if spending_check_result %} open{% endif %}>
-                <summary>{% translate "Can I spend more?" %}</summary>
-                <div class="spending-check-body">
-                    <p>{% translate "Enter an extra amount. Darith can show how much you would need to lower your daily spending for a short time." %}</p>
-                    <form method="post" action="{% url 'check_extra_spending' %}" class="spending-check-form">
-                        {% csrf_token %}
-                        <p><label for="{{ spending_check_form.amount.id_for_label }}">{{ spending_check_form.amount.label }}</label>{{ spending_check_form.amount }}</p>
-                        <p><label for="{{ spending_check_form.days.id_for_label }}">{{ spending_check_form.days.label }}</label>{{ spending_check_form.days }}</p>
-                        <p><label for="{{ spending_check_form.name.id_for_label }}">{{ spending_check_form.name.label }}</label>{{ spending_check_form.name }}</p>
-                        <p><label for="{{ spending_check_form.bank_account.id_for_label }}">{{ spending_check_form.bank_account.label }}</label>{{ spending_check_form.bank_account }}</p>
-                        <button class="button button-primary" type="submit">{% translate "Check amount" %}</button>
-                    </form>
-                    {% if spending_check_result %}
-                    <div class="spending-check-result {% if spending_check_result.possible %}possible{% else %}not-possible{% endif %}">
-                        {% if spending_check_result.possible %}
-                            {% if spending_check_result.needs_change %}
-                            <strong>{% translate "You can make room for this." %}</strong>
-                            <p>{% blocktranslate with old=spending_check_result.current_daily|money:budget_preference new=spending_check_result.suggested_daily|money:budget_preference days=spending_check_result.days %}Change daily spending from {{ old }} to {{ new }} for {{ days }} days.{% endblocktranslate %}</p>
-                            {% else %}
-                            <strong>{% translate "This amount fits your plan." %}</strong>
-                            <p>{% translate "You do not need to lower your daily spending." %}</p>
-                            {% endif %}
-                            <small>{% blocktranslate with start=spending_check_result.start_date|date:"j M" end=spending_check_result.end_date|date:"j M" %}Temporary daily change: {{ start }} to {{ end }}.{% endblocktranslate %}</small>
-                            <form method="post" action="{% url 'apply_extra_spending_plan' %}">{% csrf_token %}<button class="button button-primary button-small" type="submit">{% translate "Add to my plan" %}</button></form>
-                        {% else %}
-                            <strong>{% translate "This does not fit yet." %}</strong>
-                            <p>{% translate "Try a smaller amount or spread it over more days." %}</p>
-                        {% endif %}
-                    </div>
-                    {% endif %}
-                </div>
-            </details>
 
             {% if budget_preference.show_money_timeline %}
             <section class="forecast-timeline" aria-labelledby="forecast-timeline-title" data-timeline-root data-no-events="{% translate 'Nothing else is planned for this day.' %}">
@@ -337,6 +307,39 @@
 {% include "partials/form_dialog.html" with dialog_id="account-create" title="Add bank account" form=account_form action_url="create_bank_account" submit_label="Add account" %}
 {% include "partials/form_dialog.html" with dialog_id="transfer-create" title="Move money" form=transfer_form action_url="create_transfer" submit_label="Transfer money" %}
 {% include "partials/form_dialog.html" with dialog_id="daily-spending-edit" title="Expected daily spending" form=budget_preference_form action_url="update_budget_preference" submit_label="Save daily amount" %}
+<dialog class="form-dialog spending-check-dialog" id="spending-check-dialog"{% if spending_check_result %} data-auto-open="true"{% endif %}>
+    <div class="dialog-head"><h2>{% translate "How can I spend more?" %}</h2><button class="icon-button" type="button" data-dialog-close aria-label="{% translate 'Close' %}">×</button></div>
+    <div class="spending-check-content">
+        <p class="spending-check-intro">{% translate "Enter an extra amount. Darith can show how much you would need to lower your daily spending for a short time." %}</p>
+        <form method="post" action="{% url 'check_extra_spending' %}" class="dialog-form spending-check-form">
+            {% csrf_token %}
+            <p><label for="{{ spending_check_form.amount.id_for_label }}">{{ spending_check_form.amount.label }}</label>{{ spending_check_form.amount }}</p>
+            <p><label for="{{ spending_check_form.days.id_for_label }}">{{ spending_check_form.days.label }}</label>{{ spending_check_form.days }}</p>
+            <p><label for="{{ spending_check_form.name.id_for_label }}">{{ spending_check_form.name.label }}</label>{{ spending_check_form.name }}</p>
+            <p><label for="{{ spending_check_form.bank_account.id_for_label }}">{{ spending_check_form.bank_account.label }}</label>{{ spending_check_form.bank_account }}</p>
+            <div class="dialog-actions"><button class="button button-secondary" type="button" data-dialog-close>{% translate "Close" %}</button><button class="button button-primary" type="submit">{% translate "Check amount" %}</button></div>
+        </form>
+        {% if spending_check_result %}
+        <div class="spending-check-result {% if spending_check_result.possible %}possible{% else %}not-possible{% endif %}">
+            {% if spending_check_result.possible %}
+                {% if spending_check_result.needs_change %}
+                <strong>{% translate "You can make room for this." %}</strong>
+                <p>{% blocktranslate with old=spending_check_result.current_daily|money:budget_preference new=spending_check_result.suggested_daily|money:budget_preference days=spending_check_result.days %}Change daily spending from {{ old }} to {{ new }} for {{ days }} days.{% endblocktranslate %}</p>
+                {% else %}
+                <strong>{% translate "This amount fits your plan." %}</strong>
+                <p>{% translate "You do not need to lower your daily spending." %}</p>
+                {% endif %}
+                <small>{% blocktranslate with start=spending_check_result.start_date|date:"j M" end=spending_check_result.end_date|date:"j M" %}Temporary daily change: {{ start }} to {{ end }}.{% endblocktranslate %}</small>
+                <form method="post" action="{% url 'apply_extra_spending_plan' %}">{% csrf_token %}<button class="button button-primary button-small" type="submit">{% translate "Add to my plan" %}</button></form>
+            {% else %}
+                <strong>{% translate "This does not fit yet." %}</strong>
+                <p>{% translate "Try a smaller amount or spread it over more days." %}</p>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</dialog>
+
 <dialog class="form-dialog animation-dialog" id="dashboard-animation-edit">
     <div class="dialog-head"><h2>{% translate "Settings" %}</h2><button class="icon-button" type="button" data-dialog-close aria-label="{% translate 'Close' %}">×</button></div>
     <div class="settings-tabs" role="tablist" aria-label="{% translate 'Settings sections' %}">
@@ -390,7 +393,7 @@
         </form>
     </section>
     <section class="settings-panel planning-settings" id="settings-panel-planning" role="tabpanel" data-settings-panel="planning" aria-labelledby="settings-tab-planning">
-        <div class="settings-section-heading"><h3>{% translate "Planning" %}</h3><p>{% translate "Choose your daily spending, extra buffer, and how many months you want to see." %}</p></div>
+        <div class="settings-section-heading"><h3>{% translate "Planning" %}</h3><p>{% translate "Choose your daily spending, extra buffer, and how far the optional money timeline should go." %}</p></div>
         <form method="post" action="{% url 'update_planning_settings' %}" class="planning-form">
             {% csrf_token %}
             <div class="appearance-setting">
@@ -402,11 +405,11 @@
                 {{ planning_settings_form.emergency_buffer }}
             </div>
             <div class="appearance-setting">
-                <div><label for="{{ planning_settings_form.forecast_months.id_for_label }}">{% translate "Months to show" %}</label><small>{% translate "Choose how many future months you want to see in Money by day." %}</small></div>
+                <div><label for="{{ planning_settings_form.forecast_months.id_for_label }}">{% translate "Months to show" %}</label><small>{% translate "Choose Current month, or show up to 1, 2, or 3 future months." %}</small></div>
                 {{ planning_settings_form.forecast_months }}
             </div>
             <div class="appearance-setting planning-toggle">
-                <div><label for="{{ planning_settings_form.show_money_timeline.id_for_label }}">{% translate "Show money timeline" %}</label><small>{% translate "Turn this off if you want a simpler Overview page." %}</small></div>
+                <div><label for="{{ planning_settings_form.show_money_timeline.id_for_label }}">{% translate "Show money timeline" %}</label><small>{% translate "Off by default. Turn it on when you want to use the day-by-day slider." %}</small></div>
                 {{ planning_settings_form.show_money_timeline }}
             </div>
             <div class="dialog-actions"><button class="button button-secondary" type="button" data-dialog-close>{% translate "Cancel" %}</button><button class="button button-primary" type="submit">{% translate "Save planning" %}</button></div>
@@ -440,7 +443,7 @@
             <div class="security-actions"><span>{% if budget_preference.has_darith_pin %}{% translate "PIN enabled" %}{% else %}{% translate "No PIN yet" %}{% endif %}</span>{% if budget_preference.has_darith_pin %}<button class="text-button danger-text" type="submit" formaction="{% url 'remove_darith_pin' %}" formnovalidate>{% translate "Remove PIN" %}</button>{% endif %}<button class="button button-primary button-small" type="submit">{% translate "Save lock settings" %}</button></div>
         </form>
         <div class="passkey-setting">
-            <div><strong>{% translate "Passkey / fingerprint / Face ID" %}</strong><small>{% translate "Available on HTTPS and supported browsers." %}</small></div>
+            <div><strong>{% translate "Passkey / fingerprint / Face ID" %}</strong><small>{% translate "Available on HTTPS and supported browsers. Darith stores the passkey public credential, not your fingerprint, Face ID, screen-lock code, or another secret number." %}</small></div>
             <div class="passkey-create"><input class="form-control" id="passkey-name" maxlength="80" value="{% translate 'My device' %}" aria-label="{% translate 'Passkey name' %}"><button class="button button-secondary button-small" type="button" data-passkey-register>{% translate "Add passkey" %}</button></div>
             <p class="passkey-message" data-passkey-message role="status"></p>
             {% if passkeys %}<div class="passkey-list">{% for passkey in passkeys %}<div><span><strong>{{ passkey.name }}</strong><small>{% blocktranslate with date=passkey.created_at|date:"j M Y" %}Added {{ date }}{% endblocktranslate %}</small></span><form method="post" action="{% url 'delete_passkey' passkey.id %}" data-confirm="{% translate 'Remove this passkey?' %}">{% csrf_token %}<button class="icon-button danger-button" type="submit" aria-label="{% blocktranslate with name=passkey.name %}Remove {{ name }}{% endblocktranslate %}">×</button></form></div>{% endfor %}</div>{% endif %}
